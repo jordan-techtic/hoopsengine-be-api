@@ -13,6 +13,17 @@ from app.schemas.errors import ErrorDetail, ErrorResponse
 logger = logging.getLogger("app.errors")
 
 
+def _json_safe(value: Any) -> Any:
+    """Convert Pydantic error structures (including nested exceptions) to JSON-safe values."""
+    if isinstance(value, BaseException):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    return value
+
+
 def _error_payload(
     *,
     code: str,
@@ -20,7 +31,7 @@ def _error_payload(
     details: Any | None = None,
 ) -> dict[str, Any]:
     return ErrorResponse(
-        error=ErrorDetail(code=code, message=message, details=details),
+        error=ErrorDetail(code=code, message=message, details=_json_safe(details)),
     ).model_dump()
 
 
