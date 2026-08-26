@@ -21,7 +21,9 @@ CREATE TABLE IF NOT EXISTS public.organizations (
   created_at timestamptz DEFAULT now(),
   join_code text UNIQUE,
   subscription_active boolean DEFAULT false,
-  subscription_expires_at timestamptz
+  subscription_expires_at timestamptz,
+  phone_number text,
+  address text
 );
 
 CREATE TABLE IF NOT EXISTS public.teams (

@@ -15,6 +15,8 @@ CREATE TABLE public.organizations (
   join_code text UNIQUE,
   subscription_active boolean DEFAULT false,
   subscription_expires_at timestamp with time zone,
+  phone_number text,
+  address text,
   CONSTRAINT organizations_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.teams (

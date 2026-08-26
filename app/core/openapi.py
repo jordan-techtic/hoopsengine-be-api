@@ -35,6 +35,20 @@ OPENAPI_TAGS = [
         "name": "admin-profile",
         "description": "Super admin profile management (name, email, profile image).",
     },
+    {
+        "name": "admin-organizations",
+        "description": (
+            "Super admin organization management. List, create, update, and remove "
+            "organizations (name, contact email, phone number, address)."
+        ),
+    },
+    {
+        "name": "admin-users",
+        "description": (
+            "Super admin user management. List, create, update, and remove user accounts "
+            "(coaches, players, organization admins). Super admins cannot remove their own account."
+        ),
+    },
 ]
 
 
