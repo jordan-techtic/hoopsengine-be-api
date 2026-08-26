@@ -1,137 +1,114 @@
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+"""Integration tests for Super Admin Manage Organizations API (JAW-9602)."""
+
+from __future__ import annotations
+
 from uuid import uuid4
 
-import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_current_super_admin, get_current_user
-from app.api.routes.organizations import router as organizations_router
-from app.core.database import get_db
-from app.core.error_handlers import register_exception_handlers
-from app.core.exceptions import AppException
-from app.models.organization import Organization
-from app.models.user import User
-from app.schemas.organization import OrganizationCreateRequest
-
-ORG_ID = uuid4()
-ADMIN_USER = User(
-    id=uuid4(),
-    email="admin.hoopsengine@yopmail.com",
-    encrypted_password="hashed",
-    role="super_admin",
-    is_super_admin=True,
-    is_active=True,
-)
-COACH_USER = User(
-    id=uuid4(),
-    email="coach@example.com",
-    encrypted_password="hashed",
-    role="coach",
-    is_super_admin=False,
-    is_active=True,
-)
+from tests.conftest import ORG_BASE, SEEDED_ORG_ID, auth_headers, make_expired_token
 
 
-def _build_app() -> FastAPI:
-    test_app = FastAPI()
-    register_exception_handlers(test_app)
-    test_app.include_router(organizations_router, prefix="/api/v1")
-    return test_app
+def _org_payload(**overrides: object) -> dict[str, object]:
+    """Ticket example organization body with optional field overrides."""
+    payload: dict[str, object] = {
+        "name": "Organization Name",
+        "contact_email": "contact@example.com",
+        "phone_number": "1234567890",
+        "address": "123 Main St",
+    }
+    payload.update(overrides)
+    return payload
 
 
-async def _override_db():
-    yield AsyncMock()
-
-
-@pytest.fixture
-def app() -> FastAPI:
-    test_app = _build_app()
-    test_app.dependency_overrides[get_current_super_admin] = lambda: ADMIN_USER
-    test_app.dependency_overrides[get_db] = _override_db
-    return test_app
-
-
-@pytest.fixture
-def client(app: FastAPI) -> TestClient:
-    with TestClient(app) as test_client:
-        yield test_client
-
-
-def _org() -> Organization:
-    return Organization(
-        id=ORG_ID,
-        name="Organization Name",
-        admin_email="contact@example.com",
-        phone_number="1234567890",
-        address="123 Main St",
-        join_code="A1B2C3D4",
-        created_at=datetime.now(timezone.utc),
-    )
-
-
-def test_create_organization_schema_example_fields() -> None:
-    payload = OrganizationCreateRequest.model_validate(
-        {
-            "name": "Organization Name",
-            "contact_email": "contact@example.com",
-            "phone_number": "1234567890",
-            "address": "123 Main St",
-        }
-    )
-    assert payload.contact_email == "contact@example.com"
-
-
-def test_list_organizations_200(client: TestClient) -> None:
-    with patch(
-        "app.api.routes.organizations.organization_service.list_organizations",
-        new_callable=AsyncMock,
-        return_value=([], 0),
-    ):
-        response = client.get("/api/v1/super-admin/organizations")
+def test_list_organizations_returns_200_with_items(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """JAW-9602: View list of organizations and return 200 with organization data."""
+    response = client.get(ORG_BASE, headers=admin_headers)
     assert response.status_code == 200
     body = response.json()
-    assert body["items"] == []
-    assert body["pagination"]["total"] == 0
+    assert "items" in body
+    assert "pagination" in body
+    assert body["pagination"]["page"] == 1
+    assert body["pagination"]["total"] >= 1
+    names = {item["name"] for item in body["items"]}
+    assert "Seeded Hoops Club" in names
+    seeded = next(item for item in body["items"] if item["id"] == str(SEEDED_ORG_ID))
+    assert seeded["contact_email"] == "seeded-org@test.com"
+    assert seeded["email"] == "seeded-org@test.com"
+    assert seeded["phone_number"] == "5551234567"
+    assert seeded["phone"] == "5551234567"
+    assert seeded["organization"] == "Seeded Hoops Club"
 
 
-def test_create_organization_200(client: TestClient) -> None:
-    with patch(
-        "app.api.routes.organizations.organization_service.create_organization",
-        new_callable=AsyncMock,
-        return_value=_org(),
-    ):
-        response = client.post(
-            "/api/v1/super-admin/organizations",
-            json={
-                "name": "Organization Name",
-                "contact_email": "contact@example.com",
-                "phone_number": "1234567890",
-                "address": "123 Main St",
-            },
-        )
+def test_create_organization_returns_200_with_data(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """JAW-9602: Add a new organization and return 200 with organization data."""
+    response = client.post(ORG_BASE, headers=admin_headers, json=_org_payload())
     assert response.status_code == 200
     body = response.json()
+    assert body["message"] == "Organization created successfully."
     assert body["name"] == "Organization Name"
+    assert body["organization"] == "Organization Name"
     assert body["contact_email"] == "contact@example.com"
     assert body["email"] == "contact@example.com"
     assert body["phone_number"] == "1234567890"
     assert body["phone"] == "1234567890"
     assert body["address"] == "123 Main St"
-    assert body["organization"] == "Organization Name"
-    assert body["message"] == "Organization created successfully."
+    assert "id" in body
+    assert body["join_code"]
+    assert len(body["join_code"]) == 8
 
 
-def test_create_organization_invalid_email_422(client: TestClient) -> None:
+def test_update_organization_returns_200_with_data(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """JAW-9602: Edit an existing organization and return 200 with organization data."""
+    response = client.put(
+        f"{ORG_BASE}/{SEEDED_ORG_ID}",
+        headers=admin_headers,
+        json={"name": "Updated Name"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["message"] == "Organization updated successfully."
+    assert body["name"] == "Updated Name"
+    assert body["organization"] == "Updated Name"
+    assert body["id"] == str(SEEDED_ORG_ID)
+    assert body["contact_email"] == "seeded-org@test.com"
+
+
+def test_delete_organization_returns_200(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """JAW-9602: Remove an organization."""
+    created = client.post(
+        ORG_BASE,
+        headers=admin_headers,
+        json=_org_payload(contact_email="delete-me@example.com"),
+    )
+    assert created.status_code == 200
+    org_id = created.json()["id"]
+
+    response = client.delete(f"{ORG_BASE}/{org_id}", headers=admin_headers)
+    assert response.status_code == 200
+    assert response.json()["message"] == "Organization removed successfully."
+
+    listed = client.get(ORG_BASE, headers=admin_headers)
+    ids = {item["id"] for item in listed.json()["items"]}
+    assert org_id not in ids
+
+
+def test_create_organization_invalid_email_422(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """Reject a syntactically invalid contact_email."""
     response = client.post(
-        "/api/v1/super-admin/organizations",
-        json={
-            "name": "Organization Name",
-            "contact_email": "not-an-email",
-            "phone_number": "1234567890",
-            "address": "123 Main St",
-        },
+        ORG_BASE,
+        headers=admin_headers,
+        json=_org_payload(contact_email="not-an-email"),
     )
     assert response.status_code == 422
     body = response.json()
@@ -140,15 +117,14 @@ def test_create_organization_invalid_email_422(client: TestClient) -> None:
     assert body["error"]["details"] is not None
 
 
-def test_create_organization_invalid_phone_400(client: TestClient) -> None:
+def test_create_organization_invalid_phone_400(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """JAW-9602: Return 400 status for invalid organization data (phone)."""
     response = client.post(
-        "/api/v1/super-admin/organizations",
-        json={
-            "name": "Organization Name",
-            "contact_email": "contact@example.com",
-            "phone_number": "abc",
-            "address": "123 Main St",
-        },
+        ORG_BASE,
+        headers=admin_headers,
+        json=_org_payload(phone_number="abc"),
     )
     assert response.status_code == 400
     body = response.json()
@@ -156,84 +132,207 @@ def test_create_organization_invalid_phone_400(client: TestClient) -> None:
     assert body["error"]["message"]
 
 
-def test_update_organization_200(client: TestClient) -> None:
-    updated = _org()
-    updated.name = "Updated Name"
-    with patch(
-        "app.api.routes.organizations.organization_service.update_organization",
-        new_callable=AsyncMock,
-        return_value=updated,
-    ):
-        response = client.put(
-            f"/api/v1/super-admin/organizations/{ORG_ID}",
-            json={"name": "Updated Name"},
-        )
-    assert response.status_code == 200
-    assert response.json()["name"] == "Updated Name"
-    assert response.json()["message"] == "Organization updated successfully."
-
-
-def test_delete_organization_200(client: TestClient) -> None:
-    with patch(
-        "app.api.routes.organizations.organization_service.delete_organization",
-        new_callable=AsyncMock,
-        return_value=None,
-    ):
-        response = client.delete(f"/api/v1/super-admin/organizations/{ORG_ID}")
-    assert response.status_code == 200
-    assert response.json()["message"] == "Organization removed successfully."
-
-
-def test_update_organization_404(client: TestClient) -> None:
-    with patch(
-        "app.api.routes.organizations.organization_service.update_organization",
-        new_callable=AsyncMock,
-        side_effect=AppException(
-            code="ORGANIZATION_NOT_FOUND",
-            message="Organization not found",
-            status_code=404,
-        ),
-    ):
-        response = client.put(
-            f"/api/v1/super-admin/organizations/{ORG_ID}",
-            json={"name": "Updated Name"},
-        )
+def test_update_organization_not_found_404(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """JAW-9602: Return 404 status for organization not found on update."""
+    missing_id = uuid4()
+    response = client.put(
+        f"{ORG_BASE}/{missing_id}",
+        headers=admin_headers,
+        json={"name": "Updated Name"},
+    )
     assert response.status_code == 404
     body = response.json()
     assert body["error"]["code"] == "ORGANIZATION_NOT_FOUND"
     assert body["error"]["message"] == "Organization not found"
 
 
-def test_delete_organization_404(client: TestClient) -> None:
-    with patch(
-        "app.api.routes.organizations.organization_service.delete_organization",
-        new_callable=AsyncMock,
-        side_effect=AppException(
-            code="ORGANIZATION_NOT_FOUND",
-            message="Organization not found",
-            status_code=404,
-        ),
-    ):
-        response = client.delete(f"/api/v1/super-admin/organizations/{ORG_ID}")
+def test_delete_organization_not_found_404(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """JAW-9602: Return 404 status for organization not found on delete."""
+    missing_id = uuid4()
+    response = client.delete(f"{ORG_BASE}/{missing_id}", headers=admin_headers)
     assert response.status_code == 404
+    assert response.json()["error"]["code"] == "ORGANIZATION_NOT_FOUND"
 
 
-def test_organizations_forbidden_403() -> None:
-    test_app = _build_app()
-    test_app.dependency_overrides[get_current_user] = lambda: COACH_USER
-    test_app.dependency_overrides[get_db] = _override_db
-    with TestClient(test_app) as test_client:
-        response = test_client.get("/api/v1/super-admin/organizations")
-    assert response.status_code == 403
-    body = response.json()
-    assert body["error"]["code"] == "FORBIDDEN"
-
-
-def test_organizations_unauthorized_401() -> None:
-    test_app = _build_app()
-    with TestClient(test_app) as test_client:
-        response = test_client.get("/api/v1/super-admin/organizations")
+def test_list_organizations_missing_token_401(client: TestClient) -> None:
+    """Missing Authorization header is rejected with 401."""
+    response = client.get(ORG_BASE)
     assert response.status_code == 401
     body = response.json()
     assert body["success"] is False
     assert body["error"]["code"] in {"MISSING_TOKEN", "INVALID_TOKEN"}
+
+
+def test_list_organizations_forbidden_for_regular_user_403(
+    client: TestClient, user_headers: dict[str, str]
+) -> None:
+    """A coach cannot list organizations."""
+    response = client.get(ORG_BASE, headers=user_headers)
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_list_organizations_forbidden_for_viewer_403(
+    client: TestClient, viewer_headers: dict[str, str]
+) -> None:
+    """A player/readonly user cannot list organizations."""
+    response = client.get(ORG_BASE, headers=viewer_headers)
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_create_organization_forbidden_for_regular_user_403(
+    client: TestClient, user_headers: dict[str, str]
+) -> None:
+    """A coach cannot create organizations."""
+    response = client.post(ORG_BASE, headers=user_headers, json=_org_payload())
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_list_organizations_inactive_user_401(
+    client: TestClient, inactive_headers: dict[str, str]
+) -> None:
+    """A deactivated account cannot call super-admin endpoints."""
+    response = client.get(ORG_BASE, headers=inactive_headers)
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_TOKEN"
+
+
+def test_list_organizations_expired_token_401(
+    client: TestClient, seeded_users: dict
+) -> None:
+    """An expired access token is rejected with 401."""
+    token = make_expired_token(seeded_users["admin"]["id"])
+    response = client.get(ORG_BASE, headers=auth_headers(token))
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_TOKEN"
+
+
+def test_create_organization_empty_name_422(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """Empty name fails request validation."""
+    response = client.post(
+        ORG_BASE, headers=admin_headers, json=_org_payload(name="")
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_create_organization_whitespace_name_422(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """Whitespace-only name is treated as empty."""
+    response = client.post(
+        ORG_BASE, headers=admin_headers, json=_org_payload(name="   ")
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_create_organization_name_too_long_422(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """Name longer than 255 characters is rejected."""
+    response = client.post(
+        ORG_BASE, headers=admin_headers, json=_org_payload(name="x" * 256)
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_create_organization_max_length_name_200(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """A 255-character name is accepted."""
+    name = "N" * 255
+    response = client.post(
+        ORG_BASE,
+        headers=admin_headers,
+        json=_org_payload(name=name, contact_email="max-name@example.com"),
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == name
+
+
+def test_create_organization_unicode_and_special_chars_200(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """Unicode names and formatted phone numbers are stored."""
+    response = client.post(
+        ORG_BASE,
+        headers=admin_headers,
+        json=_org_payload(
+            name="Café Hoops バスケット",
+            contact_email="unicode.org@example.com",
+            phone_number="+1 (234) 567-8901",
+            address="Calle 123, São Paulo",
+        ),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["name"] == "Café Hoops バスケット"
+    assert body["phone_number"] == "+1 (234) 567-8901"
+    assert body["address"] == "Calle 123, São Paulo"
+
+
+def test_create_organization_missing_fields_422(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """Omitting required fields returns 422."""
+    response = client.post(
+        ORG_BASE, headers=admin_headers, json={"name": "Only Name"}
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_update_organization_empty_payload_400(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """Updating with no fields returns 400."""
+    response = client.put(
+        f"{ORG_BASE}/{SEEDED_ORG_ID}", headers=admin_headers, json={}
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_update_organization_invalid_id_422(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """A non-UUID path parameter is a validation error."""
+    response = client.put(
+        f"{ORG_BASE}/not-a-uuid",
+        headers=admin_headers,
+        json={"name": "Updated Name"},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_list_organizations_page_out_of_range_422(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """page must be >= 1."""
+    response = client.get(f"{ORG_BASE}?page=0", headers=admin_headers)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_list_organizations_search_filters(
+    client: TestClient, admin_headers: dict[str, str]
+) -> None:
+    """Optional search matches organization name."""
+    response = client.get(
+        f"{ORG_BASE}?search=Seeded", headers=admin_headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["pagination"]["total"] >= 1
+    assert all("Seeded" in item["name"] for item in body["items"])
