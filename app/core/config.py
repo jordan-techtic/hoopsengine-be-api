@@ -14,5 +14,34 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    DATABASE_URL: str
+
+    SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_HOURS: int = 24
+    RESET_TOKEN_EXPIRE_HOURS: int = 1
+    RESET_TOKEN_HASH_ALGORITHM: str = "sha256"
+    BCRYPT_ROUNDS: int = 12
+
+    SUPERADMIN_EMAIL: str = "admin.hoopsengine@yopmail.com"
+    SUPERADMIN_PASSWORD: str
+    SUPERADMIN_FIRST_NAME: str = "Super"
+    SUPERADMIN_LAST_NAME: str = "Admin"
+
+    SENDGRID_API_KEY: str = ""
+    SENDGRID_FROM_EMAIL: str = ""
+    SENDGRID_FROM_NAME: str = "Hoops Engine"
+    FRONTEND_URL: str = "http://localhost:3000"
+    RESET_PASSWORD_URL: str = "http://localhost:5173/reset-password"
+    SUPPORT_REQUEST_UPLOAD_DIR: str = "storage/support_requests"
+    SUPPORT_REQUEST_MAX_ATTACHMENT_SIZE_MB: int = 5
+    PROFILE_IMAGE_UPLOAD_DIR: str = "storage/profile_images"
+    PROFILE_IMAGE_MAX_SIZE_MB: int = 2
+
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PRICE_MIGRATION_PRORATION_BEHAVIOR: str = "none"
+
 
 settings = Settings()
