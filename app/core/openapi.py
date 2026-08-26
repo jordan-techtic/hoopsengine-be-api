@@ -52,6 +52,53 @@ OPENAPI_TAGS = [
 ]
 
 
+def _apply_bearer_auth(openapi_schema: dict) -> None:
+    """Expose a single JWT scheme in Swagger and attach it to protected operations.
+
+    FastAPI documents `HTTPBearer` from `Depends(HTTPBearer)`, while this app
+    advertises `BearerAuth` in Authorize. Rewrite so one Authorize action works.
+    """
+    components = openapi_schema.setdefault("components", {})
+    schemes = components.setdefault("securitySchemes", {})
+    schemes["BearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT access token returned by `/api/v1/auth/login`.",
+    }
+
+    http_bearer_keys = [
+        key
+        for key, scheme in list(schemes.items())
+        if key != "BearerAuth"
+        and isinstance(scheme, dict)
+        and scheme.get("type") == "http"
+        and str(scheme.get("scheme", "")).lower() == "bearer"
+    ]
+    for key in http_bearer_keys:
+        schemes.pop(key, None)
+
+    for methods in openapi_schema.get("paths", {}).values():
+        if not isinstance(methods, dict):
+            continue
+        for operation in methods.values():
+            if not isinstance(operation, dict):
+                continue
+            security = operation.get("security")
+            if not security:
+                continue
+            rewritten: list[dict] = []
+            for item in security:
+                if not isinstance(item, dict):
+                    continue
+                if any(key in item for key in http_bearer_keys):
+                    rewritten.append({"BearerAuth": []})
+                else:
+                    rewritten.append(item)
+            if rewritten:
+                operation["security"] = rewritten
+
+
 def setup_openapi(app: FastAPI) -> None:
     def custom_openapi():
         if app.openapi_schema:
@@ -63,18 +110,14 @@ def setup_openapi(app: FastAPI) -> None:
             description=(
                 "Hoops Engine backend API.\n\n"
                 "Use **Swagger UI** at `/docs` to explore and test endpoints.\n"
-                "After logging in, click **Authorize** and paste the JWT access token."
+                "After logging in, click **Authorize** and paste the JWT access token.\n\n"
+                "Super Admin Manage Organizations and Manage Users endpoints require a "
+                "super-admin JWT (`is_super_admin=true`)."
             ),
             routes=app.routes,
             tags=OPENAPI_TAGS,
         )
-        openapi_schema.setdefault("components", {}).setdefault("securitySchemes", {})
-        openapi_schema["components"]["securitySchemes"]["BearerAuth"] = {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT",
-            "description": "JWT access token returned by `/api/v1/auth/login`.",
-        }
+        _apply_bearer_auth(openapi_schema)
         app.openapi_schema = openapi_schema
         return app.openapi_schema
 

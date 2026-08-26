@@ -6,6 +6,32 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, mo
 from app.models.enums import UserRole
 from app.schemas.pagination import PaginationMeta
 
+USER_EXAMPLE_ID = "11111111-2222-3333-4444-555555555555"
+USER_CREATE_EXAMPLE = {
+    "first_name": "John",
+    "last_name": "Doe",
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "password": "Coach@123",
+    "role": "coach",
+}
+USER_ITEM_EXAMPLE = {
+    "id": USER_EXAMPLE_ID,
+    "first_name": "John",
+    "last_name": "Doe",
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "role": "coach",
+    "roles": ["coach"],
+    "description": None,
+    "org_id": None,
+    "is_super_admin": False,
+    "is_active": True,
+    "is_self": False,
+    "last_sign_in_at": None,
+    "created_at": "2026-08-26T10:00:00.000000Z",
+}
+
 ROLE_ALIASES = {
     "coach": UserRole.COACH,
     "player": UserRole.PLAYER,
@@ -27,25 +53,20 @@ def normalize_role_value(value: str) -> UserRole:
 
 class RoleOption(BaseModel):
     value: str = Field(description="Role value stored on the user", examples=["coach"])
-    label: str = Field(description="Label shown in the Manage Users role dropdown", examples=["Coach"])
-    description: str = Field(description="Short explanation of the role")
+    label: str = Field(
+        description="Label shown in the Manage Users role dropdown",
+        examples=["Coach"],
+    )
+    description: str = Field(
+        description="Short explanation of the role",
+        examples=["Coach account"],
+    )
 
 
 class AdminUserCreateRequest(BaseModel):
     """Payload for creating a user from Super Admin Manage Users."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "first_name": "John",
-                "last_name": "Doe",
-                "name": "John Doe",
-                "email": "john.doe@example.com",
-                "password": "Coach@123",
-                "role": "coach",
-            }
-        }
-    )
+    model_config = ConfigDict(json_schema_extra={"example": USER_CREATE_EXAMPLE})
 
     first_name: str = Field(
         min_length=1,
@@ -74,17 +95,21 @@ class AdminUserCreateRequest(BaseModel):
         max_length=72,
         description=(
             "Initial password. Minimum 8 characters with uppercase, lowercase, "
-            "number, and special character."
+            "number, and special character. Write-only — never returned."
         ),
         examples=["Coach@123"],
     )
     role: UserRole = Field(
-        description="Account role. Use `coach` or `player` for the Manage Users page.",
+        description=(
+            "Account role. Use `coach` or `player` for the Manage Users page. "
+            "UI labels `Coach` / `Player` are accepted."
+        ),
         examples=["coach"],
     )
     org_id: UUID | None = Field(
         default=None,
         description="Optional organization UUID to attach the user to",
+        examples=["11111111-2222-3333-4444-555555555555"],
     )
 
     @field_validator("first_name", "last_name", "name")
@@ -156,17 +181,18 @@ class AdminUserUpdateRequest(BaseModel):
         default=None,
         min_length=8,
         max_length=72,
-        description="Optional new password (same complexity rules as create)",
+        description="Optional new password (same complexity rules as create). Write-only.",
         examples=["Coach@123"],
     )
     role: UserRole | None = Field(
         default=None,
-        description="Account role",
+        description="Account role. UI labels `Coach` / `Player` are accepted.",
         examples=["player"],
     )
     org_id: UUID | None = Field(
         default=None,
         description="Optional organization UUID. Send null to clear.",
+        examples=["11111111-2222-3333-4444-555555555555"],
     )
 
     @field_validator("first_name", "last_name", "name")
@@ -213,45 +239,48 @@ class AdminUserUpdateRequest(BaseModel):
 class AdminUserItem(BaseModel):
     """User row for the Super Admin Manage Users table and forms."""
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_schema_extra={
-            "example": {
-                "id": "11111111-2222-3333-4444-555555555555",
-                "first_name": "John",
-                "last_name": "Doe",
-                "name": "John Doe",
-                "email": "john.doe@example.com",
-                "role": "coach",
-                "roles": ["coach"],
-                "description": None,
-                "org_id": None,
-                "is_super_admin": False,
-                "is_active": True,
-                "is_self": False,
-                "last_sign_in_at": None,
-                "created_at": "2026-08-26T10:00:00.000000Z",
-            }
-        },
-    )
+    model_config = ConfigDict(from_attributes=True, json_schema_extra={"example": USER_ITEM_EXAMPLE})
 
-    id: UUID = Field(description="User UUID")
-    first_name: str | None = Field(default=None, description="First name")
-    last_name: str | None = Field(default=None, description="Last name")
-    name: str = Field(description="Display name for the users table")
-    email: EmailStr = Field(description="Login email")
-    role: UserRole = Field(description="Assigned role")
-    roles: list[str] = Field(description="Assigned role as a one-item list for table/filter binding")
+    id: UUID = Field(description="User UUID", examples=[USER_EXAMPLE_ID])
+    first_name: str | None = Field(default=None, description="First name", examples=["John"])
+    last_name: str | None = Field(default=None, description="Last name", examples=["Doe"])
+    name: str = Field(description="Display name for the users table", examples=["John Doe"])
+    email: EmailStr = Field(description="Login email", examples=["john.doe@example.com"])
+    role: UserRole = Field(description="Assigned role", examples=["coach"])
+    roles: list[str] = Field(
+        description="Assigned role as a one-item list for table/filter binding",
+        examples=[["coach"]],
+    )
     description: str | None = Field(
         default=None,
         description="Optional description; not collected on the Manage Users form",
     )
-    org_id: UUID | None = Field(default=None, description="Attached organization, if any")
-    is_super_admin: bool = Field(description="Whether this account is a super admin")
-    is_active: bool = Field(description="Whether the account can sign in")
-    is_self: bool = Field(description="True when this row is the authenticated super admin (disable Remove)")
-    last_sign_in_at: datetime | None = None
-    created_at: datetime | None = None
+    org_id: UUID | None = Field(
+        default=None,
+        description="Attached organization, if any",
+        examples=[USER_EXAMPLE_ID],
+    )
+    is_super_admin: bool = Field(
+        description="Whether this account is a super admin",
+        examples=[False],
+    )
+    is_active: bool = Field(
+        description="Whether the account can sign in",
+        examples=[True],
+    )
+    is_self: bool = Field(
+        description="True when this row is the authenticated super admin (disable Remove)",
+        examples=[False],
+    )
+    last_sign_in_at: datetime | None = Field(
+        default=None,
+        description="Last successful login timestamp, if known",
+    )
+    created_at: datetime | None = Field(
+        default=None,
+        description="When the user account was created",
+        examples=["2026-08-26T10:00:00.000000Z"],
+    )
 
 
 class AdminUserMutationResponse(BaseModel):
@@ -261,44 +290,74 @@ class AdminUserMutationResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "message": "User created successfully.",
-                "id": "11111111-2222-3333-4444-555555555555",
-                "first_name": "John",
-                "last_name": "Doe",
-                "name": "John Doe",
-                "email": "john.doe@example.com",
-                "role": "coach",
-                "roles": ["coach"],
-                "description": None,
-                "org_id": None,
-                "is_super_admin": False,
-                "is_active": True,
-                "is_self": False,
-                "last_sign_in_at": None,
-                "created_at": "2026-08-26T10:00:00.000000Z",
+                **USER_ITEM_EXAMPLE,
             }
         }
     )
 
-    message: str = Field(description="UI-safe success message for toast notifications")
-    id: UUID
-    first_name: str | None = None
-    last_name: str | None = None
-    name: str
-    email: EmailStr
-    role: UserRole
-    roles: list[str]
-    description: str | None = None
-    org_id: UUID | None = None
-    is_super_admin: bool
-    is_active: bool
-    is_self: bool
-    last_sign_in_at: datetime | None = None
-    created_at: datetime | None = None
+    message: str = Field(
+        description="UI-safe success message for toast notifications",
+        examples=["User created successfully."],
+    )
+    id: UUID = Field(description="User UUID", examples=[USER_EXAMPLE_ID])
+    first_name: str | None = Field(default=None, description="First name", examples=["John"])
+    last_name: str | None = Field(default=None, description="Last name", examples=["Doe"])
+    name: str = Field(description="Display name", examples=["John Doe"])
+    email: EmailStr = Field(description="Login email", examples=["john.doe@example.com"])
+    role: UserRole = Field(description="Assigned role", examples=["coach"])
+    roles: list[str] = Field(
+        description="Assigned role as a one-item list",
+        examples=[["coach"]],
+    )
+    description: str | None = Field(
+        default=None,
+        description="Optional description; not collected on the Manage Users form",
+    )
+    org_id: UUID | None = Field(default=None, description="Attached organization, if any")
+    is_super_admin: bool = Field(description="Whether this account is a super admin", examples=[False])
+    is_active: bool = Field(description="Whether the account can sign in", examples=[True])
+    is_self: bool = Field(
+        description="True when this row is the authenticated super admin",
+        examples=[False],
+    )
+    last_sign_in_at: datetime | None = Field(
+        default=None,
+        description="Last successful login timestamp, if known",
+    )
+    created_at: datetime | None = Field(
+        default=None,
+        description="When the user account was created",
+        examples=["2026-08-26T10:00:00.000000Z"],
+    )
 
 
 class AdminUserListResponse(BaseModel):
-    items: list[AdminUserItem]
-    pagination: PaginationMeta
+    """Paginated user list plus role dropdown catalog for Manage Users."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "items": [USER_ITEM_EXAMPLE],
+                "pagination": {
+                    "page": 1,
+                    "page_size": 20,
+                    "total": 1,
+                    "total_pages": 1,
+                    "has_next": False,
+                    "has_prev": False,
+                },
+                "roles": [
+                    {"value": "coach", "label": "Coach", "description": "Coach account"},
+                    {"value": "player", "label": "Player", "description": "Player account"},
+                ],
+            }
+        }
+    )
+
+    items: list[AdminUserItem] = Field(
+        description="Users on this page. Empty array is a successful empty state.",
+    )
+    pagination: PaginationMeta = Field(description="Page metadata for the table")
     roles: list[RoleOption] = Field(
         description="Assignable roles for the Add/Edit User dropdown (Coach, Player, and others)",
     )
@@ -309,4 +368,7 @@ class AdminUserDeleteResponse(BaseModel):
         json_schema_extra={"example": {"message": "User removed successfully."}},
     )
 
-    message: str = Field(description="UI-safe success message")
+    message: str = Field(
+        description="UI-safe success message",
+        examples=["User removed successfully."],
+    )

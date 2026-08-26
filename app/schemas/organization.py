@@ -5,6 +5,27 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.schemas.pagination import PaginationMeta
 
+ORG_EXAMPLE_ID = "11111111-2222-3333-4444-555555555555"
+ORG_REQUEST_EXAMPLE = {
+    "name": "Organization Name",
+    "contact_email": "contact@example.com",
+    "phone_number": "1234567890",
+    "address": "123 Main St",
+}
+ORG_ITEM_EXAMPLE = {
+    "id": ORG_EXAMPLE_ID,
+    "name": "Organization Name",
+    "organization": "Organization Name",
+    "contact_email": "contact@example.com",
+    "email": "contact@example.com",
+    "phone_number": "1234567890",
+    "phone": "1234567890",
+    "address": "123 Main St",
+    "description": None,
+    "join_code": "A1B2C3D4",
+    "created_at": "2026-08-26T10:00:00.000000Z",
+}
+
 
 def _strip_optional(value: str | None) -> str | None:
     if value is None:
@@ -14,18 +35,9 @@ def _strip_optional(value: str | None) -> str | None:
 
 
 class OrganizationCreateRequest(BaseModel):
-    """Payload for creating an organization."""
+    """Payload for creating an organization (Manage Organizations Add form)."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "name": "Organization Name",
-                "contact_email": "contact@example.com",
-                "phone_number": "1234567890",
-                "address": "123 Main St",
-            }
-        }
-    )
+    model_config = ConfigDict(json_schema_extra={"example": ORG_REQUEST_EXAMPLE})
 
     name: str = Field(
         min_length=1,
@@ -40,7 +52,7 @@ class OrganizationCreateRequest(BaseModel):
     phone_number: str = Field(
         min_length=1,
         max_length=32,
-        description="Contact phone number",
+        description="Contact phone number (digits, spaces, parentheses, dashes, optional leading +)",
         examples=["1234567890"],
     )
     address: str = Field(
@@ -67,18 +79,9 @@ class OrganizationCreateRequest(BaseModel):
 
 
 class OrganizationUpdateRequest(BaseModel):
-    """Partial payload for updating an organization."""
+    """Partial payload for updating an organization. Send only fields to change."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "name": "Organization Name",
-                "contact_email": "contact@example.com",
-                "phone_number": "1234567890",
-                "address": "123 Main St",
-            }
-        }
-    )
+    model_config = ConfigDict(json_schema_extra={"example": ORG_REQUEST_EXAMPLE})
 
     name: str | None = Field(
         default=None,
@@ -96,7 +99,7 @@ class OrganizationUpdateRequest(BaseModel):
         default=None,
         min_length=1,
         max_length=32,
-        description="Contact phone number",
+        description="Contact phone number (digits, spaces, parentheses, dashes, optional leading +)",
         examples=["1234567890"],
     )
     address: str | None = Field(
@@ -121,41 +124,53 @@ class OrganizationUpdateRequest(BaseModel):
 
 
 class OrganizationItem(BaseModel):
-    """Organization row returned to the Super Admin UI."""
+    """Organization row returned to the Super Admin UI table."""
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_schema_extra={
-            "example": {
-                "id": "11111111-2222-3333-4444-555555555555",
-                "name": "Organization Name",
-                "organization": "Organization Name",
-                "contact_email": "contact@example.com",
-                "email": "contact@example.com",
-                "phone_number": "1234567890",
-                "phone": "1234567890",
-                "address": "123 Main St",
-                "description": None,
-                "join_code": "A1B2C3D4",
-                "created_at": "2026-08-26T10:00:00.000000Z",
-            }
-        },
+    model_config = ConfigDict(from_attributes=True, json_schema_extra={"example": ORG_ITEM_EXAMPLE})
+
+    id: UUID = Field(description="Organization UUID", examples=[ORG_EXAMPLE_ID])
+    name: str = Field(description="Organization name", examples=["Organization Name"])
+    organization: str = Field(
+        description="Organization name (alias for frontend table binding)",
+        examples=["Organization Name"],
     )
-
-    id: UUID = Field(description="Organization UUID")
-    name: str = Field(description="Organization name")
-    organization: str = Field(description="Organization name (alias for frontend table binding)")
-    contact_email: EmailStr = Field(description="Primary contact email")
-    email: EmailStr = Field(description="Primary contact email (alias of contact_email)")
-    phone_number: str | None = Field(default=None, description="Contact phone number")
-    phone: str | None = Field(default=None, description="Contact phone number (alias of phone_number)")
-    address: str | None = Field(default=None, description="Street address")
+    contact_email: EmailStr = Field(
+        description="Primary contact email",
+        examples=["contact@example.com"],
+    )
+    email: EmailStr = Field(
+        description="Primary contact email (alias of contact_email)",
+        examples=["contact@example.com"],
+    )
+    phone_number: str | None = Field(
+        default=None,
+        description="Contact phone number",
+        examples=["1234567890"],
+    )
+    phone: str | None = Field(
+        default=None,
+        description="Contact phone number (alias of phone_number)",
+        examples=["1234567890"],
+    )
+    address: str | None = Field(
+        default=None,
+        description="Street address",
+        examples=["123 Main St"],
+    )
     description: str | None = Field(
         default=None,
         description="Optional description; not collected on the Manage Organizations form",
     )
-    join_code: str | None = Field(default=None, description="Unique join code for the organization")
-    created_at: datetime | None = Field(default=None, description="When the organization was created")
+    join_code: str | None = Field(
+        default=None,
+        description="Unique join code generated on create",
+        examples=["A1B2C3D4"],
+    )
+    created_at: datetime | None = Field(
+        default=None,
+        description="When the organization was created",
+        examples=["2026-08-26T10:00:00.000000Z"],
+    )
 
 
 class OrganizationMutationResponse(BaseModel):
@@ -165,38 +180,83 @@ class OrganizationMutationResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "message": "Organization created successfully.",
-                "id": "11111111-2222-3333-4444-555555555555",
-                "name": "Organization Name",
-                "organization": "Organization Name",
-                "contact_email": "contact@example.com",
-                "email": "contact@example.com",
-                "phone_number": "1234567890",
-                "phone": "1234567890",
-                "address": "123 Main St",
-                "description": None,
-                "join_code": "A1B2C3D4",
-                "created_at": "2026-08-26T10:00:00.000000Z",
+                **ORG_ITEM_EXAMPLE,
             }
         }
     )
 
-    message: str = Field(description="UI-safe success message")
-    id: UUID
-    name: str
-    organization: str
-    contact_email: EmailStr
-    email: EmailStr
-    phone_number: str | None = None
-    phone: str | None = None
-    address: str | None = None
-    description: str | None = None
-    join_code: str | None = None
-    created_at: datetime | None = None
+    message: str = Field(
+        description="UI-safe success message",
+        examples=["Organization created successfully."],
+    )
+    id: UUID = Field(description="Organization UUID", examples=[ORG_EXAMPLE_ID])
+    name: str = Field(description="Organization name", examples=["Organization Name"])
+    organization: str = Field(
+        description="Organization name (alias for frontend table binding)",
+        examples=["Organization Name"],
+    )
+    contact_email: EmailStr = Field(
+        description="Primary contact email",
+        examples=["contact@example.com"],
+    )
+    email: EmailStr = Field(
+        description="Primary contact email (alias of contact_email)",
+        examples=["contact@example.com"],
+    )
+    phone_number: str | None = Field(
+        default=None,
+        description="Contact phone number",
+        examples=["1234567890"],
+    )
+    phone: str | None = Field(
+        default=None,
+        description="Contact phone number (alias of phone_number)",
+        examples=["1234567890"],
+    )
+    address: str | None = Field(
+        default=None,
+        description="Street address",
+        examples=["123 Main St"],
+    )
+    description: str | None = Field(
+        default=None,
+        description="Optional description; not collected on the Manage Organizations form",
+    )
+    join_code: str | None = Field(
+        default=None,
+        description="Unique join code generated on create",
+        examples=["A1B2C3D4"],
+    )
+    created_at: datetime | None = Field(
+        default=None,
+        description="When the organization was created",
+        examples=["2026-08-26T10:00:00.000000Z"],
+    )
 
 
 class OrganizationListResponse(BaseModel):
-    items: list[OrganizationItem]
-    pagination: PaginationMeta
+    """Paginated organization list for the Manage Organizations table."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "items": [ORG_ITEM_EXAMPLE],
+                "pagination": {
+                    "page": 1,
+                    "page_size": 20,
+                    "total": 1,
+                    "total_pages": 1,
+                    "has_next": False,
+                    "has_prev": False,
+                },
+            }
+        }
+    )
+
+    items: list[OrganizationItem] = Field(
+        description="Organizations on this page. Empty array is a successful empty state.",
+    )
+    pagination: PaginationMeta = Field(description="Page metadata for the table")
 
 
 class OrganizationDeleteResponse(BaseModel):
@@ -206,4 +266,7 @@ class OrganizationDeleteResponse(BaseModel):
         }
     )
 
-    message: str = Field(description="UI-safe success message")
+    message: str = Field(
+        description="UI-safe success message",
+        examples=["Organization removed successfully."],
+    )

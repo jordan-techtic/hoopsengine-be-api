@@ -2,6 +2,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class PaginationMeta(BaseModel):
+    """Pagination metadata shared by Super Admin list endpoints."""
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -15,9 +17,9 @@ class PaginationMeta(BaseModel):
         }
     )
 
-    page: int = Field(description="Current page number (1-based)")
-    page_size: int = Field(description="Number of items per page")
-    total: int = Field(description="Total number of matching items")
-    total_pages: int = Field(description="Total number of pages")
-    has_next: bool = Field(description="Whether a next page exists")
-    has_prev: bool = Field(description="Whether a previous page exists")
+    page: int = Field(description="Current page number (1-based)", examples=[1])
+    page_size: int = Field(description="Number of items per page", examples=[20])
+    total: int = Field(description="Total number of matching items", examples=[42])
+    total_pages: int = Field(description="Total number of pages", examples=[3])
+    has_next: bool = Field(description="Whether a next page exists", examples=[True])
+    has_prev: bool = Field(description="Whether a previous page exists", examples=[False])
