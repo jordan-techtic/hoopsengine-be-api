@@ -18,7 +18,7 @@ Contact email is stored as `admin_email` on the `organizations` table. The API e
 
 1. Open `http://<host>:<port>/docs`
 2. Click **Authorize** and paste the JWT from `POST /api/v1/auth/login`
-3. Open the **admin-organizations** tag
+3. Open the **super-admin-organizations** tag
 4. Use **Try it out** for:
    - `GET /super-admin/organizations`
    - `POST /super-admin/organizations`

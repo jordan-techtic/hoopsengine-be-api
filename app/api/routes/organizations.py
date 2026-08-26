@@ -17,7 +17,7 @@ from app.schemas.organization import (
 from app.schemas.pagination import PaginationMeta
 from app.services import organization as organization_service
 
-router = APIRouter(prefix="/super-admin/organizations", tags=["admin-organizations"])
+router = APIRouter(prefix="/super-admin/organizations", tags=["super-admin-organizations"])
 
 ORG_ID_PATH = Path(
     ...,

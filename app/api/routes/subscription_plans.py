@@ -29,7 +29,7 @@ from app.schemas.subscription_plan import (
 from app.services import stripe_client
 from app.services import subscription_plan as subscription_plan_service
 
-router = APIRouter(prefix="/admin/subscription-plans", tags=["admin-subscription-plans"])
+router = APIRouter(prefix="/super-admin/subscription-plans", tags=["super-admin-subscription-plans"])
 
 
 def _stripe_status_for_plan(plan: SubscriptionPlan) -> PlanStatus | None:

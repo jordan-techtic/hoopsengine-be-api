@@ -55,7 +55,7 @@ def set_display_name(user: User, name: str) -> None:
 
 
 def build_profile_image_url() -> str:
-    return f"{settings.API_V1_PREFIX}/admin/profile/avatar"
+    return f"{settings.API_V1_PREFIX}/super-admin/profile/avatar"
 
 
 def build_profile_response(user: User) -> dict[str, Any]:

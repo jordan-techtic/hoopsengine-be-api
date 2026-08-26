@@ -1,11 +1,11 @@
-# Admin Stripe Subscription API
+# Super Admin Stripe Subscription API
 
 This document describes the super-admin APIs for managing Stripe-backed subscription plans in the Hoops Engine admin panel.
 
 Base path:
 
 ```text
-/api/v1/admin/subscription-plans
+/api/v1/super-admin/subscription-plans
 ```
 
 Webhook path:
@@ -14,7 +14,7 @@ Webhook path:
 /api/v1/webhooks/stripe
 ```
 
-All admin endpoints require a **super admin JWT**. Authorize in Swagger UI via **Authorize**.
+All super-admin endpoints require a **super admin JWT**. Authorize in Swagger UI via **Authorize**.
 
 Subscription plans are separated by **role**:
 
@@ -75,7 +75,7 @@ stripe>=11.0.0
 
 ### 1. Load currencies for dropdown
 
-**GET** `/admin/subscription-plans/currencies`
+**GET** `/super-admin/subscription-plans/currencies`
 
 Use this to populate the currency dropdown when creating a plan.
 
@@ -253,11 +253,11 @@ For coach plans, do **not** send `coaches_limit_type` or `coaches_count`.
 
 ## API endpoints
 
-### GET `/admin/subscription-plans/currencies`
+### GET `/super-admin/subscription-plans/currencies`
 
 Returns Stripe-supported currencies for the create-plan dropdown.
 
-### GET `/admin/subscription-plans`
+### GET `/super-admin/subscription-plans`
 
 List plans for a specific role with pagination, **Active / Archived** categories, and optional filters.
 
@@ -296,19 +296,19 @@ Before listing, the backend syncs local plan status with Stripe:
 Active organization admin plans:
 
 ```text
-GET /api/v1/admin/subscription-plans?role=org_admin&status=active&page=1&page_size=20
+GET /api/v1/super-admin/subscription-plans?role=org_admin&status=active&page=1&page_size=20
 ```
 
 Archived coach plans:
 
 ```text
-GET /api/v1/admin/subscription-plans?role=coach&status=archived&page=1&page_size=20
+GET /api/v1/super-admin/subscription-plans?role=coach&status=archived&page=1&page_size=20
 ```
 
 All coach plans (both categories):
 
 ```text
-GET /api/v1/admin/subscription-plans?role=coach&page=1&page_size=20
+GET /api/v1/super-admin/subscription-plans?role=coach&page=1&page_size=20
 ```
 
 #### Example response
@@ -347,7 +347,7 @@ GET /api/v1/admin/subscription-plans?role=coach&page=1&page_size=20
 }
 ```
 
-### GET `/admin/subscription-plans/{plan_id}`
+### GET `/super-admin/subscription-plans/{plan_id}`
 
 Fetch one plan scoped to a role.
 
@@ -360,12 +360,12 @@ Query params:
 Example:
 
 ```text
-GET /api/v1/admin/subscription-plans/{plan_id}?role=org_admin
+GET /api/v1/super-admin/subscription-plans/{plan_id}?role=org_admin
 ```
 
 Returns `404` if the plan exists but belongs to the other role.
 
-### POST `/admin/subscription-plans`
+### POST `/super-admin/subscription-plans`
 
 Create a plan.
 
@@ -377,7 +377,7 @@ On success, the backend:
 
 Active Stripe subscriber records are stored separately in `stripe_subscriptions_staging` (not the client-owned `subscriptions` table).
 
-### PUT `/admin/subscription-plans/{plan_id}`
+### PUT `/super-admin/subscription-plans/{plan_id}`
 
 Update a plan scoped to a role.
 
@@ -390,7 +390,7 @@ Required query param:
 Example:
 
 ```text
-PUT /api/v1/admin/subscription-plans/{plan_id}?role=org_admin
+PUT /api/v1/super-admin/subscription-plans/{plan_id}?role=org_admin
 ```
 
 #### Immutable fields after creation
@@ -446,7 +446,7 @@ If the frontend accidentally sends `currency` or `billing_frequency` with a diff
 }
 ```
 
-### DELETE `/admin/subscription-plans/{plan_id}`
+### DELETE `/super-admin/subscription-plans/{plan_id}`
 
 Archives the plan. The URL stays as DELETE so the current admin frontend does not need to change.
 
@@ -460,8 +460,8 @@ Query params:
 Example:
 
 ```text
-DELETE /api/v1/admin/subscription-plans/{plan_id}?role=coach
-DELETE /api/v1/admin/subscription-plans/{plan_id}?role=coach&replacement_plan_id={new_plan_id}
+DELETE /api/v1/super-admin/subscription-plans/{plan_id}?role=coach
+DELETE /api/v1/super-admin/subscription-plans/{plan_id}?role=coach&replacement_plan_id={new_plan_id}
 ```
 
 What archive does:
@@ -573,8 +573,8 @@ The admin panel should have **two separate subscription sections**:
 
 Inside each section, use two list tabs:
 
-1. **Active** — `GET /admin/subscription-plans?role=...&status=active`
-2. **Archived** — `GET /admin/subscription-plans?role=...&status=archived`
+1. **Active** — `GET /super-admin/subscription-plans?role=...&status=active`
+2. **Archived** — `GET /super-admin/subscription-plans?role=...&status=archived`
 
 Use `counts.active` and `counts.archived` for tab badges. Compare `status` (local) with `stripe_status` if you need to show a Stripe mismatch.
 

@@ -18,7 +18,7 @@ from app.schemas.user import (
 )
 from app.services import user as user_service
 
-router = APIRouter(prefix="/super-admin/users", tags=["admin-users"])
+router = APIRouter(prefix="/super-admin/users", tags=["super-admin-users"])
 
 USER_ID_PATH = Path(
     ...,

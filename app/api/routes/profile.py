@@ -14,7 +14,7 @@ from app.schemas.profile import (
 )
 from app.services import profile as profile_service
 
-router = APIRouter(prefix="/admin/profile", tags=["admin-profile"])
+router = APIRouter(prefix="/super-admin/profile", tags=["super-admin-profile"])
 
 
 @router.get(

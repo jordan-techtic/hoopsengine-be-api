@@ -18,7 +18,7 @@ class SuperAdminProfileResponse(BaseModel):
                 "name": "Super Admin",
                 "email": "admin.hoopsengine@yopmail.com",
                 "profile_image": {
-                    "url": "/api/v1/admin/profile/avatar",
+                    "url": "/api/v1/super-admin/profile/avatar",
                     "original_name": "avatar.png",
                     "content_type": "image/png",
                 },

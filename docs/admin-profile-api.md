@@ -7,7 +7,7 @@ Password changes are **not** handled here — use the existing forgot/reset pass
 Base path:
 
 ```text
-/api/v1/admin/profile
+/api/v1/super-admin/profile
 ```
 
 All endpoints require a bearer token for a `super_admin` user.
@@ -20,15 +20,15 @@ You can test these endpoints directly in Swagger UI:
 
 1. Open `http://<host>:<port>/docs`
 2. Click **Authorize** and paste your JWT access token (same token you get from `/api/v1/auth/login`)
-3. In the endpoint list, open the **admin-profile** tag
+3. In the endpoint list, open the **super-admin-profile** tag
 4. Use **Try it out** for:
-   - `GET /admin/profile`
-   - `PUT /admin/profile` (multipart form fields: `name`, `email`, `profile_image`, `remove_profile_image`)
-   - `GET /admin/profile/avatar` (returns an image file; Swagger may display it as a download/response depending on browser)
+   - `GET /super-admin/profile`
+   - `PUT /super-admin/profile` (multipart form fields: `name`, `email`, `profile_image`, `remove_profile_image`)
+   - `GET /super-admin/profile/avatar` (returns an image file; Swagger may display it as a download/response depending on browser)
 
 ---
 
-## GET `/admin/profile`
+## GET `/super-admin/profile`
 
 Fetch the authenticated super admin profile.
 
@@ -47,7 +47,7 @@ Accept: application/json
   "name": "Super Admin",
   "email": "admin.hoopsengine@yopmail.com",
   "profile_image": {
-    "url": "/api/v1/admin/profile/avatar",
+    "url": "/api/v1/super-admin/profile/avatar",
     "original_name": "avatar.png",
     "content_type": "image/png"
   },
@@ -78,7 +78,7 @@ When no profile image has been uploaded, `profile_image` is `null`.
 
 ---
 
-## PUT `/admin/profile`
+## PUT `/super-admin/profile`
 
 Update the authenticated super admin profile.
 
@@ -112,7 +112,7 @@ At least one of `name`, `email`, `profile_image`, or `remove_profile_image=true`
 ### Example — update name and email (no image)
 
 ```http
-PUT /api/v1/admin/profile
+PUT /api/v1/super-admin/profile
 Authorization: Bearer <access_token>
 Content-Type: multipart/form-data
 
@@ -128,7 +128,7 @@ formData.append("name", "Super Admin");
 formData.append("email", "admin.hoopsengine@yopmail.com");
 formData.append("profile_image", fileInput.files[0]);
 
-const response = await fetch("http://127.0.0.1:8000/api/v1/admin/profile", {
+const response = await fetch("http://127.0.0.1:8000/api/v1/super-admin/profile", {
   method: "PUT",
   headers: {
     Authorization: `Bearer ${accessToken}`,
@@ -147,7 +147,7 @@ const response = await fetch("http://127.0.0.1:8000/api/v1/admin/profile", {
     "name": "Super Admin",
     "email": "admin.hoopsengine@yopmail.com",
     "profile_image": {
-      "url": "/api/v1/admin/profile/avatar",
+      "url": "/api/v1/super-admin/profile/avatar",
       "original_name": "avatar.png",
       "content_type": "image/png"
     },
@@ -199,7 +199,7 @@ const response = await fetch("http://127.0.0.1:8000/api/v1/admin/profile", {
 
 ---
 
-## GET `/admin/profile/avatar`
+## GET `/super-admin/profile/avatar`
 
 Download the authenticated super admin profile image file.
 
@@ -214,7 +214,7 @@ Authorization: Bearer <access_token>
 ### Example
 
 ```http
-GET /api/v1/admin/profile/avatar
+GET /api/v1/super-admin/profile/avatar
 Authorization: Bearer <access_token>
 ```
 
@@ -228,12 +228,12 @@ Returns the image file with the appropriate `Content-Type` header.
 
 ### Profile Management page flow
 
-1. On page load, call **GET** `/admin/profile` with the super admin JWT.
+1. On page load, call **GET** `/super-admin/profile` with the super admin JWT.
 2. Bind `name` and `email` to the form fields.
 3. If `profile_image` is present, load the avatar from:
    `{API_BASE_URL}{profile_image.url}` with the same JWT in the `Authorization` header.
 4. For initials fallback (e.g. **SA**), derive from `name` when `profile_image` is `null`.
-5. On **Save Changes**, call **PUT** `/admin/profile` with `multipart/form-data`.
+5. On **Save Changes**, call **PUT** `/super-admin/profile` with `multipart/form-data`.
 6. **Reset Password** should link to the existing forgot/reset password UI — do not send password in the profile update request.
 
 ### Displaying the avatar in `<img>`
@@ -247,7 +247,7 @@ Example:
 
 ```javascript
 async function loadAvatar(accessToken, apiBaseUrl) {
-  const res = await fetch(`${apiBaseUrl}/admin/profile/avatar`, {
+  const res = await fetch(`${apiBaseUrl}/super-admin/profile/avatar`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) return null;

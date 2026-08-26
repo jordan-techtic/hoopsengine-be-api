@@ -16,7 +16,7 @@ All endpoints require a bearer token for a `super_admin` user. Passwords are wri
 
 1. Open `http://<host>:<port>/docs`
 2. Click **Authorize** and paste the JWT from `POST /api/v1/auth/login`
-3. Open the **admin-users** tag
+3. Open the **super-admin-users** tag
 4. Use **Try it out** for:
    - `GET /super-admin/users`
    - `POST /super-admin/users`

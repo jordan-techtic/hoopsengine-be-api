@@ -20,7 +20,7 @@ OPENAPI_TAGS = [
         ),
     },
     {
-        "name": "admin-subscription-plans",
+        "name": "super-admin-subscription-plans",
         "description": (
             "Super admin subscription plan management for organization admins (`org_admin`) "
             "and coaches (`coach`). Create, update, list, and delete Stripe-backed plans. "
@@ -32,18 +32,18 @@ OPENAPI_TAGS = [
         "description": "Stripe webhook endpoints for subscription lifecycle sync.",
     },
     {
-        "name": "admin-profile",
+        "name": "super-admin-profile",
         "description": "Super admin profile management (name, email, profile image).",
     },
     {
-        "name": "admin-organizations",
+        "name": "super-admin-organizations",
         "description": (
             "Super admin organization management. List, create, update, and remove "
             "organizations (name, contact email, phone number, address)."
         ),
     },
     {
-        "name": "admin-users",
+        "name": "super-admin-users",
         "description": (
             "Super admin user management. List, create, update, and remove user accounts "
             "(coaches, players, organization admins). Super admins cannot remove their own account."
