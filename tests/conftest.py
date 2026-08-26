@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
@@ -17,14 +18,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import make_url
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import NullPool
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env.test")
 
 os.environ.setdefault(
     "DATABASE_URL",
-    "postgresql+asyncpg://test:test@localhost:5432/hoops_engine_test",
+    "postgresql+asyncpg://postgres:1234@localhost:5432/hoops-engine-db",
 )
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-organizations-api")
 os.environ.setdefault("SUPERADMIN_PASSWORD", "TestPass123!")
@@ -32,6 +35,7 @@ os.environ.setdefault("SUPERADMIN_EMAIL", "admin@test.com")
 os.environ["BCRYPT_ROUNDS"] = "4"
 
 from app.api.router import api_router  # noqa: E402
+from app.core import database as database_module  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import create_managed_tables  # noqa: E402
 from app.core.error_handlers import register_exception_handlers  # noqa: E402
@@ -71,6 +75,21 @@ def _sync_database_url() -> str:
     return parsed.render_as_string(hide_password=False)
 
 
+def _rebind_async_engine_for_tests() -> None:
+    """Use NullPool so TestClient event loops never reuse asyncpg connections."""
+    database_module.engine = create_async_engine(
+        settings.DATABASE_URL,
+        echo=False,
+        poolclass=NullPool,
+        connect_args={"statement_cache_size": 0},
+    )
+    database_module.SessionLocal = async_sessionmaker(
+        bind=database_module.engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+
 sync_engine = create_engine(_sync_database_url(), pool_pre_ping=True)
 
 
@@ -95,10 +114,12 @@ def make_expired_token(user_id: UUID) -> str:
 @pytest.fixture(scope="session", autouse=True)
 def _ensure_schema() -> Generator[None, None, None]:
     """Create organizations plus app-managed tables once per test session."""
+    _rebind_async_engine_for_tests()
     with sync_engine.begin() as connection:
         Organization.__table__.create(connection, checkfirst=True)
         create_managed_tables(connection)
     yield
+    asyncio.run(database_module.engine.dispose())
     sync_engine.dispose()
 
 
@@ -283,7 +304,7 @@ def new_user_payload(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
     }
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def app() -> FastAPI:
     """Minimal FastAPI app with admin routers and the real get_db dependency."""
     test_app = FastAPI()
@@ -292,8 +313,8 @@ def app() -> FastAPI:
     return test_app
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def client(app: FastAPI) -> Generator[TestClient, None, None]:
-    """Synchronous TestClient bound to the test FastAPI app."""
+    """One TestClient (one event loop) for the session so asyncpg is not rebound."""
     with TestClient(app) as test_client:
         yield test_client
