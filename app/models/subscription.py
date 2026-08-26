@@ -6,7 +6,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.core.tables import STRIPE_SUBSCRIPTIONS_TABLE, SUBSCRIPTION_PLANS_TABLE, USERS_TABLE
+from app.core.tables import (
+    STRIPE_SUBSCRIPTIONS_TABLE,
+    SUBSCRIPTION_PLANS_TABLE,
+    USERS_TABLE,
+)
 
 
 class StripeSubscription(Base):

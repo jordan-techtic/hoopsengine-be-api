@@ -6,8 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.core.schema_migrations import run_subscription_schema_migrations
 from app.core.database import engine
+from app.core.schema_migrations import run_subscription_schema_migrations
 
 
 async def main() -> None:

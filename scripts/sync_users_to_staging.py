@@ -3,7 +3,6 @@ import logging
 import sys
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -12,8 +11,8 @@ if str(ROOT) not in sys.path:
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 
-from app.core.tables import USERS_TABLE
 from app.core.database import SessionLocal, engine
+from app.core.tables import USERS_TABLE
 from app.models.enums import UserRole
 from app.models.user import User
 

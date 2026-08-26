@@ -332,9 +332,36 @@ async def migrate_users_staging_to_users(connection: AsyncConnection) -> None:
             logger.debug("Skipped rename op: %s", statement)
 
 
+async def migrate_organization_contact_columns(connection: AsyncConnection) -> None:
+    """Add phone_number and address to client-domain organizations if missing."""
+    if not await _table_exists(connection, "organizations"):
+        return
+
+    if not await _column_exists(
+        connection,
+        table_name="organizations",
+        column_name="phone_number",
+    ):
+        await connection.execute(
+            text("ALTER TABLE organizations ADD COLUMN phone_number TEXT NULL")
+        )
+        logger.info("Added phone_number to organizations")
+
+    if not await _column_exists(
+        connection,
+        table_name="organizations",
+        column_name="address",
+    ):
+        await connection.execute(
+            text("ALTER TABLE organizations ADD COLUMN address TEXT NULL")
+        )
+        logger.info("Added address to organizations")
+
+
 async def run_subscription_schema_migrations(connection: AsyncConnection) -> None:
     await migrate_users_staging_to_users(connection)
     await migrate_subscription_plans_role_column(connection)
     await migrate_legacy_subscriptions_table(connection)
     await migrate_plan_archive_columns(connection)
     await migrate_offline_sync_column(connection)
+    await migrate_organization_contact_columns(connection)

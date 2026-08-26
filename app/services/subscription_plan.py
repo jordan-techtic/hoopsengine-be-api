@@ -1,7 +1,7 @@
 import logging
 import math
 from datetime import datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
@@ -38,7 +38,7 @@ def cents_to_decimal(amount_cents: int) -> Decimal:
 
 
 def decimal_to_cents(amount: Decimal) -> int:
-    return int((amount * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    return int((amount * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
 def format_price(amount_cents: int, currency: str) -> str:

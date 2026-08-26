@@ -16,11 +16,11 @@ from app.models.support_request import SupportRequest
 from app.models.user import User
 from app.schemas.errors import ErrorResponse
 from app.schemas.support import (
-    build_pagination_meta,
     SupportAttachmentResponse,
     SupportRequestCreateResponse,
     SupportRequestItem,
     SupportRequestListResponse,
+    build_pagination_meta,
 )
 
 router = APIRouter(prefix="/support-requests", tags=["support"])
