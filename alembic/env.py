@@ -2,10 +2,11 @@ import os
 import sys
 from logging.config import fileConfig
 
-from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine.url import make_url
+
+from alembic import context
 
 # Add project root to path so models can be imported
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -35,8 +36,8 @@ if not database_url:
 # ConfigParser interpolates '%'; escape so passwords with '%' survive.
 config.set_main_option("sqlalchemy.url", to_sync_database_url(database_url).replace("%", "%%"))
 
-from app.core.database import Base
 import app.models  # noqa: F401 — register models on Base.metadata
+from app.core.database import Base
 
 target_metadata = Base.metadata
 

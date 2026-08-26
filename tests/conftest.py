@@ -34,14 +34,14 @@ os.environ.setdefault("SUPERADMIN_PASSWORD", "TestPass123!")
 os.environ.setdefault("SUPERADMIN_EMAIL", "admin@test.com")
 os.environ["BCRYPT_ROUNDS"] = "4"
 
-from app.api.router import api_router  # noqa: E402
-from app.core import database as database_module  # noqa: E402
-from app.core.config import settings  # noqa: E402
-from app.core.database import create_managed_tables  # noqa: E402
-from app.core.error_handlers import register_exception_handlers  # noqa: E402
-from app.core.security import create_access_token, hash_password  # noqa: E402
-from app.models import Organization, RevokedToken, User  # noqa: E402
-from app.models.enums import UserRole  # noqa: E402
+from app.api.router import api_router
+from app.core import database as database_module
+from app.core.config import settings
+from app.core.database import create_managed_tables
+from app.core.error_handlers import register_exception_handlers
+from app.core.security import create_access_token, hash_password
+from app.models import Organization, User
+from app.models.enums import UserRole
 
 ADMIN_ID = UUID("00000000-0000-4000-8000-000000000001")
 REGULAR_USER_ID = UUID("00000000-0000-4000-8000-000000000002")
@@ -68,9 +68,7 @@ USER_BASE = "/api/v1/super-admin/users"
 def _sync_database_url() -> str:
     """Convert the app async DATABASE_URL into a psycopg2 URL for test setup."""
     parsed = make_url(os.environ["DATABASE_URL"])
-    if str(parsed.drivername).endswith("+asyncpg"):
-        parsed = parsed.set(drivername="postgresql+psycopg2")
-    elif parsed.drivername == "postgresql":
+    if str(parsed.drivername).endswith("+asyncpg") or parsed.drivername == "postgresql":
         parsed = parsed.set(drivername="postgresql+psycopg2")
     return parsed.render_as_string(hide_password=False)
 

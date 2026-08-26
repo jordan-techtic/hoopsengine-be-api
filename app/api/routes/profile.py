@@ -8,7 +8,10 @@ from app.core.database import get_db
 from app.core.exceptions import AppException
 from app.models.user import User
 from app.schemas.errors import ErrorResponse
-from app.schemas.profile import SuperAdminProfileResponse, SuperAdminProfileUpdateResponse
+from app.schemas.profile import (
+    SuperAdminProfileResponse,
+    SuperAdminProfileUpdateResponse,
+)
 from app.services import profile as profile_service
 
 router = APIRouter(prefix="/admin/profile", tags=["admin-profile"])

@@ -1,7 +1,14 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from app.models.enums import UserRole
 from app.schemas.pagination import PaginationMeta
