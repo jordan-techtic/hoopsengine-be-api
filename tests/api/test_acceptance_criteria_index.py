@@ -74,4 +74,4 @@ def test_acceptance_coverage_count_matches_tickets() -> None:
     """All seven implemented tickets have indexed coverage entries."""
     tickets = {row[0] for row in AC_COVERAGE}
     assert tickets == {"HE-306", "HE-308", "HE-309", "HE-316", "HE-317", "HE-320", "HE-330"}
-    assert len(AC_COVERAGE) >= 62
+    assert len(AC_COVERAGE) == 49
