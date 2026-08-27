@@ -1,4 +1,4 @@
-"""Integration tests for player cancel/continue verification endpoints (HE-297)."""
+"""Integration tests for coach cancel/continue verification endpoints (HE-297)."""
 
 from __future__ import annotations
 
@@ -7,17 +7,19 @@ from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.core.security import hash_otp, hash_password
-from app.models.enums import UserRole
+from app.core.security import hash_otp
 from app.models.user import User
 from tests.conftest import (
+    COACH_CANCEL_VERIFICATION_BASE,
+    COACH_CONTINUE_VERIFICATION_BASE,
+    TEST_OTP_CODE,
     UNVERIFIED_COACH_EMAIL,
     UNVERIFIED_COACH_ID,
     sync_engine,
 )
 
-CANCEL_BASE = "/api/v1/player/cancel-verification"
-CONTINUE_BASE = "/api/v1/player/continue-verification"
+CANCEL_BASE = COACH_CANCEL_VERIFICATION_BASE
+CONTINUE_BASE = COACH_CONTINUE_VERIFICATION_BASE
 
 
 def _cancel_payload(**overrides: object) -> dict[str, object]:
@@ -34,7 +36,7 @@ def _reset_unverified_otp(user: User) -> None:
         db_user = session.get(User, user.id)
         assert db_user is not None
         db_user.email_confirmed_at = None
-        db_user.confirmation_token = hash_otp("123456")
+        db_user.confirmation_token = hash_otp(TEST_OTP_CODE)
         db_user.confirmation_sent_at = datetime.now(timezone.utc)
         db_user.deleted_at = None
         db_user.is_active = True
@@ -61,7 +63,7 @@ def _clear_verification_state(user: User) -> None:
         session.commit()
 
 
-def test_cancel_verification_success_200(
+def test_cancel_verification_success_201(
     client: TestClient,
     unverified_coach_headers: dict[str, str],
     unverified_coach_user: User,
@@ -72,7 +74,7 @@ def test_cancel_verification_success_200(
         headers=unverified_coach_headers,
         json=_cancel_payload(),
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     body = response.json()
     assert body["success"] is True
     assert body["status"] == "cancelled"
