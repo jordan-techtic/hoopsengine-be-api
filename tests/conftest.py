@@ -99,6 +99,9 @@ VALIDATE_PASSWORD_BASE = "/api/v1/reset-password/validate"
 SESSIONS_BASE = "/api/v1/sessions"
 LEADERBOARD_BASE = "/api/v1/leaderboard"
 PRACTICE_PLANS_BASE = "/api/v1/practice-plans"
+COACH_PRACTICE_PLANS_BASE = "/api/v1/coach/practice-plans"
+DRILLS_SEARCH_BASE = "/api/v1/drills/search"
+SUBSCRIPTION_BASE = "/api/v1/subscription"
 PROFILE_BASE = "/api/v1/profile"
 
 UNVERIFIED_COACH_ID = UUID("00000000-0000-4000-8000-000000000020")
@@ -166,6 +169,33 @@ def _ensure_schema() -> Generator[None, None, None]:
     yield
     asyncio.run(database_module.engine.dispose())
     sync_engine.dispose()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _ensure_support_request_phone_column(_ensure_schema: None) -> Generator[None, None, None]:
+    """Ensure phone column exists on support_requests for contact support tests."""
+    with sync_engine.begin() as connection:
+        exists = connection.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'support_requests_staging'
+                      AND column_name = 'phone'
+                )
+                """
+            ),
+        ).scalar()
+        if not exists:
+            connection.execute(
+                text(
+                    "ALTER TABLE support_requests_staging "
+                    "ADD COLUMN phone VARCHAR(32) NULL"
+                )
+            )
+    yield
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -560,7 +590,11 @@ def seed_session_summary_data(
                 INSERT INTO drills (id, name, category)
                 VALUES
                     (:field_id, 'Spot Up', 'shooting'),
-                    (:ft_id, 'Free Throw Line', 'free_throw')
+                    (:ft_id, 'Free Throw Line', 'free_throw'),
+                    ('00000000-0000-4000-8000-000000000041', 'Warm-up Lap', 'general'),
+                    ('00000000-0000-4000-8000-000000000042', 'Free Throw Set', 'free_throw'),
+                    ('00000000-0000-4000-8000-000000000043', '3-Point Corner', 'shooting'),
+                    ('00000000-0000-4000-8000-000000000044', 'Defensive Slides', 'defense')
                 ON CONFLICT (id) DO NOTHING
                 """
             ),
@@ -710,16 +744,104 @@ def ensure_practice_plans_table(seeded_users: dict[str, dict[str, Any]]) -> Gene
                 text("ALTER TABLE practice_plans ADD COLUMN active boolean DEFAULT true")
             )
 
+        approved_exists = connection.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'drills'
+                      AND column_name = 'approved'
+                )
+                """
+            )
+        ).scalar()
+        if not approved_exists:
+            connection.execute(
+                text("ALTER TABLE drills ADD COLUMN approved boolean DEFAULT true")
+            )
+
         connection.execute(text("DELETE FROM practice_plan_drills"))
         connection.execute(text("DELETE FROM practice_plans"))
+        connection.execute(text("DELETE FROM drills"))
         connection.execute(
             text(
                 """
-                INSERT INTO drills (id, name, category)
+                CREATE TABLE IF NOT EXISTS public.players (
+                    id uuid PRIMARY KEY,
+                    org_id uuid,
+                    first_name text NOT NULL,
+                    last_name text NOT NULL,
+                    player_code text UNIQUE,
+                    jersey_number text,
+                    active boolean DEFAULT true,
+                    created_at timestamptz DEFAULT now()
+                )
+                """
+            )
+        )
+        jersey_exists = connection.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'players'
+                      AND column_name = 'jersey_number'
+                )
+                """
+            )
+        ).scalar()
+        if not jersey_exists:
+            connection.execute(text("ALTER TABLE players ADD COLUMN jersey_number text"))
+
+        active_player_exists = connection.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'players'
+                      AND column_name = 'active'
+                )
+                """
+            )
+        ).scalar()
+        if not active_player_exists:
+            connection.execute(text("ALTER TABLE players ADD COLUMN active boolean DEFAULT true"))
+
+        connection.execute(text("DELETE FROM players"))
+        connection.execute(
+            text(
+                """
+                INSERT INTO players (id, org_id, first_name, last_name, player_code, jersey_number, active)
                 VALUES
-                    (:field_id, 'Spot Up', 'shooting'),
-                    (:ft_id, 'Free Throw Line', 'free_throw')
-                ON CONFLICT (id) DO NOTHING
+                    (:jane_id, :org_id, 'Jane', 'Hudson', 'PC-JANE001', '23', true),
+                    (:bob_id, :org_id, 'Bob', 'Smith', 'PC-BOB001', '7', true),
+                    ('00000000-0000-4000-8000-000000000035', :org_id, 'Inactive', 'Player', 'PC-INACT01', '99', false)
+                """
+            ),
+            {
+                "org_id": SEEDED_ORG_ID,
+                "jane_id": SEEDED_PLAYER_JANE_ID,
+                "bob_id": SEEDED_PLAYER_BOB_ID,
+            },
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO drills (id, name, category, approved)
+                VALUES
+                    (:field_id, 'Spot Up', 'shooting', true),
+                    (:ft_id, 'Free Throw Line', 'free_throw', true),
+                    ('00000000-0000-4000-8000-000000000041', 'Warm-up Lap', 'general', true),
+                    ('00000000-0000-4000-8000-000000000042', 'Free Throw Set', 'free_throw', true),
+                    ('00000000-0000-4000-8000-000000000043', '3-Point Corner', 'shooting', true),
+                    ('00000000-0000-4000-8000-000000000044', 'Defensive Slides', 'defense', true),
+                    ('00000000-0000-4000-8000-000000000045', 'Inactive Spot Up', 'shooting', false)
                 """
             ),
             {"field_id": SEEDED_FIELD_DRILL_ID, "ft_id": SEEDED_FT_DRILL_ID},

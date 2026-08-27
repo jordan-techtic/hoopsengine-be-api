@@ -1,46 +1,30 @@
-"""Coach practice plan CRUD endpoints."""
+"""Coach Edit Practice Plan endpoints."""
 
 from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query, Response, status
+from fastapi import APIRouter, Depends, Path, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_coach, require_authenticated_user
+from app.api.deps import get_current_coach
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.errors import openapi_error
-from app.schemas.practice_plan import (
-    PracticePlanCreateRequest,
-    PracticePlanListResponse,
-    PracticePlanResponse,
-    PracticePlanUpdateRequest,
+from app.schemas.coach_practice_plan import (
+    CoachPracticePlanCreateRequest,
+    CoachPracticePlanResponse,
+    CoachPracticePlanUpdateRequest,
 )
-from app.schemas.roster import PlayerRosterSearchResponse
+from app.schemas.errors import openapi_error
 from app.services import practice_plan as practice_plan_service
-from app.services import roster as roster_service
 
-router = APIRouter(prefix="/practice-plans", tags=["practice-plans"])
+router = APIRouter(prefix="/coach/practice-plans", tags=["coach-edit-practice-plan"])
 
 PLAN_ID_PATH = Path(
     ...,
     description="Practice plan UUID",
     examples=["11111111-2222-3333-4444-555555555555"],
 )
-
-READ_AUTH_ERROR_RESPONSES = {
-    401: openapi_error(
-        "Missing, invalid, expired, or revoked JWT",
-        code="MISSING_TOKEN",
-        message="Could not validate credentials",
-    ),
-    403: openapi_error(
-        "Authentication is required to access this resource",
-        code="FORBIDDEN",
-        message="Authentication is required to access this resource",
-    ),
-}
 
 AUTH_ERROR_RESPONSES = {
     401: openapi_error(
@@ -89,15 +73,16 @@ NOT_FOUND_ERROR_RESPONSE = {
 
 @router.post(
     "",
-    response_model=PracticePlanResponse,
+    response_model=CoachPracticePlanResponse,
     status_code=status.HTTP_201_CREATED,
-    operation_id="createPracticePlan",
+    operation_id="createCoachPracticePlan",
     summary="Create a practice plan",
     description=(
         "Create a new active practice plan for the authenticated coach.\n\n"
-        "**Create Practice Plan screen:** provide `plan_name` (or `full_name`), "
-        "`selected_drills` (drill names from search), and optional `phone`.\n\n"
-        "**Legacy format:** provide `name` and `drills` (each with `id`, `name`, and `type`).\n\n"
+        "Provide `plan_name`, `title`, or `name` for the plan title shown on the hero card. "
+        "Optional `description` supplies the hero-card details copy. "
+        "`drills` accepts ordered entries with at least `name`; `id` and `type` are optional when "
+        "the drill is resolved from the catalog.\n\n"
         "Optional `phone` is client metadata from the status bar and is not persisted.\n\n"
         "Returns **409** when an active plan with the same name already exists for the coach.\n\n"
         "Returns **400** when required business fields are empty after trimming.\n\n"
@@ -119,31 +104,31 @@ NOT_FOUND_ERROR_RESPONSE = {
         ),
     },
 )
-async def create_practice_plan(
-    body: PracticePlanCreateRequest,
+async def create_coach_practice_plan(
+    body: CoachPracticePlanCreateRequest,
     current_user: User = Depends(get_current_coach),
     db: AsyncSession = Depends(get_db),
-) -> PracticePlanResponse:
-    result = await practice_plan_service.create_practice_plan(db, current_user, body)
-    return PracticePlanResponse(**result)
+) -> CoachPracticePlanResponse:
+    result = await practice_plan_service.create_coach_practice_plan(db, current_user, body)
+    return CoachPracticePlanResponse(**result)
 
 
 @router.get(
-    "",
-    response_model=PracticePlanListResponse,
-    operation_id="listPracticePlans",
-    summary="List active practice plans",
+    "/{plan_id}",
+    response_model=CoachPracticePlanResponse,
+    operation_id="getCoachPracticePlan",
+    summary="Get a practice plan by ID",
     description=(
-        "Return active practice plans for the authenticated user's organization.\n\n"
-        "Coaches see plans they created. Other authenticated users see all active "
-        "plans in their organization.\n\n"
-        "Each plan includes `id`, `name`, `status`, `drill_count`, `duration`, "
-        "`category`, `created_by_name`, and nested `drills`.\n\n"
-        "Inactive plans are excluded. An empty `plans` array is a valid empty state.\n\n"
-        "**Requires authenticated JWT**."
+        "Return one active practice plan owned by the authenticated coach for the "
+        "**Edit Practice Plan** screen.\n\n"
+        "Includes `id`, `title`, `name`, `description`, `status`, nested ordered `drills`, "
+        "and `drill_count`.\n\n"
+        "Returns **404** when the plan does not exist, is inactive, or is not owned by the coach.\n\n"
+        "**Requires authenticated verified coach JWT**."
     ),
     responses={
-        **READ_AUTH_ERROR_RESPONSES,
+        **AUTH_ERROR_RESPONSES,
+        **NOT_FOUND_ERROR_RESPONSE,
         500: openapi_error(
             "Unexpected server error",
             code="INTERNAL_SERVER_ERROR",
@@ -156,69 +141,24 @@ async def create_practice_plan(
         ),
     },
 )
-async def list_practice_plans(
-    current_user: User = Depends(require_authenticated_user),
+async def get_coach_practice_plan(
+    plan_id: UUID = PLAN_ID_PATH,
+    current_user: User = Depends(get_current_coach),
     db: AsyncSession = Depends(get_db),
-) -> PracticePlanListResponse:
-    result = await practice_plan_service.list_active_practice_plans(db, current_user)
-    return PracticePlanListResponse(**result)
-
-
-@router.get(
-    "/search",
-    response_model=PlayerRosterSearchResponse,
-    operation_id="searchPracticePlanRoster",
-    summary="Search team roster",
-    description=(
-        "Search active players in the team roster by name or jersey number for the "
-        "**Practice Plans** screen.\n\n"
-        "Provide the `q` query parameter with a non-empty search term matching "
-        "player first name, last name, full name, or jersey number.\n\n"
-        "Returns **400** when `q` is missing or blank.\n\n"
-        "An empty `players` array is a valid success response when no players match.\n\n"
-        "**Requires authenticated JWT**."
-    ),
-    responses={
-        **READ_AUTH_ERROR_RESPONSES,
-        400: openapi_error(
-            "Missing or empty search query",
-            code="VALIDATION_ERROR",
-            message="Search query is required",
-            details=[{"field": "q", "message": "Search query cannot be empty"}],
-        ),
-        500: openapi_error(
-            "Unexpected server error",
-            code="INTERNAL_SERVER_ERROR",
-            message="An unexpected error occurred",
-        ),
-        503: openapi_error(
-            "Players table unavailable",
-            code="CLIENT_TABLE_UNAVAILABLE",
-            message="Roster search is temporarily unavailable",
-        ),
-    },
-)
-async def search_team_roster(
-    q: str = Query(
-        default="",
-        description="Player name or jersey number search term",
-        examples=["23"],
-    ),
-    current_user: User = Depends(require_authenticated_user),
-    db: AsyncSession = Depends(get_db),
-) -> PlayerRosterSearchResponse:
-    result = await roster_service.search_team_roster(db, current_user, q)
-    return PlayerRosterSearchResponse(**result)
+) -> CoachPracticePlanResponse:
+    result = await practice_plan_service.get_practice_plan(db, current_user, plan_id)
+    return CoachPracticePlanResponse(**result)
 
 
 @router.put(
     "/{plan_id}",
-    response_model=PracticePlanResponse,
-    operation_id="updatePracticePlan",
+    response_model=CoachPracticePlanResponse,
+    operation_id="updateCoachPracticePlan",
     summary="Update a practice plan",
     description=(
         "Update an existing practice plan owned by the authenticated coach.\n\n"
-        "Provide `name` and/or `drills`. Optional `phone` is client metadata and is not persisted.\n\n"
+        "Provide any of `plan_name`, `title`, `name`, `description`, and/or `drills`. "
+        "Optional `phone` is client metadata and is not persisted.\n\n"
         "Returns **404** when the plan does not exist or is not owned by the coach.\n\n"
         "Returns **409** when renaming to a duplicate active plan name.\n\n"
         "Returns **400** for invalid update payloads (empty name, empty drills, etc.).\n\n"
@@ -241,23 +181,29 @@ async def search_team_roster(
         ),
     },
 )
-async def update_practice_plan(
-    body: PracticePlanUpdateRequest,
+async def update_coach_practice_plan(
+    body: CoachPracticePlanUpdateRequest,
     plan_id: UUID = PLAN_ID_PATH,
     current_user: User = Depends(get_current_coach),
     db: AsyncSession = Depends(get_db),
-) -> PracticePlanResponse:
-    result = await practice_plan_service.update_practice_plan(db, current_user, plan_id, body)
-    return PracticePlanResponse(**result)
+) -> CoachPracticePlanResponse:
+    result = await practice_plan_service.update_coach_practice_plan(
+        db,
+        current_user,
+        plan_id,
+        body,
+    )
+    return CoachPracticePlanResponse(**result)
 
 
 @router.delete(
     "/{plan_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    operation_id="deletePracticePlan",
+    operation_id="deleteCoachPracticePlan",
     summary="Delete a practice plan",
     description=(
         "Delete (deactivate) a practice plan owned by the authenticated coach.\n\n"
+        "The mobile client should show a confirmation overlay before calling this endpoint.\n\n"
         "Returns **204 No Content** on success. The plan will no longer appear in active listings.\n\n"
         "Returns **404** when the plan does not exist or is not owned by the coach.\n\n"
         "**Requires authenticated verified coach JWT**."
@@ -277,7 +223,7 @@ async def update_practice_plan(
         ),
     },
 )
-async def delete_practice_plan(
+async def delete_coach_practice_plan(
     plan_id: UUID = PLAN_ID_PATH,
     current_user: User = Depends(get_current_coach),
     db: AsyncSession = Depends(get_db),

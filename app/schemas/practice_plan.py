@@ -19,6 +19,13 @@ PRACTICE_PLAN_WRITE_EXAMPLE = {
     "phone": "+1-555-0100",
 }
 
+CREATE_PRACTICE_PLAN_EXAMPLE = {
+    "plan_name": "Morning Shooting Routine",
+    "selected_drills": ["Spot Up", "Free Throw Line"],
+    "full_name": "Jane Doe",
+    "phone": "+1-555-0100",
+}
+
 
 class PracticePlanDrillInput(BaseModel):
     """One drill entry within a practice plan write request."""
@@ -35,13 +42,38 @@ class PracticePlanDrillInput(BaseModel):
 
 
 class PracticePlanCreateRequest(BaseModel):
-    """Payload for POST /practice-plans."""
+    """Payload for POST /practice-plans (Create and legacy coach formats)."""
 
-    model_config = ConfigDict(json_schema_extra={"example": PRACTICE_PLAN_WRITE_EXAMPLE})
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [CREATE_PRACTICE_PLAN_EXAMPLE, PRACTICE_PLAN_WRITE_EXAMPLE]
+        }
+    )
 
-    name: str = Field(description="Practice plan name shown on the plan card", examples=["Shooting Fundamentals"])
-    drills: list[PracticePlanDrillInput] = Field(
-        description="Ordered list of drills included in the plan",
+    plan_name: str | None = Field(
+        default=None,
+        description="Practice plan name from the Create Practice Plan form",
+        examples=["Morning Shooting Routine"],
+    )
+    full_name: str | None = Field(
+        default=None,
+        description="Figma alias for the plan name input (not the coach profile name)",
+        examples=["Jane Doe"],
+    )
+    selected_drills: list[str] | None = Field(
+        default=None,
+        description="Ordered drill names selected from drill search results",
+        examples=[["Spot Up", "Free Throw Line"]],
+        min_length=1,
+    )
+    name: str | None = Field(
+        default=None,
+        description="Practice plan name (legacy alias)",
+        examples=["Shooting Fundamentals"],
+    )
+    drills: list[PracticePlanDrillInput] | None = Field(
+        default=None,
+        description="Ordered list of drills with ids (legacy format)",
         min_length=1,
     )
     phone: str | None = Field(
@@ -95,8 +127,14 @@ class PracticePlanItem(BaseModel):
     """Practice plan summary for list and detail responses."""
 
     id: UUID = Field(description="Practice plan UUID")
-    name: str = Field(description="Plan name", examples=["Shooting Fundamentals"])
+    name: str = Field(description="Plan name", examples=["Warm-Up Routine"])
+    status: str = Field(default="active", description="Plan lifecycle status", examples=["active"])
     drill_count: int = Field(description="Number of drills in the plan", examples=[3])
+    duration: str = Field(description="Estimated plan duration for list cards", examples=["30 min"])
+    category: str = Field(
+        description="Category tab label derived from drills",
+        examples=["Skills"],
+    )
     created_by_name: str = Field(description="Coach name who created the plan", examples=["Regular Coach"])
     drills: list[PracticePlanDrillItem] = Field(default_factory=list)
     created_at: datetime | None = Field(default=None, description="Plan creation timestamp")
@@ -115,6 +153,7 @@ class PracticePlanResponse(BaseModel):
                 "link": None,
                 "error": None,
                 "id": "11111111-2222-3333-4444-555555555555",
+                "title": "Shooting Fundamentals",
                 "name": "Shooting Fundamentals",
                 "drill_count": 1,
                 "created_by_name": "Regular Coach",
@@ -136,6 +175,7 @@ class PracticePlanResponse(BaseModel):
     link: str | None = None
     error: None = None
     id: UUID
+    title: str = Field(description="Plan title for mobile hero cards", examples=["Shooting Fundamentals"])
     name: str
     drill_count: int
     created_by_name: str
@@ -158,8 +198,11 @@ class PracticePlanListResponse(BaseModel):
                 "plans": [
                     {
                         "id": "11111111-2222-3333-4444-555555555555",
-                        "name": "Shooting Fundamentals",
+                        "name": "Warm-Up Routine",
+                        "status": "active",
                         "drill_count": 3,
+                        "duration": "30 min",
+                        "category": "Skills",
                         "created_by_name": "Regular Coach",
                         "drills": [],
                     }

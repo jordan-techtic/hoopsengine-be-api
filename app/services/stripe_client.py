@@ -264,6 +264,34 @@ def get_stripe_catalog_active(*, product_id: str, price_id: str) -> bool | None:
     return None
 
 
+def cancel_stripe_subscription(
+    *,
+    stripe_subscription_id: str,
+    at_period_end: bool = True,
+) -> None:
+    """Cancel a Stripe subscription immediately or at period end."""
+    client = get_stripe_client()
+    if at_period_end:
+        client.subscriptions.update(
+            stripe_subscription_id,
+            params={"cancel_at_period_end": True},
+        )
+        return
+    client.subscriptions.cancel(stripe_subscription_id)
+
+
+def upgrade_stripe_subscription_price(
+    *,
+    stripe_subscription_id: str,
+    new_price_id: str,
+) -> None:
+    """Switch an existing Stripe subscription to a new price."""
+    migrate_subscription_to_new_price(
+        stripe_subscription_id=stripe_subscription_id,
+        new_price_id=new_price_id,
+    )
+
+
 def construct_webhook_event(payload: bytes, signature: str) -> stripe.Event:
     if not settings.STRIPE_WEBHOOK_SECRET:
         raise RuntimeError("Stripe webhook secret is not configured")

@@ -11,7 +11,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException
+from app.models.enums import UserRole
 from app.models.user import User
+from app.schemas.coach_practice_plan import (
+    CoachPracticePlanCreateRequest,
+    CoachPracticePlanDrillInput,
+    CoachPracticePlanUpdateRequest,
+)
 from app.schemas.practice_plan import (
     PracticePlanCreateRequest,
     PracticePlanDrillInput,
@@ -24,6 +30,49 @@ logger = logging.getLogger(__name__)
 PRACTICE_PLANS_TABLE = "practice_plans"
 PRACTICE_PLAN_DRILLS_TABLE = "practice_plan_drills"
 DRILLS_TABLE = "drills"
+DEFAULT_PLAN_DESCRIPTION = "Plan Details"
+MINUTES_PER_DRILL = 10
+
+
+def _plan_duration_label(drill_count: int) -> str:
+    """Estimate plan duration for Practice Plans list cards."""
+    minutes = max(int(drill_count) * MINUTES_PER_DRILL, MINUTES_PER_DRILL)
+    return f"{minutes} min"
+
+
+def _plan_category(drills: list[dict[str, Any]]) -> str:
+    """Derive a category tab label from plan drills."""
+    if not drills:
+        return "All"
+
+    drill_type = str(drills[0].get("type", "general")).lower()
+    if any(token in drill_type for token in ("endurance", "conditioning", "warm")):
+        return "Endurance"
+    if "speed" in drill_type:
+        return "Speed"
+    if any(token in drill_type for token in ("shooting", "dribbl", "pass", "defense", "free_throw")):
+        return "Skills"
+    return "Skills"
+
+
+def _plan_list_item(
+    row: dict[str, Any],
+    drills: list[dict[str, Any]],
+    *,
+    fallback_coach_name: str,
+) -> dict[str, Any]:
+    drill_count = int(row.get("drill_count") or len(drills))
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "status": "active",
+        "drill_count": drill_count,
+        "duration": _plan_duration_label(drill_count),
+        "category": _plan_category(drills),
+        "created_by_name": row.get("created_by_name") or fallback_coach_name,
+        "drills": drills,
+        "created_at": row.get("created_at"),
+    }
 
 
 def _coach_display_name(user: User) -> str:
@@ -44,6 +93,190 @@ def _validate_plan_name(name: str | None) -> str:
             details=[{"field": "name", "message": "Practice plan name is required"}],
         )
     return cleaned
+
+
+def _extract_coach_plan_name(
+    *,
+    plan_name: str | None = None,
+    title: str | None = None,
+    name: str | None = None,
+    full_name: str | None = None,
+) -> str:
+    """Resolve plan name from coach-facing aliases."""
+    for candidate in (plan_name, full_name, title, name):
+        if candidate is not None and candidate.strip():
+            return _validate_plan_name(candidate)
+
+    raise AppException(
+        code="VALIDATION_ERROR",
+        message="Practice plan name is required",
+        status_code=400,
+        details=[
+            {
+                "field": "plan_name",
+                "message": "Provide plan_name, full_name, title, or name for the practice plan",
+            }
+        ],
+    )
+
+
+def _uses_create_screen_payload(payload: PracticePlanCreateRequest) -> bool:
+    """Return True when the request uses Create Practice Plan form fields."""
+    return (
+        payload.selected_drills is not None
+        or payload.plan_name is not None
+        or payload.full_name is not None
+    )
+
+
+async def _selected_drills_to_internal(
+    db: AsyncSession,
+    selected_drills: list[str],
+) -> list[PracticePlanDrillInput]:
+    """Convert selected drill names to internal drill inputs."""
+    if not selected_drills:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="At least one drill is required",
+            status_code=400,
+            details=[{"field": "selected_drills", "message": "At least one drill is required"}],
+        )
+
+    coach_drills = [
+        CoachPracticePlanDrillInput(name=drill_name.strip())
+        for drill_name in selected_drills
+        if drill_name and drill_name.strip()
+    ]
+    return await _coach_drills_to_internal(db, coach_drills)
+
+
+async def _resolve_create_payload(
+    db: AsyncSession,
+    payload: PracticePlanCreateRequest,
+) -> tuple[str, list[PracticePlanDrillInput]]:
+    """Normalize create payloads from Create Practice Plan or legacy formats."""
+    if _uses_create_screen_payload(payload):
+        plan_name = _extract_coach_plan_name(
+            plan_name=payload.plan_name,
+            full_name=payload.full_name,
+            name=payload.name,
+        )
+        if payload.selected_drills is None:
+            raise AppException(
+                code="VALIDATION_ERROR",
+                message="At least one drill is required",
+                status_code=400,
+                details=[
+                    {
+                        "field": "selected_drills",
+                        "message": "Select at least one drill for the practice plan",
+                    }
+                ],
+            )
+        drills = await _selected_drills_to_internal(db, payload.selected_drills)
+        return plan_name, drills
+
+    if payload.name is None or payload.drills is None:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Practice plan name and drills are required",
+            status_code=400,
+            details=[
+                {
+                    "field": "plan_name",
+                    "message": "Provide plan_name and selected_drills, or name and drills",
+                }
+            ],
+        )
+
+    return _validate_plan_name(payload.name), _validate_drills(payload.drills)
+
+
+def _coach_plan_description(description: str | None) -> str:
+    """Return UI-safe plan description text."""
+    cleaned = (description or "").strip()
+    return cleaned or DEFAULT_PLAN_DESCRIPTION
+
+
+async def _resolve_coach_drill(
+    db: AsyncSession,
+    drill: CoachPracticePlanDrillInput,
+) -> PracticePlanDrillInput:
+    """Resolve a coach drill payload to the internal drill input shape."""
+    name = drill.name.strip()
+    if not name:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Drill name is required",
+            status_code=400,
+            details=[{"field": "drills[].name", "message": "Drill name is required"}],
+        )
+
+    if drill.id is not None:
+        drill_type = (drill.type or "general").strip() or "general"
+        return PracticePlanDrillInput(id=drill.id, name=name, type=drill_type)
+
+    if await client_db.table_exists(db, DRILLS_TABLE):
+        result = await db.execute(
+            text(
+                """
+                SELECT id, name, category
+                FROM drills
+                WHERE LOWER(TRIM(name)) = LOWER(:name)
+                LIMIT 1
+                """
+            ),
+            {"name": name},
+        )
+        row = result.mappings().first()
+        if row is not None:
+            return PracticePlanDrillInput(
+                id=UUID(str(row["id"])),
+                name=str(row["name"]),
+                type=str(row["category"]),
+            )
+
+    drill_type = (drill.type or "general").strip() or "general"
+    return PracticePlanDrillInput(id=uuid4(), name=name, type=drill_type)
+
+
+async def _coach_drills_to_internal(
+    db: AsyncSession,
+    drills: list[CoachPracticePlanDrillInput],
+) -> list[PracticePlanDrillInput]:
+    """Convert coach drill inputs and validate the resolved list."""
+    if not drills:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="At least one drill is required",
+            status_code=400,
+            details=[{"field": "drills", "message": "At least one drill is required"}],
+        )
+
+    resolved: list[PracticePlanDrillInput] = []
+    details: list[dict[str, str]] = []
+    for index, drill in enumerate(drills):
+        try:
+            resolved.append(await _resolve_coach_drill(db, drill))
+        except AppException as exc:
+            if exc.details and isinstance(exc.details, list):
+                for item in exc.details:
+                    field = str(item.get("field", "drills"))
+                    if field == "drills[].name":
+                        field = f"drills[{index}].name"
+                    details.append({"field": field, "message": str(item.get("message", exc.message))})
+            else:
+                details.append({"field": f"drills[{index}]", "message": exc.message})
+
+    if details:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Invalid practice plan drill data",
+            status_code=400,
+            details=details,
+        )
+
+    return _validate_drills(resolved)
 
 
 def _validate_drills(drills: list[PracticePlanDrillInput] | None) -> list[PracticePlanDrillInput]:
@@ -313,6 +546,7 @@ def _plan_to_response(
         "link": None,
         "error": None,
         "id": row["id"],
+        "title": row["name"],
         "name": row["name"],
         "drill_count": int(row.get("drill_count") or len(drills)),
         "created_by_name": row.get("created_by_name") or "Coach",
@@ -330,8 +564,7 @@ async def create_practice_plan(
     await _ensure_practice_plan_tables(db)
     context = await coach_identity.ensure_recorder_context(db, user)
 
-    name = _validate_plan_name(payload.name)
-    drills = _validate_drills(payload.drills)
+    name, drills = await _resolve_create_payload(db, payload)
 
     if await _duplicate_plan_exists(
         db,
@@ -410,11 +643,29 @@ async def create_practice_plan(
 
 
 async def list_active_practice_plans(db: AsyncSession, user: User) -> dict[str, Any]:
-    """Return active practice plans owned by the authenticated coach."""
+    """Return active practice plans for the authenticated user's organization."""
     await _ensure_practice_plan_tables(db)
-    context = await coach_identity.ensure_recorder_context(db, user)
+
+    if user.org_id is None:
+        return {
+            "success": True,
+            "message": "Active practice plans loaded successfully",
+            "status": "ready",
+            "description": "Your active practice plans",
+            "link": None,
+            "error": None,
+            "plans": [],
+        }
+
     active_column_exists = await _active_column_exists(db)
     active_sql = _active_filter_sql(active_column_exists)
+
+    if user.role == UserRole.COACH.value:
+        owner_sql = "AND pp.created_by_user = :user_id"
+        params: dict[str, Any] = {"org_id": user.org_id, "user_id": user.id}
+    else:
+        owner_sql = ""
+        params = {"org_id": user.org_id}
 
     result = await db.execute(
         text(
@@ -427,12 +678,12 @@ async def list_active_practice_plans(db: AsyncSession, user: User) -> dict[str, 
                 pp.created_at
             FROM practice_plans pp
             WHERE pp.org_id = :org_id
-              AND pp.created_by_user = :user_id
+              {owner_sql}
               {active_sql}
             ORDER BY pp.created_at DESC
             """
         ),
-        {"org_id": context.org_id, "user_id": user.id},
+        params,
     )
     rows = [dict(row) for row in result.mappings().all()]
 
@@ -440,14 +691,11 @@ async def list_active_practice_plans(db: AsyncSession, user: User) -> dict[str, 
     for row in rows:
         drills = await _fetch_plan_drills(db, UUID(str(row["id"])))
         plans.append(
-            {
-                "id": row["id"],
-                "name": row["name"],
-                "drill_count": int(row.get("drill_count") or len(drills)),
-                "created_by_name": row.get("created_by_name") or _coach_display_name(user),
-                "drills": drills,
-                "created_at": row.get("created_at"),
-            }
+            _plan_list_item(
+                row,
+                drills,
+                fallback_coach_name=_coach_display_name(user),
+            )
         )
 
     return {
@@ -593,3 +841,101 @@ async def delete_practice_plan(db: AsyncSession, user: User, plan_id: UUID) -> N
 
     await db.commit()
     logger.info("Coach %s deleted practice plan %s", user.id, plan_id)
+
+
+async def get_practice_plan(db: AsyncSession, user: User, plan_id: UUID) -> dict[str, Any]:
+    """Return one active practice plan owned by the authenticated coach."""
+    await _ensure_practice_plan_tables(db)
+    context = await coach_identity.ensure_recorder_context(db, user)
+
+    row = await _fetch_plan_row(
+        db,
+        plan_id=plan_id,
+        org_id=context.org_id,
+        user_id=user.id,
+    )
+    if row is None:
+        raise AppException(
+            code="PRACTICE_PLAN_NOT_FOUND",
+            message="Practice plan not found",
+            status_code=404,
+        )
+
+    drills = await _fetch_plan_drills(db, plan_id)
+    return _plan_to_response(
+        row,
+        drills,
+        message="Practice plan loaded successfully",
+        description=DEFAULT_PLAN_DESCRIPTION,
+    )
+
+
+async def create_coach_practice_plan(
+    db: AsyncSession,
+    user: User,
+    payload: CoachPracticePlanCreateRequest,
+) -> dict[str, Any]:
+    """Create a practice plan from Edit Practice Plan coach payloads."""
+    plan_name = _extract_coach_plan_name(
+        plan_name=payload.plan_name,
+        title=payload.title,
+        name=payload.name,
+    )
+    drills = await _coach_drills_to_internal(db, payload.drills)
+    internal_payload = PracticePlanCreateRequest(
+        name=plan_name,
+        drills=drills,
+        phone=payload.phone,
+    )
+    result = await create_practice_plan(db, user, internal_payload)
+    result["description"] = _coach_plan_description(payload.description)
+    return result
+
+
+async def update_coach_practice_plan(
+    db: AsyncSession,
+    user: User,
+    plan_id: UUID,
+    payload: CoachPracticePlanUpdateRequest,
+) -> dict[str, Any]:
+    """Update a practice plan from Edit Practice Plan coach payloads."""
+    name: str | None = None
+    if payload.plan_name is not None or payload.title is not None or payload.name is not None:
+        name = _extract_coach_plan_name(
+            plan_name=payload.plan_name,
+            title=payload.title,
+            name=payload.name,
+        )
+
+    drills: list[PracticePlanDrillInput] | None = None
+    if payload.drills is not None:
+        drills = await _coach_drills_to_internal(db, payload.drills)
+
+    if name is None and drills is None and payload.description is None:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="At least one field must be provided to update a practice plan",
+            status_code=400,
+            details=[
+                {
+                    "field": "plan_name",
+                    "message": "Provide plan_name, title, name, description, and/or drills",
+                }
+            ],
+        )
+
+    if name is None and drills is None:
+        result = await get_practice_plan(db, user, plan_id)
+        result["description"] = _coach_plan_description(payload.description)
+        result["message"] = "Practice plan updated successfully"
+        return result
+
+    internal_payload = PracticePlanUpdateRequest(
+        name=name,
+        drills=drills,
+        phone=payload.phone,
+    )
+    result = await update_practice_plan(db, user, plan_id, internal_payload)
+    if payload.description is not None:
+        result["description"] = _coach_plan_description(payload.description)
+    return result

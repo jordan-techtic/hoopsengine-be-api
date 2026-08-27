@@ -341,7 +341,7 @@ def test_he310_delete_404(client: TestClient, coach_headers: dict[str, str]) -> 
 
 
 def test_he310_401_without_auth(client: TestClient) -> None:
-    assert client.get(PRACTICE_PLANS_BASE).status_code == 401
+    assert client.get(PRACTICE_PLANS_BASE).status_code == 403
 
 
 # --- HE-318 Edit Profile ---
