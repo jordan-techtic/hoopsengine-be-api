@@ -50,8 +50,16 @@ AUTH_ERROR_RESPONSES = {
     },
 )
 async def get_coach_home(
-    phone: str | None = Query(default=None, examples=["+1-555-0100"]),
-    company: str | None = Query(default=None, examples=["Acme Realty"]),
+    phone: str | None = Query(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+        examples=["+1-555-0100"],
+    ),
+    company: str | None = Query(
+        default=None,
+        description="Optional organization label from Col_Organization (not persisted)",
+        examples=["Acme Realty"],
+    ),
     current_user: User = Depends(get_current_coach),
     db: AsyncSession = Depends(get_db),
 ) -> CoachHomeResponse:

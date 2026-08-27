@@ -58,7 +58,13 @@ AUTH_ERROR_RESPONSES = {
     },
 )
 async def get_home_activities(
-    limit: int = Query(default=10, ge=1, le=10),
+    limit: int = Query(
+        default=10,
+        ge=1,
+        le=10,
+        description="Maximum number of activities to return (paginated, max 10)",
+        examples=[10],
+    ),
     current_user: User = Depends(get_current_coach),
     db: AsyncSession = Depends(get_db),
 ) -> HomeActivitiesResponse:

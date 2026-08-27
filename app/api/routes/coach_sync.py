@@ -117,8 +117,16 @@ async def clear_coach_local_cache(
     },
 )
 async def get_coach_sync_preferences(
-    phone: str | None = Query(default=None, examples=["+1-555-0100"]),
-    local_storage_used: str | None = Query(default=None, examples=["2.4 GB / 8 GB"]),
+    phone: str | None = Query(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+        examples=["+1-555-0100"],
+    ),
+    local_storage_used: str | None = Query(
+        default=None,
+        description="Optional local storage usage label echoed in the response (not persisted)",
+        examples=["2.4 GB / 8 GB"],
+    ),
     current_user: User = Depends(get_current_coach),
     db: AsyncSession = Depends(get_db),
 ) -> CoachSyncPreferencesResponse:

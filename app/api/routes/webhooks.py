@@ -1,6 +1,7 @@
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Body, Depends, Header
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -19,9 +20,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 
+class StripeWebhookResponse(BaseModel):
+    """Acknowledgement payload returned to Stripe after webhook processing."""
+
+    model_config = ConfigDict(json_schema_extra={"example": {"status": "ok"}})
+
+    status: str = Field(description="Processing result", examples=["ok"])
+
+
 WEBHOOK_ERROR_RESPONSES = {
     400: openapi_error(
-        "Missing or invalid Stripe-Signature header",
+        "Missing Stripe-Signature header or invalid webhook signature",
         code="INVALID_STRIPE_SIGNATURE",
         message="Invalid Stripe webhook signature",
     ),
@@ -35,19 +44,24 @@ WEBHOOK_ERROR_RESPONSES = {
 
 @router.post(
     "/stripe",
+    response_model=StripeWebhookResponse,
+    operation_id="handleStripeWebhook",
     summary="Stripe webhook handler",
     description=(
         "Receives Stripe webhook events for subscription lifecycle sync.\n\n"
+        "Send the **raw JSON event body** exactly as Stripe delivers it; the "
+        "`Stripe-Signature` header is required for verification.\n\n"
         "Processes `customer.subscription.created`, `customer.subscription.updated`, "
         "`customer.subscription.deleted`, `invoice.paid`, and `invoice.payment_failed`. "
         "Duplicate deliveries are ignored using stored Stripe event IDs.\n\n"
         "Configure this URL in the Stripe Dashboard. "
-        "No JWT authentication — verified via the Stripe-Signature header."
+        "**Public endpoint** — no JWT; authenticated via Stripe signature only."
     ),
     responses={
         **WEBHOOK_ERROR_RESPONSES,
         200: {
             "description": "Webhook accepted and processed (or skipped as duplicate)",
+            "model": StripeWebhookResponse,
             "content": {
                 "application/json": {
                     "example": {"status": "ok"},
@@ -57,12 +71,20 @@ WEBHOOK_ERROR_RESPONSES = {
     },
 )
 async def stripe_webhook(
-    request: Request,
+    payload: bytes = Body(
+        ...,
+        description="Raw Stripe event JSON bytes (must not be parsed before signature verification)",
+        media_type="application/json",
+    ),
+    stripe_signature: str | None = Header(
+        default=None,
+        alias="Stripe-Signature",
+        description="Stripe webhook signature header",
+        examples=["t=1492774577,v1=5257a869e7ecebeb922ff1d874ba6e7932231085,v0=..."],
+    ),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, str]:
-    payload = await request.body()
-    signature = request.headers.get("stripe-signature")
-    if not signature:
+) -> StripeWebhookResponse:
+    if not stripe_signature:
         raise AppException(
             code="MISSING_STRIPE_SIGNATURE",
             message="Missing Stripe-Signature header",
@@ -70,7 +92,7 @@ async def stripe_webhook(
         )
 
     try:
-        event = stripe_client.construct_webhook_event(payload, signature)
+        event = stripe_client.construct_webhook_event(payload, stripe_signature)
     except Exception as exc:
         logger.warning("Invalid Stripe webhook signature: %s", exc)
         raise AppException(
@@ -85,7 +107,7 @@ async def stripe_webhook(
 
     if await is_webhook_event_processed(db, event_id):
         logger.info("Skipping duplicate Stripe webhook event %s", event_id)
-        return {"status": "ok"}
+        return StripeWebhookResponse(status="ok")
 
     if event_type in {
         "customer.subscription.created",
@@ -105,4 +127,4 @@ async def stripe_webhook(
         stripe_event_id=event_id,
         event_type=event_type,
     )
-    return {"status": "ok"}
+    return StripeWebhookResponse(status="ok")
