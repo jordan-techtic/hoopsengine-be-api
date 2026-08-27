@@ -74,7 +74,10 @@ def test_post_session_record_201(client: TestClient, coach_headers: dict[str, st
     assert body["success"] is True
     assert body["session_mode"] == "one_drill"
     assert body["id"]
-    assert body["status"] == "in_progress"
+    assert body["status"] == "completed"
+    assert body["session_details"]["one_drill_quick_record"]["drill_id"] == str(
+        SEEDED_FIELD_DRILL_ID
+    )
     assert body["message"]
     assert body["error"] is None
 
@@ -96,13 +99,25 @@ def test_post_session_record_400_missing_session_mode_field(
 def test_post_session_record_409_duplicate_active_session(
     client: TestClient, coach_headers: dict[str, str]
 ) -> None:
-    first = client.post(RECORD_URL, headers=coach_headers, json=_record_payload())
+    first = client.post(
+        RECORD_URL,
+        headers=coach_headers,
+        json=_record_payload(
+            session_mode="daily_options",
+            drill_id=None,
+            session_data=None,
+        ),
+    )
     assert first.status_code == 201
 
     second = client.post(
         RECORD_URL,
         headers=coach_headers,
-        json=_record_payload(session_mode="daily_options"),
+        json=_record_payload(
+            session_mode="practice_plan",
+            drill_id=None,
+            session_data=None,
+        ),
     )
     assert second.status_code == 409
     body = second.json()

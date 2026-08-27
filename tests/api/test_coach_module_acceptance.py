@@ -101,11 +101,7 @@ def test_he301_post_record_409_duplicate_session(
     dup = client.post(
         RECORD_URL,
         headers=coach_headers,
-        json=_record_payload(
-            session_mode="one_drill",
-            drill_id=str(SEEDED_FIELD_DRILL_ID),
-            session_data={"reps": 10, "time": "00:30:00", "performance": "good"},
-        ),
+        json=_record_payload(session_mode="practice_plan"),
     )
     assert dup.status_code == 409
     assert dup.json()["error"]["code"] == "SESSION_MODE_ALREADY_RECORDED"

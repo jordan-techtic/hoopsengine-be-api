@@ -47,12 +47,13 @@ def test_record_one_drill_session_201(
     assert body["title"] == "One Drill"
     assert body["id"]
     assert body["message"]
-    assert body["status"] == "in_progress"
-    flow = body["session_details"]["one_drill_flow"]
-    assert flow["selected_drill_id"] == str(SEEDED_FIELD_DRILL_ID)
-    assert flow["session_data"]["reps"] == 10
-    assert flow["session_data"]["time"] == "00:30:00"
-    assert flow["session_data"]["performance"] == "good"
+    assert body["status"] == "completed"
+    quick_record = body["session_details"]["one_drill_quick_record"]
+    assert quick_record["quick_record"] is True
+    assert quick_record["drill_id"] == str(SEEDED_FIELD_DRILL_ID)
+    assert quick_record["session_data"]["reps"] == 10
+    assert quick_record["session_data"]["time"] == "00:30:00"
+    assert quick_record["session_data"]["performance"] == "good"
 
 
 def test_record_one_drill_session_400_missing_drill_id(
