@@ -1,10 +1,11 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     String,
@@ -50,6 +51,10 @@ class User(Base):
     first_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     phone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    gender: Mapped[str | None] = mapped_column(Text, nullable=True)
+    grade: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parent_guardian: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_super_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     email_confirmed_at: Mapped[datetime | None] = mapped_column(

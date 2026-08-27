@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.exceptions import AppException
 from app.core.security import decode_token
+from app.models.enums import UserRole
 from app.models.user import User
 from app.services import auth as auth_service
 
@@ -139,6 +140,23 @@ def get_current_super_admin(current_user: User = Depends(get_current_user)) -> U
         raise AppException(
             code="FORBIDDEN",
             message="You do not have permission to access this resource",
+            status_code=403,
+        )
+    return current_user
+
+
+def get_current_coach(current_user: User = Depends(get_current_user)) -> User:
+    """Require an authenticated, email-verified coach account."""
+    if current_user.role != UserRole.COACH.value:
+        raise AppException(
+            code="FORBIDDEN",
+            message="You do not have permission to access this resource",
+            status_code=403,
+        )
+    if current_user.email_confirmed_at is None:
+        raise AppException(
+            code="FORBIDDEN",
+            message="Email verification is required to access this resource",
             status_code=403,
         )
     return current_user

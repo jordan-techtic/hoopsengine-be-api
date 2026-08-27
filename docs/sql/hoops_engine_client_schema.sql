@@ -135,7 +135,8 @@ CREATE TABLE IF NOT EXISTS public.practice_plans (
   created_by_user uuid,
   created_by_name text,
   drill_count integer DEFAULT 0,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  active boolean DEFAULT true
 );
 
 CREATE TABLE IF NOT EXISTS public.practice_plan_drills (
@@ -194,7 +195,15 @@ CREATE TABLE IF NOT EXISTS public.practice_sessions (
   session_code_used uuid REFERENCES public.session_codes(id),
   device_id text,
   synced boolean DEFAULT true,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  session_mode text,
+  session_details jsonb,
+  recorder_user_id uuid,
+  status text DEFAULT 'in_progress',
+  started_at timestamptz,
+  ended_at timestamptz,
+  current_drill_index integer DEFAULT 0,
+  practice_plan_id uuid
 );
 
 CREATE TABLE IF NOT EXISTS public.session_data (
