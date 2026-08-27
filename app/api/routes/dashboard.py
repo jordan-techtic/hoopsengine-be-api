@@ -4,7 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_super_admin
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.dashboard import DASHBOARD_EMPTY_EXAMPLE, DASHBOARD_EXAMPLE, DashboardAnalyticsResponse
+from app.schemas.dashboard import (
+    DASHBOARD_EMPTY_EXAMPLE,
+    DASHBOARD_EXAMPLE,
+    DashboardAnalyticsResponse,
+)
 from app.schemas.errors import openapi_error
 from app.services import dashboard as dashboard_service
 
