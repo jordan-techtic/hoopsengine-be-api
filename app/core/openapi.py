@@ -49,6 +49,13 @@ OPENAPI_TAGS = [
             "(coaches, players, organization admins). Super admins cannot remove their own account."
         ),
     },
+    {
+        "name": "super-admin-dashboard",
+        "description": (
+            "Super admin dashboard analytics. Organization, coach, player, session, "
+            "subscription, and revenue totals for the Super Admin home screen."
+        ),
+    },
 ]
 
 
@@ -111,8 +118,8 @@ def setup_openapi(app: FastAPI) -> None:
                 "Hoops Engine backend API.\n\n"
                 "Use **Swagger UI** at `/docs` to explore and test endpoints.\n"
                 "After logging in, click **Authorize** and paste the JWT access token.\n\n"
-                "Super Admin Manage Organizations and Manage Users endpoints require a "
-                "super-admin JWT (`is_super_admin=true`)."
+                "Super Admin Manage Organizations, Manage Users, and Dashboard endpoints "
+                "require a super-admin JWT (`is_super_admin=true`)."
             ),
             routes=app.routes,
             tags=OPENAPI_TAGS,

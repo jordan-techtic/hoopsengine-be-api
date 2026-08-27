@@ -1,4 +1,4 @@
-"""PostgreSQL test infrastructure for Super Admin organization and user APIs."""
+"""PostgreSQL test infrastructure for Super Admin organization, user, and dashboard APIs."""
 
 from __future__ import annotations
 
@@ -63,6 +63,7 @@ NEW_USER_PASSWORD = "NewUser123!"
 
 ORG_BASE = "/api/v1/super-admin/organizations"
 USER_BASE = "/api/v1/super-admin/users"
+DASHBOARD_BASE = "/api/v1/super-admin/dashboard"
 
 
 def _sync_database_url() -> str:
