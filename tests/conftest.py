@@ -28,7 +28,7 @@ load_dotenv(ROOT / ".env.test")
 # Test-only credentials loaded from environment (.env.test) — never use production secrets.
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/hoops_engine_test"),
+    os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:1234@localhost:5432/hoops-engine-db"),
 )
 TEST_SECRET_KEY = os.environ.get("TEST_SECRET_KEY", "test-only-secret-key-not-for-production")
 TEST_ADMIN_PASSWORD = os.environ.get("TEST_ADMIN_PASSWORD", "TestAdmin123!")

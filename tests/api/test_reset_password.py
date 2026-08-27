@@ -114,7 +114,7 @@ def test_reset_password_same_as_current_409(
     assert body["error"]["code"] == "PASSWORD_UNCHANGED"
 
 
-def test_reset_password_empty_password_400(
+def test_reset_password_empty_password_422(
     client: TestClient,
     user_headers: dict[str, str],
 ) -> None:
@@ -123,7 +123,7 @@ def test_reset_password_empty_password_400(
         headers=user_headers,
         json={"new_password": "", "confirm_password": ""},
     )
-    assert response.status_code == 400
+    assert response.status_code == 422
     body = response.json()
     assert body["error"]["code"] == "VALIDATION_ERROR"
 
@@ -162,7 +162,8 @@ def test_validate_password_strength_invalid_200(
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "invalid"
-    assert body["requirements"]["has_number"] is False
+    assert body["requirements"]["has_uppercase"] is False
+    assert body["requirements"]["has_special"] is False
 
 
 def test_validate_password_strength_empty_400(

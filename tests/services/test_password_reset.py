@@ -143,5 +143,6 @@ def test_validate_password_for_reset_detects_weak_password() -> None:
         TEST_WEAK_PASSWORD_LONG
     )
     assert is_valid is False
-    assert requirements["has_number"] is False
+    assert requirements["has_number"] is True
+    assert requirements["has_uppercase"] is False
     assert requirements["has_special"] is False

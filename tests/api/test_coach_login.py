@@ -82,7 +82,7 @@ def test_coach_login_empty_password_400(
     assert body["error"]["details"][0]["field"] == "password"
 
 
-def test_coach_login_missing_email_400(
+def test_coach_login_missing_email_422(
     client: TestClient,
     seeded_users: dict,
 ) -> None:
@@ -90,13 +90,13 @@ def test_coach_login_missing_email_400(
         COACH_LOGIN_BASE,
         json={"password": REGULAR_PASSWORD},
     )
-    assert response.status_code == 400
+    assert response.status_code == 422
     body = response.json()
     assert body["error"]["code"] == "VALIDATION_ERROR"
-    assert body["error"]["details"][0]["field"] == "email"
+    assert body["error"]["details"][0]["loc"][-1] == "email"
 
 
-def test_coach_login_missing_password_400(
+def test_coach_login_missing_password_422(
     client: TestClient,
     seeded_users: dict,
 ) -> None:
@@ -104,10 +104,10 @@ def test_coach_login_missing_password_400(
         COACH_LOGIN_BASE,
         json={"email": REGULAR_EMAIL},
     )
-    assert response.status_code == 400
+    assert response.status_code == 422
     body = response.json()
     assert body["error"]["code"] == "VALIDATION_ERROR"
-    assert body["error"]["details"][0]["field"] == "password"
+    assert body["error"]["details"][0]["loc"][-1] == "password"
 
 
 def test_coach_login_unverified_email_401(
