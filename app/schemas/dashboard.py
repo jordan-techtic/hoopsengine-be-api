@@ -14,11 +14,28 @@ DASHBOARD_EXAMPLE = {
     "error": None,
 }
 
+DASHBOARD_EMPTY_EXAMPLE = {
+    "total_organizations": 0,
+    "total_coaches": 0,
+    "total_players": 0,
+    "total_sessions": 0,
+    "active_subscriptions": 0,
+    "revenue_overview": 0,
+    "description": None,
+    "link": None,
+    "error": None,
+}
+
 
 class DashboardAnalyticsResponse(BaseModel):
     """Super Admin dashboard KPI payload returned by GET `/super-admin/dashboard`."""
 
-    model_config = ConfigDict(json_schema_extra={"example": DASHBOARD_EXAMPLE})
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": DASHBOARD_EXAMPLE,
+            "examples": [DASHBOARD_EXAMPLE, DASHBOARD_EMPTY_EXAMPLE],
+        }
+    )
 
     total_organizations: int = Field(
         ge=0,
@@ -27,7 +44,10 @@ class DashboardAnalyticsResponse(BaseModel):
     )
     total_coaches: int = Field(
         ge=0,
-        description="Count of non-deleted user accounts with role `coach`",
+        description=(
+            "Count of non-deleted user accounts with role `coach` "
+            "(includes inactive accounts)"
+        ),
         examples=[50],
     )
     total_players: int = Field(
