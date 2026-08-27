@@ -14,8 +14,8 @@ from tests.conftest import (
     ATTENDANCE_SEARCH_BASE,
     REGULAR_EMAIL,
     SEEDED_ORG_ID,
-    SEEDED_PLAYER_JANE_ID,
     SEEDED_PLAYER_BOB_ID,
+    SEEDED_PLAYER_JANE_ID,
     sync_engine,
 )
 

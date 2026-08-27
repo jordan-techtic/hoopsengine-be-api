@@ -217,4 +217,3 @@ class LivePracticePlayerStatisticsResponse(BaseModel):
 class LivePracticeRecordShotsResponse(LivePracticePlayerStatisticsResponse):
     """Successful shot recording response."""
 
-    pass

@@ -11,8 +11,8 @@ from sqlalchemy import text
 from tests.conftest import (
     PLAYERS_BASE,
     SEEDED_ORG_ID,
-    SEEDED_PLAYER_JANE_ID,
     SEEDED_PLAYER_BOB_ID,
+    SEEDED_PLAYER_JANE_ID,
     sync_engine,
 )
 

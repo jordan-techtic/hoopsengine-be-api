@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from uuid import UUID
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
