@@ -214,15 +214,19 @@ class SessionRecordResponse(BaseModel):
             "example": {
                 "success": True,
                 "message": "Session mode recorded successfully",
-                "status": "in_progress",
+                "status": "completed",
                 "description": "Focus on a single drill and track reps, time, or performance",
-                "link": "/coach/record/attendance",
+                "link": "/coach/record/one-drill",
                 "error": None,
                 "id": "11111111-2222-3333-4444-555555555555",
                 "title": "One Drill",
                 "session_mode": "one_drill",
                 "session_details": {
-                    "description": "Focus on a single drill and track reps, time, or performance",
+                    "one_drill_quick_record": {
+                        "quick_record": true,
+                        "drill_id": "11111111-2222-3333-4444-555555555555",
+                        "session_data": {"reps": 10, "time": "00:30:00", "performance": "good"},
+                    }
                 },
                 "created_at": "2026-08-27T08:30:00Z",
             }

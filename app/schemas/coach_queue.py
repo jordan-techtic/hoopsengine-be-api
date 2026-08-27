@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 QUEUE_ITEM_TYPES = ("practice_session", "session_data")
@@ -85,12 +87,12 @@ class CoachQueueUpdateRequest(BaseModel):
         description="Queue item UUID to update",
         examples=["11111111-2222-3333-4444-555555555555"],
     )
-    item_type: str = Field(
+    item_type: Literal["practice_session", "session_data"] = Field(
         ...,
         description="Record type (`practice_session` or `session_data`)",
         examples=["session_data"],
     )
-    status: str = Field(
+    status: Literal["pending_sync", "synced", "failed"] = Field(
         ...,
         description="Updated sync status (`pending_sync`, `synced`, or `failed`)",
         examples=["synced"],
