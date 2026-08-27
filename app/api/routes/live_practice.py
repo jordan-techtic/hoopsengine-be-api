@@ -27,8 +27,8 @@ from app.services import live_practice as live_practice_service
 
 router = APIRouter(prefix="/live_practice", tags=["live-practice"])
 
-DRILL_ID_PATH = Path(..., description="Live practice drill UUID")
-PLAYER_ID_PATH = Path(..., description="Player UUID")
+DRILL_ID_PATH = Path(..., description="Live practice drill UUID", examples=["11111111-2222-3333-4444-555555555555"])
+PLAYER_ID_PATH = Path(..., description="Player UUID", examples=["11111111-2222-3333-4444-555555555555"])
 
 AUTH_ERROR_RESPONSES = {
     401: openapi_error(

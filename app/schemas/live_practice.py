@@ -123,19 +123,35 @@ class LivePracticeDrillItem(BaseModel):
     category: str = Field(default="live_practice")
 
 
+LIVE_PRACTICE_DRILL_RESPONSE_EXAMPLE = {
+    "success": True,
+    "message": "Drill saved successfully",
+    "status": "ready",
+    "description": "Drill is available for the live practice session",
+    "link": None,
+    "error": None,
+    "address": None,
+    "id": "11111111-2222-3333-4444-555555555555",
+    "drill_name": "3-Point Corner",
+    "duration": 60,
+}
+
+
 class LivePracticeDrillResponse(BaseModel):
     """Single drill response."""
 
-    success: bool = Field(default=True)
-    message: str
-    status: str = Field(default="ready")
-    description: str | None = None
-    link: str | None = None
-    error: None = None
-    address: str | None = None
-    id: UUID
-    drill_name: str
-    duration: int
+    model_config = ConfigDict(json_schema_extra={"example": LIVE_PRACTICE_DRILL_RESPONSE_EXAMPLE})
+
+    success: bool = Field(default=True, description="Always true on success")
+    message: str = Field(description="Human-readable result message for the UI")
+    status: str = Field(default="ready", description="Screen state indicator")
+    description: str | None = Field(default=None, description="Optional subtitle for the mobile client")
+    link: str | None = Field(default=None, description="Optional navigation target")
+    error: None = Field(default=None, description="Always null on success")
+    address: str | None = Field(default=None, description="Reserved mobile envelope field")
+    id: UUID = Field(description="Live practice drill UUID")
+    drill_name: str = Field(description="Saved drill name", examples=["3-Point Corner"])
+    duration: int = Field(description="Drill duration in seconds", examples=[60])
 
 
 class LivePracticeDrillListResponse(BaseModel):

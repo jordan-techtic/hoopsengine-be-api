@@ -100,13 +100,13 @@ class RoleCatalogResponse(BaseModel):
         }
     )
 
-    success: bool = Field(default=True)
-    message: str
-    status: str = Field(default="ready")
-    description: str | None = None
-    title: str = Field(default="Select Your Role")
-    link: str | None = None
-    error: None = None
+    success: bool = Field(default=True, description="Always true on success")
+    message: str = Field(description="Human-readable status message for the UI")
+    status: str = Field(default="ready", description="Screen state indicator")
+    description: str | None = Field(default=None, description="Subtitle shown under the screen title")
+    title: str = Field(default="Select Your Role", description="Screen title for the mobile client")
+    link: str | None = Field(default=None, description="Optional navigation target")
+    error: None = Field(default=None, description="Always null on success")
     roles: list[RoleOption] = Field(description="Selectable roles for the role cards")
 
 
@@ -131,14 +131,14 @@ class RoleSelectionCurrentResponse(BaseModel):
         }
     )
 
-    success: bool = Field(default=True)
-    message: str
-    status: str = Field(default="ready")
-    description: str | None = None
-    title: str = Field(default="Select Your Role")
-    link: str | None = None
-    error: None = None
-    session_token: UUID
-    selected_role: str
-    role: str
-    id: UUID
+    success: bool = Field(default=True, description="Always true on success")
+    message: str = Field(description="Human-readable status message for the UI")
+    status: str = Field(default="ready", description="Screen state indicator")
+    description: str | None = Field(default=None, description="Subtitle describing the saved selection")
+    title: str = Field(default="Select Your Role", description="Screen title for the mobile client")
+    link: str | None = Field(default=None, description="Optional navigation target")
+    error: None = Field(default=None, description="Always null on success")
+    session_token: UUID = Field(description="Role selection session token")
+    selected_role: str = Field(description="Stored role value (coach, player, org_admin)")
+    role: str = Field(description="Same as selected_role — bound for mobile form state")
+    id: UUID = Field(description="Role selection record UUID")
