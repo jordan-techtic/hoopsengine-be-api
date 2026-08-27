@@ -96,8 +96,18 @@ COACH_CANCEL_VERIFICATION_BASE = "/api/v1/coach/cancel-verification"
 COACH_CONTINUE_VERIFICATION_BASE = "/api/v1/coach/continue-verification"
 RESET_PASSWORD_BASE = "/api/v1/reset-password"
 VALIDATE_PASSWORD_BASE = "/api/v1/reset-password/validate"
+SESSIONS_BASE = "/api/v1/sessions"
+LEADERBOARD_BASE = "/api/v1/leaderboard"
+PRACTICE_PLANS_BASE = "/api/v1/practice-plans"
+PROFILE_BASE = "/api/v1/profile"
 
 UNVERIFIED_COACH_ID = UUID("00000000-0000-4000-8000-000000000020")
+OTHER_COACH_ID = UUID("00000000-0000-4000-8000-000000000021")
+SEEDED_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000030")
+SEEDED_FIELD_DRILL_ID = UUID("00000000-0000-4000-8000-000000000031")
+SEEDED_FT_DRILL_ID = UUID("00000000-0000-4000-8000-000000000032")
+SEEDED_PLAYER_JANE_ID = UUID("00000000-0000-4000-8000-000000000033")
+SEEDED_PLAYER_BOB_ID = UUID("00000000-0000-4000-8000-000000000034")
 UNVERIFIED_COACH_EMAIL = os.environ.get("TEST_UNVERIFIED_COACH_EMAIL", "unverified.coach@test.com")
 UNVERIFIED_COACH_PASSWORD = TEST_UNVERIFIED_COACH_PASSWORD
 
@@ -156,6 +166,35 @@ def _ensure_schema() -> Generator[None, None, None]:
     yield
     asyncio.run(database_module.engine.dispose())
     sync_engine.dispose()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _ensure_user_profile_columns(_ensure_schema: None) -> Generator[None, None, None]:
+    """Ensure extended profile columns exist on users for profile API tests."""
+    with sync_engine.begin() as connection:
+        for column, ddl in (
+            ("date_of_birth", "ALTER TABLE users ADD COLUMN date_of_birth DATE"),
+            ("gender", "ALTER TABLE users ADD COLUMN gender TEXT"),
+            ("grade", "ALTER TABLE users ADD COLUMN grade TEXT"),
+            ("parent_guardian", "ALTER TABLE users ADD COLUMN parent_guardian TEXT"),
+        ):
+            exists = connection.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'users'
+                          AND column_name = :column_name
+                    )
+                    """
+                ),
+                {"column_name": column},
+            ).scalar()
+            if not exists:
+                connection.execute(text(ddl))
+    yield
 
 
 @pytest.fixture(scope="session")
@@ -317,6 +356,375 @@ def admin_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
 def user_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
     """Authorization header for the regular coach fixture user."""
     return auth_headers(seeded_users["user"]["token"])
+
+
+@pytest.fixture
+def coach_headers(user_headers: dict[str, str]) -> dict[str, str]:
+    """Authorization header for the verified coach fixture user."""
+    return user_headers
+
+
+@pytest.fixture
+def ensure_practice_sessions_table(seeded_users: dict[str, dict[str, Any]]) -> Generator[None, None, None]:
+    """Ensure practice_sessions exists with session recording columns for coach API tests."""
+    with sync_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.practice_sessions (
+                    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                    org_id uuid NOT NULL REFERENCES public.organizations(id),
+                    team_id uuid,
+                    subteam_id uuid,
+                    session_date date NOT NULL DEFAULT CURRENT_DATE,
+                    recorder_type text,
+                    recorder_player_id uuid,
+                    recorder_coach_id uuid,
+                    session_code_used uuid,
+                    device_id text,
+                    synced boolean DEFAULT true,
+                    created_at timestamptz DEFAULT now(),
+                    session_mode text,
+                    session_details jsonb,
+                    recorder_user_id uuid,
+                    status text DEFAULT 'in_progress',
+                    started_at timestamptz,
+                    ended_at timestamptz,
+                    current_drill_index integer DEFAULT 0,
+                    practice_plan_id uuid
+                )
+                """
+            )
+        )
+        for column, ddl in (
+            ("session_mode", "ALTER TABLE practice_sessions ADD COLUMN session_mode text"),
+            ("session_details", "ALTER TABLE practice_sessions ADD COLUMN session_details jsonb"),
+            ("recorder_user_id", "ALTER TABLE practice_sessions ADD COLUMN recorder_user_id uuid"),
+            ("status", "ALTER TABLE practice_sessions ADD COLUMN status text DEFAULT 'in_progress'"),
+            ("started_at", "ALTER TABLE practice_sessions ADD COLUMN started_at timestamptz"),
+            ("ended_at", "ALTER TABLE practice_sessions ADD COLUMN ended_at timestamptz"),
+            (
+                "current_drill_index",
+                "ALTER TABLE practice_sessions ADD COLUMN current_drill_index integer DEFAULT 0",
+            ),
+            ("practice_plan_id", "ALTER TABLE practice_sessions ADD COLUMN practice_plan_id uuid"),
+        ):
+            exists = connection.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'practice_sessions'
+                          AND column_name = :column_name
+                    )
+                    """
+                ),
+                {"column_name": column},
+            ).scalar()
+            if not exists:
+                connection.execute(text(ddl))
+
+        connection.execute(text("DELETE FROM practice_sessions"))
+    yield
+
+
+@pytest.fixture
+def seed_session_summary_data(
+    ensure_practice_sessions_table: None,
+    seeded_users: dict[str, dict[str, Any]],
+    password_hashes: dict[str, str],
+) -> dict[str, Any]:
+    """Seed a practice session with player stats for summary API tests."""
+    from datetime import timedelta
+
+    session_id = UUID("00000000-0000-4000-8000-000000000040")
+    started_at = datetime.now(timezone.utc) - timedelta(minutes=9, seconds=41)
+
+    with sync_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.players (
+                    id uuid PRIMARY KEY,
+                    org_id uuid,
+                    first_name text NOT NULL,
+                    last_name text NOT NULL,
+                    player_code text UNIQUE,
+                    active boolean DEFAULT true,
+                    created_at timestamptz DEFAULT now()
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.drills (
+                    id uuid PRIMARY KEY,
+                    name text NOT NULL,
+                    category text NOT NULL,
+                    created_at timestamptz DEFAULT now()
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.session_data (
+                    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                    session_id uuid,
+                    org_id uuid NOT NULL,
+                    player_id uuid NOT NULL,
+                    drill_id uuid,
+                    makes integer NOT NULL DEFAULT 0,
+                    attempts integer NOT NULL DEFAULT 0,
+                    session_date date NOT NULL DEFAULT CURRENT_DATE,
+                    recorded_at timestamptz DEFAULT now(),
+                    synced boolean DEFAULT true
+                )
+                """
+            )
+        )
+
+        other_coach_email = "other.coach@test.com"
+        connection.execute(
+            text("DELETE FROM session_data WHERE session_id = :session_id"),
+            {"session_id": session_id},
+        )
+        connection.execute(
+            text("DELETE FROM practice_sessions WHERE id = :session_id"),
+            {"session_id": session_id},
+        )
+        connection.execute(text("DELETE FROM users WHERE id = :coach_id"), {"coach_id": OTHER_COACH_ID})
+
+        connection.execute(
+            text(
+                """
+                INSERT INTO users (
+                    id, email, username, encrypted_password, role,
+                    first_name, last_name, is_super_admin, is_active, org_id, email_confirmed_at
+                ) VALUES (
+                    :id, :email, :username, :password, :role,
+                    :first_name, :last_name, false, true, :org_id, NOW()
+                )
+                """
+            ),
+            {
+                "id": OTHER_COACH_ID,
+                "email": other_coach_email,
+                "username": "othercoach",
+                "password": password_hashes[REGULAR_PASSWORD],
+                "role": UserRole.COACH.value,
+                "first_name": "Other",
+                "last_name": "Coach",
+                "org_id": SEEDED_ORG_ID,
+            },
+        )
+
+        connection.execute(
+            text(
+                """
+                INSERT INTO practice_sessions (
+                    id, org_id, session_date, session_mode, recorder_user_id,
+                    recorder_type, status, started_at, current_drill_index, synced, created_at
+                ) VALUES (
+                    :id, :org_id, CURRENT_DATE, 'one_drill', :recorder_user_id,
+                    'coach', 'in_progress', :started_at, 0, true, :started_at
+                )
+                """
+            ),
+            {
+                "id": session_id,
+                "org_id": SEEDED_ORG_ID,
+                "recorder_user_id": REGULAR_USER_ID,
+                "started_at": started_at,
+            },
+        )
+
+        connection.execute(
+            text(
+                """
+                INSERT INTO players (id, org_id, first_name, last_name, player_code)
+                VALUES (:id, :org_id, 'Charlie', 'Hudson', 'PC-CHARLIE1')
+                ON CONFLICT (id) DO UPDATE SET first_name = EXCLUDED.first_name
+                """
+            ),
+            {"id": SEEDED_PLAYER_ID, "org_id": SEEDED_ORG_ID},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO drills (id, name, category)
+                VALUES
+                    (:field_id, 'Spot Up', 'shooting'),
+                    (:ft_id, 'Free Throw Line', 'free_throw')
+                ON CONFLICT (id) DO NOTHING
+                """
+            ),
+            {"field_id": SEEDED_FIELD_DRILL_ID, "ft_id": SEEDED_FT_DRILL_ID},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO session_data (
+                    id, session_id, org_id, player_id, drill_id, makes, attempts
+                ) VALUES
+                    (gen_random_uuid(), :session_id, :org_id, :player_id, :field_drill, 6, 10),
+                    (gen_random_uuid(), :session_id, :org_id, :player_id, :ft_drill, 4, 5)
+                """
+            ),
+            {
+                "session_id": session_id,
+                "org_id": SEEDED_ORG_ID,
+                "player_id": SEEDED_PLAYER_ID,
+                "field_drill": SEEDED_FIELD_DRILL_ID,
+                "ft_drill": SEEDED_FT_DRILL_ID,
+            },
+        )
+
+    other_coach_token = create_access_token(OTHER_COACH_ID)
+    return {
+        "session_id": session_id,
+        "other_coach_headers": auth_headers(other_coach_token),
+    }
+
+
+@pytest.fixture
+def seed_leaderboard_data(seed_session_summary_data: dict[str, Any]) -> dict[str, Any]:
+    """Seed multiple players with stats for leaderboard API tests."""
+    session_id = seed_session_summary_data["session_id"]
+
+    with sync_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                INSERT INTO players (id, org_id, first_name, last_name, player_code)
+                VALUES
+                    (:jane_id, :org_id, 'Jane', 'Doe', 'PC-JANEDOE1'),
+                    (:bob_id, :org_id, 'Bob', 'Smith', 'PC-BOBSMIT1')
+                ON CONFLICT (id) DO UPDATE SET
+                    first_name = EXCLUDED.first_name,
+                    last_name = EXCLUDED.last_name
+                """
+            ),
+            {
+                "jane_id": SEEDED_PLAYER_JANE_ID,
+                "bob_id": SEEDED_PLAYER_BOB_ID,
+                "org_id": SEEDED_ORG_ID,
+            },
+        )
+        connection.execute(
+            text("DELETE FROM session_data WHERE player_id IN (:jane_id, :bob_id)"),
+            {"jane_id": SEEDED_PLAYER_JANE_ID, "bob_id": SEEDED_PLAYER_BOB_ID},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO session_data (
+                    id, session_id, org_id, player_id, drill_id, makes, attempts
+                ) VALUES
+                    (gen_random_uuid(), :session_id, :org_id, :jane_id, :field_drill, 8, 10),
+                    (gen_random_uuid(), :session_id, :org_id, :bob_id, :field_drill, 20, 30)
+                """
+            ),
+            {
+                "session_id": session_id,
+                "org_id": SEEDED_ORG_ID,
+                "jane_id": SEEDED_PLAYER_JANE_ID,
+                "bob_id": SEEDED_PLAYER_BOB_ID,
+                "field_drill": SEEDED_FIELD_DRILL_ID,
+            },
+        )
+
+    return {
+        **seed_session_summary_data,
+        "jane_id": SEEDED_PLAYER_JANE_ID,
+        "bob_id": SEEDED_PLAYER_BOB_ID,
+    }
+
+
+@pytest.fixture
+def ensure_practice_plans_table(seeded_users: dict[str, dict[str, Any]]) -> Generator[None, None, None]:
+    """Ensure practice plan client tables exist for coach practice plan API tests."""
+    with sync_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.drills (
+                    id uuid PRIMARY KEY,
+                    name text NOT NULL,
+                    category text NOT NULL,
+                    created_at timestamptz DEFAULT now()
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.practice_plans (
+                    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                    name text NOT NULL,
+                    org_id uuid,
+                    created_by_user uuid,
+                    created_by_name text,
+                    drill_count integer DEFAULT 0,
+                    created_at timestamptz DEFAULT now(),
+                    active boolean DEFAULT true
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.practice_plan_drills (
+                    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                    plan_id uuid REFERENCES public.practice_plans(id),
+                    drill_id uuid,
+                    drill_name text,
+                    reps integer DEFAULT 1,
+                    order_num integer DEFAULT 0
+                )
+                """
+            )
+        )
+        active_exists = connection.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'practice_plans'
+                      AND column_name = 'active'
+                )
+                """
+            )
+        ).scalar()
+        if not active_exists:
+            connection.execute(
+                text("ALTER TABLE practice_plans ADD COLUMN active boolean DEFAULT true")
+            )
+
+        connection.execute(text("DELETE FROM practice_plan_drills"))
+        connection.execute(text("DELETE FROM practice_plans"))
+        connection.execute(
+            text(
+                """
+                INSERT INTO drills (id, name, category)
+                VALUES
+                    (:field_id, 'Spot Up', 'shooting'),
+                    (:ft_id, 'Free Throw Line', 'free_throw')
+                ON CONFLICT (id) DO NOTHING
+                """
+            ),
+            {"field_id": SEEDED_FIELD_DRILL_ID, "ft_id": SEEDED_FT_DRILL_ID},
+        )
+    yield
 
 
 @pytest.fixture

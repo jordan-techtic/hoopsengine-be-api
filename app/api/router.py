@@ -3,12 +3,16 @@ from fastapi import APIRouter
 from app.api.routes import (
     auth,
     coach,
+    coach_profile,
     dashboard,
     health,
+    leaderboard,
     organizations,
+    practice_plans,
     profile,
     register,
     reset_password,
+    sessions,
     subscription_plans,
     support,
     users,
@@ -27,6 +31,10 @@ api_router.include_router(support.router)
 api_router.include_router(subscription_plans.router)
 api_router.include_router(webhooks.router)
 api_router.include_router(profile.router)
+api_router.include_router(coach_profile.router)
 api_router.include_router(organizations.router)
 api_router.include_router(users.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(sessions.router)
+api_router.include_router(leaderboard.router)
+api_router.include_router(practice_plans.router)

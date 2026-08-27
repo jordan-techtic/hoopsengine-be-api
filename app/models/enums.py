@@ -45,3 +45,21 @@ class SubscriptionStatus(StrEnum):
     INCOMPLETE = "incomplete"
     INCOMPLETE_EXPIRED = "incomplete_expired"
     PAUSED = "paused"
+
+
+class SessionMode(StrEnum):
+    ONE_DRILL = "one_drill"
+    DAILY_OPTIONS = "daily_options"
+    PRACTICE_PLAN = "practice_plan"
+
+
+class SessionStatus(StrEnum):
+    SELECTING_MODE = "selecting_mode"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+class LeaderboardFilterMetric(StrEnum):
+    SHOOTING_PERCENT = "shooting_percent"
+    ATTEMPTS = "attempts"
+    MAKES = "makes"
