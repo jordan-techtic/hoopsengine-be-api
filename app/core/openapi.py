@@ -127,7 +127,30 @@ OPENAPI_TAGS = [
     },
     {
         "name": "drills",
-        "description": "Authenticated drill name search for Create/Edit Practice Plan pickers.",
+        "description": (
+            "Drill catalog APIs for One Drill Step-2 and practice plan pickers: list/search, "
+            "CRUD, drill detail, and continue-to-step-3 after drill selection."
+        ),
+    },
+    {
+        "name": "coach-one-drill",
+        "description": (
+            "One Drill Step-1 flow: search org players, select a player, and continue to "
+            "Step-2 drill selection. State is stored on the active practice_sessions row."
+        ),
+    },
+    {
+        "name": "coach-queue",
+        "description": (
+            "Coach sync queue for locally saved practice_sessions and session_data rows "
+            "pending upload. Supports listing pending items and updating sync status."
+        ),
+    },
+    {
+        "name": "coach-drill-ideas",
+        "description": (
+            "Coach drill idea submission and listing for the Drill-idea submission screen."
+        ),
     },
     {
         "name": "coach-edit-practice-plan",

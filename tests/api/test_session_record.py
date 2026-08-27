@@ -5,20 +5,29 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import SESSIONS_BASE
+from tests.conftest import SEEDED_FIELD_DRILL_ID, SESSIONS_BASE
 
 MODES_URL = f"{SESSIONS_BASE}/modes"
 RECORD_URL = f"{SESSIONS_BASE}/record"
 
 
 @pytest.fixture(autouse=True)
-def _practice_sessions_table(ensure_practice_sessions_table: None) -> None:
-    """Apply session table setup for every test in this module."""
+def _session_tables(
+    ensure_practice_sessions_table: None,
+    ensure_practice_plans_table: None,
+) -> None:
+    """Apply session and drill table setup for every test in this module."""
 
 
 def _record_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "session_mode": "one_drill",
+        "drill_id": str(SEEDED_FIELD_DRILL_ID),
+        "session_data": {
+            "reps": 10,
+            "time": "00:30:00",
+            "performance": "good",
+        },
         "session_details": {
             "description": "Focus on a single drill and track reps, time, or performance",
         },
@@ -65,7 +74,10 @@ def test_post_session_record_201(client: TestClient, coach_headers: dict[str, st
     assert body["success"] is True
     assert body["session_mode"] == "one_drill"
     assert body["id"]
-    assert body["status"] == "in_progress"
+    assert body["status"] == "completed"
+    assert body["session_details"]["one_drill_quick_record"]["drill_id"] == str(
+        SEEDED_FIELD_DRILL_ID
+    )
     assert body["message"]
     assert body["error"] is None
 
@@ -87,13 +99,25 @@ def test_post_session_record_400_missing_session_mode_field(
 def test_post_session_record_409_duplicate_active_session(
     client: TestClient, coach_headers: dict[str, str]
 ) -> None:
-    first = client.post(RECORD_URL, headers=coach_headers, json=_record_payload())
+    first = client.post(
+        RECORD_URL,
+        headers=coach_headers,
+        json=_record_payload(
+            session_mode="daily_options",
+            drill_id=None,
+            session_data=None,
+        ),
+    )
     assert first.status_code == 201
 
     second = client.post(
         RECORD_URL,
         headers=coach_headers,
-        json=_record_payload(session_mode="daily_options"),
+        json=_record_payload(
+            session_mode="practice_plan",
+            drill_id=None,
+            session_data=None,
+        ),
     )
     assert second.status_code == 409
     body = second.json()

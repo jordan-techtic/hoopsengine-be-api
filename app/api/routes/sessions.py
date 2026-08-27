@@ -10,7 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_coach
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.errors import openapi_error
+from app.schemas.errors import openapi_error, openapi_error_examples
+from app.schemas.one_drill_session import (
+    OneDrillSessionCreateRequest,
+    OneDrillSessionResponse,
+    OneDrillSessionsSummaryResponse,
+    OneDrillSessionUpdateRequest,
+)
 from app.schemas.session_record import (
     SessionModeDetailResponse,
     SessionModesResponse,
@@ -23,6 +29,7 @@ from app.schemas.session_summary import (
     SessionActionResponse,
     SessionSummaryResponse,
 )
+from app.services import one_drill_session as one_drill_session_service
 from app.services import session_record as session_record_service
 from app.services import session_summary as session_summary_service
 
@@ -43,9 +50,70 @@ AUTH_ERROR_RESPONSES = {
 
 SESSION_ID_PATH = Path(
     ...,
-    description="Practice session UUID returned from POST /sessions/record",
+    description="Practice session UUID returned from POST /sessions or POST /sessions/record",
     examples=["11111111-2222-3333-4444-555555555555"],
 )
+
+ONE_DRILL_VALIDATION_ERROR_RESPONSES = {
+    400: openapi_error_examples(
+        "Missing or invalid session metrics",
+        examples={
+            "missing_player": {
+                "code": "VALIDATION_ERROR",
+                "message": "Player is required",
+                "details": [{"field": "player", "message": "Player is required"}],
+            },
+            "missing_drill": {
+                "code": "VALIDATION_ERROR",
+                "message": "Drill is required",
+                "details": [{"field": "drill", "message": "Drill is required"}],
+            },
+            "makes_exceed_attempts": {
+                "code": "VALIDATION_ERROR",
+                "message": "Session metrics are invalid",
+                "details": [{"field": "makes", "message": "Makes cannot exceed attempts"}],
+            },
+            "empty_update": {
+                "code": "VALIDATION_ERROR",
+                "message": "At least one metric field must be provided",
+                "details": [
+                    {
+                        "field": "makes",
+                        "message": "Provide makes, attempts, and/or free throw metrics to update",
+                    }
+                ],
+            },
+        },
+    ),
+    422: openapi_error(
+        "Request body failed schema validation",
+        code="VALIDATION_ERROR",
+        message="Request validation failed",
+    ),
+}
+
+ONE_DRILL_NOT_FOUND_RESPONSES = {
+    404: openapi_error_examples(
+        "Session, player, or drill not found",
+        examples={
+            "session_not_found": {
+                "code": "SESSION_NOT_FOUND",
+                "message": "Session not found",
+                "details": None,
+            },
+            "player_not_found": {
+                "code": "PLAYER_NOT_FOUND",
+                "message": "Player not found",
+                "details": [{"field": "player", "message": "Player not found in your organization"}],
+            },
+            "drill_not_found": {
+                "code": "DRILL_NOT_FOUND",
+                "message": "Drill not found",
+                "details": [{"field": "drill", "message": "Drill not found"}],
+            },
+        },
+    ),
+}
 
 
 @router.get(
@@ -126,41 +194,88 @@ async def get_session_mode(
     response_model=SessionRecordResponse,
     status_code=status.HTTP_201_CREATED,
     operation_id="createSessionRecord",
-    summary="Create a session record with selected mode",
+    summary="Record a session for a selected drill or mode",
     description=(
         "Create a new `practice_sessions` row after the coach selects a recording mode.\n\n"
         "**Required body field:** `session_mode`.\n\n"
+        "When `session_mode` is `one_drill`, **`drill_id`** and **`session_data`** "
+        "(reps, time, performance) are also required. Optional `user_id` must match the "
+        "authenticated coach when provided.\n\n"
         "Optional `session_details.description` stores coach notes. Optional `phone` is "
         "client metadata from the status bar and is not persisted.\n\n"
-        "Returns **409** when the coach already has an active session for today.\n\n"
+        "Returns **400** when One Drill required fields are missing or invalid.\n\n"
+        "Returns **404** when the selected drill does not exist.\n\n"
+        "Returns **409** when the coach already recorded the same drill today, or when "
+        "an active session mode is already recorded for today.\n\n"
         "**Requires authenticated verified coach JWT**."
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
-        400: openapi_error(
-            "Invalid session data or coach missing organization",
-            code="VALIDATION_ERROR",
-            message="Coach must belong to an organization before recording sessions",
-            details=[
-                {
-                    "field": "org_id",
+        400: openapi_error_examples(
+            "Missing One Drill fields or invalid coach context",
+            examples={
+                "missing_drill_id": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Drill selection is required for One Drill sessions",
+                    "details": [
+                        {"field": "drill_id", "message": "drill_id is required for one_drill sessions"}
+                    ],
+                },
+                "missing_session_data": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Session data is required for One Drill sessions",
+                    "details": [
+                        {
+                            "field": "session_data",
+                            "message": "session_data with reps, time, and performance is required",
+                        }
+                    ],
+                },
+                "missing_org": {
+                    "code": "VALIDATION_ERROR",
                     "message": "Coach must belong to an organization before recording sessions",
-                }
-            ],
+                    "details": [
+                        {
+                            "field": "org_id",
+                            "message": "Coach must belong to an organization before recording sessions",
+                        }
+                    ],
+                },
+            },
         ),
-        409: openapi_error(
-            "Duplicate active session for today",
-            code="SESSION_MODE_ALREADY_RECORDED",
-            message="An active session mode is already recorded for today",
-            details=[
-                {
-                    "field": "session_mode",
+        404: openapi_error(
+            "Selected drill not found",
+            code="DRILL_NOT_FOUND",
+            message="Selected drill was not found",
+            details=[{"field": "drill_id", "message": "Selected drill was not found"}],
+        ),
+        409: openapi_error_examples(
+            "Duplicate session for today",
+            examples={
+                "duplicate_drill": {
+                    "code": "SESSION_ALREADY_RECORDED",
+                    "message": "A session for this drill has already been recorded today",
+                    "details": [
+                        {
+                            "field": "drill_id",
+                            "message": "A session for this drill has already been recorded today",
+                        }
+                    ],
+                },
+                "active_session": {
+                    "code": "SESSION_MODE_ALREADY_RECORDED",
                     "message": "An active session mode is already recorded for today",
-                }
-            ],
+                    "details": [
+                        {
+                            "field": "session_mode",
+                            "message": "An active session mode is already recorded for today",
+                        }
+                    ],
+                },
+            },
         ),
         422: openapi_error(
-            "Request validation failed (missing session_mode)",
+            "Request validation failed (invalid session_mode or session_data shape)",
             code="VALIDATION_ERROR",
             message="Request validation failed",
             details=[{"field": "session_mode", "message": "Field required"}],
@@ -247,31 +362,105 @@ async def update_session_record(
     return SessionRecordResponse(**result)
 
 
-@router.get(
-    "/{session_id}",
-    response_model=SessionSummaryResponse,
-    operation_id="getSessionSummary",
-    summary="Get session summary with player performance metrics",
+@router.post(
+    "",
+    response_model=OneDrillSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+    operation_id="createOneDrillSession",
+    summary="Create a One Drill Step-3 session",
     description=(
-        "Return aggregated player statistics for a practice session, including attempts, "
-        "makes, shooting percentage, and free throw metrics.\n\n"
-        "The response includes `session_time`, a UI `status` message, and the standard "
-        "mobile envelope fields (`message`, `description`, `link`, `error`, `id`).\n\n"
-        "Returns **404** when the session does not exist and **403** when the session "
-        "belongs to another coach.\n\n"
+        "Create a new One Drill practice session with player, drill, and performance metrics.\n\n"
+        "**Required body fields:** `player`, `drill`, `makes`, `attempts`.\n\n"
+        "Optional `free_throws_makes` and `free_throws_attempts` default to 0.\n\n"
+        "Optional `phone` is client metadata from the status bar and is not persisted.\n\n"
+        "Returns **201** when the session is saved successfully.\n\n"
+        "Returns **400** when required fields are missing or metrics are invalid.\n\n"
+        "Returns **404** when the player or drill cannot be resolved.\n\n"
         "**Requires authenticated verified coach JWT**."
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
+        **ONE_DRILL_VALIDATION_ERROR_RESPONSES,
+        **ONE_DRILL_NOT_FOUND_RESPONSES,
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+        503: openapi_error(
+            "Client session table unavailable",
+            code="CLIENT_TABLE_UNAVAILABLE",
+            message="Session recording is temporarily unavailable",
+        ),
+    },
+)
+async def create_one_drill_session(
+    body: OneDrillSessionCreateRequest,
+    current_user: User = Depends(get_current_coach),
+    db: AsyncSession = Depends(get_db),
+) -> OneDrillSessionResponse:
+    result = await one_drill_session_service.create_one_drill_session(db, current_user, body)
+    return OneDrillSessionResponse(**result)
+
+
+@router.get(
+    "/summary",
+    response_model=OneDrillSessionsSummaryResponse,
+    operation_id="listOneDrillSessionsSummary",
+    summary="List One Drill session summaries",
+    description=(
+        "Return a summary list of One Drill sessions recorded by the authenticated coach.\n\n"
+        "Each item includes `id`, `player`, `drill`, `makes`, `attempts`, free throw metrics, "
+        "and session `status`.\n\n"
+        "Returns **200** with an empty `sessions` array when no sessions exist.\n\n"
+        "**Requires authenticated verified coach JWT**."
+    ),
+    responses={
+        **AUTH_ERROR_RESPONSES,
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+        503: openapi_error(
+            "Client session table unavailable",
+            code="CLIENT_TABLE_UNAVAILABLE",
+            message="Session recording is temporarily unavailable",
+        ),
+    },
+)
+async def list_one_drill_sessions_summary(
+    current_user: User = Depends(get_current_coach),
+    db: AsyncSession = Depends(get_db),
+) -> OneDrillSessionsSummaryResponse:
+    result = await one_drill_session_service.list_one_drill_sessions_summary(db, current_user)
+    return OneDrillSessionsSummaryResponse(**result)
+
+
+@router.put(
+    "/{session_id}",
+    response_model=OneDrillSessionResponse,
+    operation_id="updateOneDrillSession",
+    summary="Update One Drill session metrics",
+    description=(
+        "Update performance metrics for an existing One Drill session.\n\n"
+        "Provide at least one of `makes`, `attempts`, `free_throws_makes`, or "
+        "`free_throws_attempts`.\n\n"
+        "Optional `phone` is client metadata and is not persisted.\n\n"
+        "Returns **200** when metrics are updated successfully.\n\n"
+        "Returns **400** for invalid metrics or an empty update payload.\n\n"
+        "Returns **403** when the session belongs to another coach.\n\n"
+        "Returns **404** when the session does not exist.\n\n"
+        "**Requires authenticated verified coach JWT**."
+    ),
+    responses={
+        **AUTH_ERROR_RESPONSES,
+        **ONE_DRILL_VALIDATION_ERROR_RESPONSES,
+        **ONE_DRILL_NOT_FOUND_RESPONSES,
         403: openapi_error(
             "Session belongs to another coach",
             code="SESSION_ACCESS_FORBIDDEN",
             message="You do not have permission to access this session",
-        ),
-        404: openapi_error(
-            "Session not found",
-            code="SESSION_NOT_FOUND",
-            message="Session not found",
         ),
         500: openapi_error(
             "Unexpected server error",
@@ -285,13 +474,59 @@ async def update_session_record(
         ),
     },
 )
-async def get_session_summary(
+async def update_one_drill_session(
+    body: OneDrillSessionUpdateRequest,
     session_id: UUID = SESSION_ID_PATH,
     current_user: User = Depends(get_current_coach),
     db: AsyncSession = Depends(get_db),
-) -> SessionSummaryResponse:
-    result = await session_summary_service.get_session_summary(db, current_user, session_id)
-    return SessionSummaryResponse(**result)
+) -> OneDrillSessionResponse:
+    result = await one_drill_session_service.update_one_drill_session(
+        db, current_user, session_id, body
+    )
+    return OneDrillSessionResponse(**result)
+
+
+@router.get(
+    "/{session_id}",
+    response_model=OneDrillSessionResponse,
+    operation_id="getOneDrillSession",
+    summary="Get One Drill session details",
+    description=(
+        "Return One Drill Step-3 session details including selected `player`, `drill`, "
+        "`makes`, `attempts`, and free throw metrics.\n\n"
+        "The response includes the mobile envelope fields `message`, `status`, "
+        "`description`, `link`, and `error`.\n\n"
+        "Returns **404** when the session does not exist.\n\n"
+        "Returns **403** when the session belongs to another coach.\n\n"
+        "**Requires authenticated verified coach JWT**."
+    ),
+    responses={
+        **AUTH_ERROR_RESPONSES,
+        **ONE_DRILL_NOT_FOUND_RESPONSES,
+        403: openapi_error(
+            "Session belongs to another coach",
+            code="SESSION_ACCESS_FORBIDDEN",
+            message="You do not have permission to access this session",
+        ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+        503: openapi_error(
+            "Client session table unavailable",
+            code="CLIENT_TABLE_UNAVAILABLE",
+            message="Session recording is temporarily unavailable",
+        ),
+    },
+)
+async def get_one_drill_session(
+    session_id: UUID = SESSION_ID_PATH,
+    current_user: User = Depends(get_current_coach),
+    db: AsyncSession = Depends(get_db),
+) -> OneDrillSessionResponse:
+    result = await one_drill_session_service.get_one_drill_session(db, current_user, session_id)
+    return OneDrillSessionResponse(**result)
 
 
 @router.post(

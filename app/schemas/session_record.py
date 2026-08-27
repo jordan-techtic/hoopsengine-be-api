@@ -12,11 +12,39 @@ from app.models.enums import SessionMode
 
 SESSION_RECORD_CREATE_EXAMPLE = {
     "session_mode": "one_drill",
+    "drill_id": "11111111-2222-3333-4444-555555555555",
+    "user_id": "22222222-3333-4444-5555-666666666666",
+    "session_data": {
+        "reps": 10,
+        "time": "00:30:00",
+        "performance": "good",
+    },
     "session_details": {
         "description": "Focus on a single drill and track reps, time, or performance",
     },
     "phone": "+1-555-0100",
 }
+
+
+class OneDrillSessionDataInput(BaseModel):
+    """Performance metrics captured when recording a One Drill session."""
+
+    reps: int = Field(
+        ...,
+        ge=0,
+        description="Number of repetitions completed",
+        examples=[10],
+    )
+    time: str = Field(
+        ...,
+        description="Elapsed drill time (HH:MM:SS)",
+        examples=["00:30:00"],
+    )
+    performance: str = Field(
+        ...,
+        description="Coach-assessed performance rating",
+        examples=["good"],
+    )
 
 
 class SessionDetailsInput(BaseModel):
@@ -124,6 +152,20 @@ class SessionRecordCreateRequest(BaseModel):
         description="Selected session mode (required)",
         examples=[SessionMode.ONE_DRILL],
     )
+    drill_id: UUID | None = Field(
+        default=None,
+        description="Selected drill UUID (required when session_mode is one_drill)",
+        examples=["11111111-2222-3333-4444-555555555555"],
+    )
+    user_id: UUID | None = Field(
+        default=None,
+        description="Recording coach user UUID (defaults to authenticated user)",
+        examples=["22222222-3333-4444-5555-666666666666"],
+    )
+    session_data: OneDrillSessionDataInput | None = Field(
+        default=None,
+        description="One Drill performance metrics (required when session_mode is one_drill)",
+    )
     session_details: SessionDetailsInput | None = Field(
         default=None,
         description="Optional nested details such as a custom description",
@@ -172,14 +214,19 @@ class SessionRecordResponse(BaseModel):
             "example": {
                 "success": True,
                 "message": "Session mode recorded successfully",
-                "status": "in_progress",
+                "status": "completed",
                 "description": "Focus on a single drill and track reps, time, or performance",
-                "link": "/coach/record/attendance",
+                "link": "/coach/record/one-drill",
                 "error": None,
                 "id": "11111111-2222-3333-4444-555555555555",
+                "title": "One Drill",
                 "session_mode": "one_drill",
                 "session_details": {
-                    "description": "Focus on a single drill and track reps, time, or performance",
+                    "one_drill_quick_record": {
+                        "quick_record": True,
+                        "drill_id": "11111111-2222-3333-4444-555555555555",
+                        "session_data": {"reps": 10, "time": "00:30:00", "performance": "good"},
+                    }
                 },
                 "created_at": "2026-08-27T08:30:00Z",
             }
@@ -196,6 +243,11 @@ class SessionRecordResponse(BaseModel):
     link: str | None = Field(default=None, description="Suggested next navigation target")
     error: None = None
     id: UUID = Field(description="Practice session identifier")
+    title: str | None = Field(
+        default=None,
+        description="Session mode display title for the mobile UI",
+        examples=["One Drill"],
+    )
     session_mode: SessionMode
     session_details: dict[str, Any] | None = None
     created_at: datetime | None = None
