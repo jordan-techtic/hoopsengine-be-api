@@ -112,8 +112,8 @@ def seed_step3_support_data() -> None:
         conn.execute(text("CREATE TABLE IF NOT EXISTS players (id uuid PRIMARY KEY, org_id uuid, first_name text, last_name text, player_code text UNIQUE, active boolean DEFAULT true)"))
         conn.execute(text("CREATE TABLE IF NOT EXISTS drills (id uuid PRIMARY KEY, name text NOT NULL, category text NOT NULL)"))
         conn.execute(text("CREATE TABLE IF NOT EXISTS session_data (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), session_id uuid, org_id uuid, player_id uuid, drill_id uuid, makes int DEFAULT 0, attempts int DEFAULT 0, synced boolean DEFAULT true)"))
-        conn.execute(text("INSERT INTO players (id, org_id, first_name, last_name, player_code) VALUES (:id, :org, 'Charlie', 'Hudson', 'PC1') ON CONFLICT (id) DO NOTHING"), {"id": SEEDED_PLAYER_ID, "org": SEEDED_ORG_ID})
-        conn.execute(text("INSERT INTO drills (id, name, category) VALUES (:id, '3-Point Shooting', 'shooting') ON CONFLICT (id) DO NOTHING"), {"id": SEEDED_FIELD_DRILL_ID})
+        conn.execute(text("INSERT INTO players (id, org_id, first_name, last_name, player_code) VALUES (:id, :org, 'Charlie', 'Hudson', 'PC1') ON CONFLICT (id) DO UPDATE SET first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name"), {"id": SEEDED_PLAYER_ID, "org": SEEDED_ORG_ID})
+        conn.execute(text("INSERT INTO drills (id, name, category) VALUES (:id, '3-Point Shooting', 'shooting') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category"), {"id": SEEDED_FIELD_DRILL_ID})
 
 
 @pytest.fixture
@@ -206,9 +206,14 @@ def test_he321_empty_drill_name_400(client: TestClient, coach_headers: dict[str,
 
 
 def test_he321_duplicate_409(client: TestClient, coach_headers: dict[str, str]) -> None:
-    p = {"drill_name": "AC321 Dup", "drill_category": "shooting"}
-    client.post(DRILL_IDEAS_BASE, headers=coach_headers, json={**p, "difficulty_level": "Beginner", "instructions": "i"})
-    assert client.post(DRILL_IDEAS_BASE, headers=coach_headers, json={**p, "difficulty_level": "Beginner", "instructions": "i"}).status_code == 409
+    p = {
+        "drill_name": "AC321 Dup Idea",
+        "category": "Shooting",
+        "difficulty_level": "Beginner",
+        "instructions": "Duplicate submission test.",
+    }
+    assert client.post(DRILL_IDEAS_BASE, headers=coach_headers, json=p).status_code == 201
+    assert client.post(DRILL_IDEAS_BASE, headers=coach_headers, json=p).status_code == 409
 
 
 def test_he321_required_fields_400(client: TestClient, coach_headers: dict[str, str]) -> None:
@@ -292,7 +297,14 @@ def test_he302_save_drill_201(client: TestClient, coach_headers: dict[str, str],
 
 
 def test_he302_missing_fields_400(client: TestClient, coach_headers: dict[str, str], seed_live_practice_tables: None) -> None:
-    assert client.post(f"{LIVE_PRACTICE_BASE}/drills", headers=coach_headers, json={"drill_name": ""}).status_code == 400
+    assert (
+        client.post(
+            f"{LIVE_PRACTICE_BASE}/drills",
+            headers=coach_headers,
+            json={"drill_name": "", "duration": 60},
+        ).status_code
+        == 400
+    )
 
 
 def test_he302_duplicate_409(client: TestClient, coach_headers: dict[str, str], seed_live_practice_tables: None) -> None:

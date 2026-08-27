@@ -186,7 +186,7 @@ def test_post_queue_update_400_invalid_item_type(
             "status": "synced",
         },
     )
-    assert response.status_code == 400
+    assert response.status_code == 422
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 

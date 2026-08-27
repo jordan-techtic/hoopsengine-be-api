@@ -223,7 +223,7 @@ class SessionRecordResponse(BaseModel):
                 "session_mode": "one_drill",
                 "session_details": {
                     "one_drill_quick_record": {
-                        "quick_record": true,
+                        "quick_record": True,
                         "drill_id": "11111111-2222-3333-4444-555555555555",
                         "session_data": {"reps": 10, "time": "00:30:00", "performance": "good"},
                     }
