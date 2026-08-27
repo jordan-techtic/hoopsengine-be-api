@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app.schemas.profile import CoachProfileData, ProfileImageResponse
 
 LEADERBOARD_SEARCH_REQUEST_EXAMPLE = {
     "search_query": "Jane",
@@ -64,9 +66,22 @@ class LeaderboardListResponse(BaseModel):
             "example": {
                 "success": True,
                 "message": "Leaderboard loaded successfully",
+                "status": "ready",
                 "description": "Top players ranked by shooting percentage",
                 "link": None,
                 "error": None,
+                "title": "Leaderboard",
+                "id": "11111111-2222-3333-4444-555555555555",
+                "name": "Jane Doe",
+                "first_name": "Jane",
+                "last_name": "Doe",
+                "email": None,
+                "username": None,
+                "phone": None,
+                "phone_number": None,
+                "profile": None,
+                "avatar": None,
+                "address": None,
                 "items": [
                     {
                         "rank": 1,
@@ -84,7 +99,29 @@ class LeaderboardListResponse(BaseModel):
 
     success: bool = Field(default=True)
     message: str
+    status: str = Field(default="ready", description="Screen state indicator for the mobile client")
     description: str | None = None
     link: str | None = None
     error: None = None
+    title: str = Field(default="Leaderboard", description="Screen title for the mobile client")
+    id: UUID | None = Field(
+        default=None,
+        description="Top-ranked player id when items are present, otherwise null",
+    )
+    name: str | None = Field(default=None, description="Top-ranked player display name")
+    first_name: str | None = Field(default=None, description="Top-ranked player first name")
+    last_name: str | None = Field(default=None, description="Top-ranked player last name")
+    email: EmailStr | None = Field(default=None, description="Optional coach context email")
+    username: str | None = Field(default=None, description="Optional coach context username")
+    phone: str | None = Field(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+    )
+    phone_number: str | None = Field(default=None, description="Optional coach contact phone")
+    profile: CoachProfileData | None = Field(
+        default=None,
+        description="Optional nested profile context for shared mobile layout components",
+    )
+    avatar: ProfileImageResponse | None = Field(default=None, description="Optional profile avatar")
+    address: str | None = Field(default=None, description="Optional address for profile chrome")
     items: list[LeaderboardPlayerItem] = Field(default_factory=list)

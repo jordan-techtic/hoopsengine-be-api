@@ -87,6 +87,16 @@ def _rank_items(
     return ranked
 
 
+def _split_player_name(full_name: str) -> tuple[str | None, str | None]:
+    """Split a display name into first and last name parts for the mobile envelope."""
+    parts = full_name.strip().split()
+    if not parts:
+        return None, None
+    if len(parts) == 1:
+        return parts[0], None
+    return parts[0], " ".join(parts[1:])
+
+
 def _build_list_response(
     items: list[dict[str, Any]],
     *,
@@ -94,12 +104,28 @@ def _build_list_response(
     description: str,
 ) -> dict[str, Any]:
     """Shape a leaderboard list response for the API layer."""
+    top_item = items[0] if items else None
+    top_name = str(top_item["name"]) if top_item else None
+    first_name, last_name = _split_player_name(top_name) if top_name else (None, None)
     return {
         "success": True,
         "message": message,
+        "status": "ready",
         "description": description,
         "link": None,
         "error": None,
+        "title": "Leaderboard",
+        "id": top_item["id"] if top_item else None,
+        "name": top_name,
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": None,
+        "username": None,
+        "phone": None,
+        "phone_number": None,
+        "profile": None,
+        "avatar": None,
+        "address": None,
         "items": items,
     }
 

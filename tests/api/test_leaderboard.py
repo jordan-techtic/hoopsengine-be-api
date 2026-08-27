@@ -25,6 +25,10 @@ def test_get_leaderboard_200_public(
     body = response.json()
     assert body["success"] is True
     assert body["error"] is None
+    assert body["status"] == "ready"
+    assert "title" in body
+    assert "profile" in body
+    assert "phone" in body
     assert len(body["items"]) >= 3
     first = body["items"][0]
     assert first["rank"] == 1
