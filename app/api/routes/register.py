@@ -100,6 +100,7 @@ async def register_coach(
         confirm_password=payload.confirm_password,
         terms_accepted=payload.terms_accepted,
         phone=payload.phone,
+        session_token=payload.session_token,
     )
     user = result.user
     return RegisterResponse(

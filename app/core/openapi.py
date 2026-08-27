@@ -136,6 +136,41 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "role-selection",
+        "description": (
+            "Public onboarding Role Selection screen APIs. List Coach/Player/Organiser options, "
+            "submit a selection, and retrieve the current session without authentication."
+        ),
+    },
+    {
+        "name": "players",
+        "description": (
+            "Authenticated coach player management for Add Player, My Players, and Player Details "
+            "screens: create, list, search, retrieve, update, and soft-delete roster players."
+        ),
+    },
+    {
+        "name": "attendance",
+        "description": (
+            "Authenticated coach Attendance screen APIs: search players by name or jersey number, "
+            "load the present/total summary row, and start practice after marking attendance."
+        ),
+    },
+    {
+        "name": "live-practice",
+        "description": (
+            "Live Practice screen APIs for drill CRUD, session timer control, and per-player shot "
+            "statistics. Drill list and player statistics GET endpoints are public; mutations require coach JWT."
+        ),
+    },
+    {
+        "name": "coach-remove-player",
+        "description": (
+            "Authenticated Remove Player confirmation modal and permanent roster removal by "
+            "full_name, email, and phone credentials."
+        ),
+    },
+    {
         "name": "coach-profile",
         "description": (
             "Authenticated user profile retrieval and update for the Edit Profile screen."

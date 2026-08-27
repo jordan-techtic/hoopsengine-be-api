@@ -14,10 +14,13 @@ SUPPORT_REQUESTS_TABLE = managed_table_name("support_requests")
 SUBSCRIPTION_PLANS_TABLE = managed_table_name("subscription_plans")
 STRIPE_SUBSCRIPTIONS_TABLE = managed_table_name("stripe_subscriptions")
 
+ROLE_SELECTIONS_TABLE = "role_selections"
+
 # Tables created/owned by this API (not client domain SQL).
 MANAGED_TABLE_NAMES = frozenset(
     {
         USERS_TABLE,
+        ROLE_SELECTIONS_TABLE,
         REVOKED_TOKENS_TABLE,
         SUPPORT_REQUESTS_TABLE,
         SUBSCRIPTION_PLANS_TABLE,

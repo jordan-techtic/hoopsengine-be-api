@@ -27,6 +27,7 @@ from app.core.schema_migrations import run_subscription_schema_migrations
 from app.models import (  # noqa: F401
     Organization,
     RevokedToken,
+    RoleSelection,
     StripeSubscription,
     SubscriptionPlan,
     SupportRequest,

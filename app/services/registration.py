@@ -6,6 +6,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -20,9 +21,9 @@ from app.core.security import (
     hash_otp,
     hash_password,
 )
-from app.models.enums import UserRole
 from app.models.user import User
 from app.services import auth as auth_service
+from app.services import role_selection as role_selection_service
 from app.services.user import display_name, validate_password
 
 logger = logging.getLogger(__name__)
@@ -103,6 +104,7 @@ async def register_coach(
     confirm_password: str,
     terms_accepted: bool,
     phone: str | None = None,
+    session_token: UUID | None = None,
 ) -> RegisterResult:
     """
     Register a new coach account, send a verification OTP email, and return a JWT.
@@ -188,6 +190,7 @@ async def register_coach(
 
     now = _utcnow()
     otp_code = generate_otp_code()
+    selected_role = await role_selection_service.resolve_registration_role(db, session_token)
     user = User(
         first_name=normalized_first_name,
         last_name=normalized_last_name,
@@ -195,7 +198,7 @@ async def register_coach(
         email=normalized_email,
         phone=phone.strip() if phone and phone.strip() else None,
         encrypted_password=hashed_password,
-        role=UserRole.COACH.value,
+        role=selected_role,
         org_id=None,
         is_super_admin=False,
         is_active=True,
