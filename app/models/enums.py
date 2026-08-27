@@ -54,6 +54,7 @@ class SessionMode(StrEnum):
 
 
 class SessionStatus(StrEnum):
+    ATTENDANCE = "attendance"
     SELECTING_MODE = "selecting_mode"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"

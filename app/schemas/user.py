@@ -44,17 +44,19 @@ ROLE_ALIASES = {
     "player": UserRole.PLAYER,
     "org_admin": UserRole.ORG_ADMIN,
     "organization_admin": UserRole.ORG_ADMIN,
+    "organiser": UserRole.ORG_ADMIN,
+    "organizer": UserRole.ORG_ADMIN,
     "super_admin": UserRole.SUPER_ADMIN,
     "superadmin": UserRole.SUPER_ADMIN,
 }
 
 
 def normalize_role_value(value: str) -> UserRole:
-    """Map ticket/UI labels such as `Coach` onto `UserRole` values."""
+    """Map ticket/UI labels such as `Coach` or `Organiser` onto `UserRole` values."""
     key = value.strip().lower().replace(" ", "_")
     role = ROLE_ALIASES.get(key)
     if role is None:
-        raise ValueError("Role must be coach, player, org_admin, or super_admin")
+        raise ValueError("Role must be coach, player, organiser, org_admin, or super_admin")
     return role
 
 

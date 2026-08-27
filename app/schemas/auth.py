@@ -298,6 +298,11 @@ class RegisterRequest(BaseModel):
         description="Optional phone number from the registration form",
         examples=["+1-555-0100"],
     )
+    session_token: UUID | None = Field(
+        default=None,
+        description="Role selection session token from POST /role-selection",
+        examples=["11111111-2222-3333-4444-555555555555"],
+    )
 
     @field_validator("email", mode="before")
     @classmethod
