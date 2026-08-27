@@ -7,7 +7,6 @@ import pytest
 from app.core.exceptions import AppException
 from app.models.enums import UserRole
 from app.models.user import User
-from app.schemas.account_settings import PushNotificationsRequest
 from app.services import account_settings as account_settings_service
 
 

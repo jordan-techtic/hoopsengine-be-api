@@ -17,8 +17,16 @@ from app.models.enums import (
 )
 from app.models.subscription import StripeSubscription
 from app.models.subscription_plan import SubscriptionPlan
-from tests.api.test_dashboard import _persist_plans_then_subscriptions, _truncate_subscription_tables
-from tests.conftest import REGULAR_EMAIL, REGULAR_USER_ID, SUBSCRIPTION_BASE, sync_engine
+from tests.api.test_dashboard import (
+    _persist_plans_then_subscriptions,
+    _truncate_subscription_tables,
+)
+from tests.conftest import (
+    REGULAR_EMAIL,
+    REGULAR_USER_ID,
+    SUBSCRIPTION_BASE,
+    sync_engine,
+)
 
 PRO_FEATURES = [
     "Unlimited Drill Library Access",

@@ -6,7 +6,6 @@ import sqlalchemy as sa
 from sqlalchemy import inspect
 
 from alembic import op
-
 from app.core.tables import SUPPORT_REQUESTS_TABLE
 
 revision: str = "h1a2b3c4d5e6"
