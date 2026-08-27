@@ -24,7 +24,7 @@ from app.schemas.session_record import (
     SessionRecordUpdateRequest,
 )
 from app.services import client_db, coach_identity
-from app.services.one_drill_flow import ONE_DRILL_FLOW_KEY
+ONE_DRILL_QUICK_RECORD_KEY = "one_drill_quick_record"
 
 logger = logging.getLogger(__name__)
 
@@ -121,15 +121,14 @@ def _build_one_drill_details(
     payload: SessionRecordCreateRequest,
     base_details: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Merge One Drill session payload into session_details JSON."""
+    """Store HE-300 quick-record payload separately from the multi-step wizard flow."""
     details = dict(base_details or {})
-    flow = dict(details.get(ONE_DRILL_FLOW_KEY) or {})
+    quick_record: dict[str, Any] = {"quick_record": True}
     if payload.drill_id is not None:
-        flow["selected_drill_id"] = str(payload.drill_id)
+        quick_record["drill_id"] = str(payload.drill_id)
     if payload.session_data is not None:
-        flow["session_data"] = payload.session_data.model_dump()
-    flow["step"] = 1
-    details[ONE_DRILL_FLOW_KEY] = flow
+        quick_record["session_data"] = payload.session_data.model_dump()
+    details[ONE_DRILL_QUICK_RECORD_KEY] = quick_record
     return details
 
 
@@ -197,7 +196,7 @@ async def _has_duplicate_one_drill_today(
     user_id: UUID,
     drill_id: UUID,
 ) -> bool:
-    """Return True when the coach already recorded this drill today."""
+    """Return True when the coach already quick-recorded this drill today."""
     result = await db.execute(
         text(
             """
@@ -206,8 +205,7 @@ async def _has_duplicate_one_drill_today(
             WHERE recorder_user_id = :user_id
               AND session_date = CURRENT_DATE
               AND session_mode = :session_mode
-              AND status IN ('selecting_mode', 'in_progress')
-              AND session_details->'one_drill_flow'->>'selected_drill_id' = :drill_id
+              AND session_details->'one_drill_quick_record'->>'drill_id' = :drill_id
             LIMIT 1
             """
         ),
@@ -294,7 +292,9 @@ async def create_session_record(
                 ],
             )
 
-    if await _has_active_session_today(db, user.id):
+    if payload.session_mode != SessionMode.ONE_DRILL and await _has_active_session_today(
+        db, user.id
+    ):
         raise AppException(
             code="SESSION_MODE_ALREADY_RECORDED",
             message="An active session mode is already recorded for today",
@@ -312,8 +312,12 @@ async def create_session_record(
     base_details = _details_to_dict(payload.session_details)
     if payload.session_mode == SessionMode.ONE_DRILL:
         details = _build_one_drill_details(payload, base_details)
+        session_status = SessionStatus.COMPLETED.value
+        ended_at = now
     else:
         details = base_details
+        session_status = SessionStatus.IN_PROGRESS.value
+        ended_at = None
 
     await db.execute(
         text(
@@ -329,6 +333,7 @@ async def create_session_record(
                 recorder_type,
                 status,
                 started_at,
+                ended_at,
                 synced,
                 created_at
             ) VALUES (
@@ -342,6 +347,7 @@ async def create_session_record(
                 'coach',
                 :status,
                 :started_at,
+                :ended_at,
                 true,
                 :created_at
             )
@@ -354,8 +360,9 @@ async def create_session_record(
             "session_details": json.dumps(details) if details is not None else None,
             "recorder_user_id": user.id,
             "recorder_coach_id": recorder.coach_id,
-            "status": SessionStatus.IN_PROGRESS.value,
+            "status": session_status,
             "started_at": now,
+            "ended_at": ended_at,
             "created_at": now,
         },
     )

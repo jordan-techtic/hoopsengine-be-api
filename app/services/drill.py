@@ -501,9 +501,19 @@ async def update_drill(
 
 
 async def delete_drill(db: AsyncSession, user: User, drill_id: UUID) -> dict[str, Any]:
-    """Delete a catalog drill."""
+    """Delete a catalog drill owned by the coach organization."""
     _ensure_coach_org(user)
-    await _assert_catalog_drill(db, drill_id)
+    row = await _assert_catalog_drill(db, drill_id)
+
+    submitted_org = row.get("submitted_by_org")
+    if submitted_org is not None and user.org_id is not None:
+        if UUID(str(submitted_org)) != user.org_id:
+            raise AppException(
+                code="FORBIDDEN",
+                message="You do not have permission to modify this drill",
+                status_code=403,
+            )
+
     await db.execute(text("DELETE FROM drills WHERE id = :drill_id"), {"drill_id": drill_id})
     await db.commit()
     logger.info("Deleted catalog drill %s", drill_id)
