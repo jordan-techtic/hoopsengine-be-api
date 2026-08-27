@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException
 from app.models.user import User
+from app.services import client_db
 
 
 @dataclass(frozen=True)
@@ -26,8 +27,14 @@ def get_coach_org_id(user: User) -> UUID | None:
 
 
 async def resolve_recorder_coach_id(db: AsyncSession, user: User) -> UUID | None:
-    """Look up a ``coaches`` row matching the user's email within their org."""
+    """Look up a ``coaches`` row matching the user's email within their org.
+
+    Returns ``None`` when the coaches table is absent or no matching row exists.
+    """
     if user.org_id is None or not user.email:
+        return None
+
+    if not await client_db.table_exists(db, "coaches"):
         return None
 
     row = await db.execute(
