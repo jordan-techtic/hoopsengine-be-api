@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
+
 
 class SubscriptionUpgradeRequest(BaseModel):
     """Payload for POST /subscription/upgrade."""
@@ -48,7 +50,7 @@ class SubscriptionCancelRequest(BaseModel):
     )
 
 
-class SubscriptionDetailsResponse(BaseModel):
+class SubscriptionDetailsResponse(MobileWriteOnlyPasswordMixin):
     """Current subscription details for the subscription-management screen."""
 
     model_config = ConfigDict(

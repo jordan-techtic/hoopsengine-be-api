@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
+
 PRACTICE_PLAN_WRITE_EXAMPLE = {
     "name": "Shooting Fundamentals",
     "drills": [
@@ -140,7 +142,7 @@ class PracticePlanItem(BaseModel):
     created_at: datetime | None = Field(default=None, description="Plan creation timestamp")
 
 
-class PracticePlanResponse(BaseModel):
+class PracticePlanResponse(MobileWriteOnlyPasswordMixin):
     """Single practice plan mutation response."""
 
     model_config = ConfigDict(
@@ -183,7 +185,7 @@ class PracticePlanResponse(BaseModel):
     created_at: datetime | None = None
 
 
-class PracticePlanListResponse(BaseModel):
+class PracticePlanListResponse(MobileWriteOnlyPasswordMixin):
     """Active practice plans for the authenticated coach."""
 
     model_config = ConfigDict(

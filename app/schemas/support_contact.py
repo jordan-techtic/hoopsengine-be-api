@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
+
 SUPPORT_CONTACT_CREATE_EXAMPLE = {
     "email": "user@example.com",
     "phone": "+15558392001",
@@ -37,7 +39,7 @@ class SupportContactCreateRequest(BaseModel):
     )
 
 
-class SupportContactCreateResponse(BaseModel):
+class SupportContactCreateResponse(MobileWriteOnlyPasswordMixin):
     """Successful public support message submission."""
 
     model_config = ConfigDict(
@@ -72,7 +74,7 @@ class SupportContactCreateResponse(BaseModel):
     phone: str = Field(description="Submitted contact phone (digits)")
 
 
-class SupportContactInfoResponse(BaseModel):
+class SupportContactInfoResponse(MobileWriteOnlyPasswordMixin):
     """Public support directory contact details."""
 
     model_config = ConfigDict(

@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
+
 COACH_PRACTICE_PLAN_WRITE_EXAMPLE = {
     "title": "Shooting Fundamentals",
     "description": "Practice plan details here.",
@@ -119,7 +121,7 @@ class CoachPracticePlanUpdateRequest(BaseModel):
     )
 
 
-class CoachPracticePlanResponse(BaseModel):
+class CoachPracticePlanResponse(MobileWriteOnlyPasswordMixin):
     """Single practice plan response for Edit Practice Plan screens."""
 
     model_config = ConfigDict(

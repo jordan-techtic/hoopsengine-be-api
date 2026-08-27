@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
+
 
 class DrillSearchItem(BaseModel):
     """One drill returned from drill search."""
@@ -15,7 +17,7 @@ class DrillSearchItem(BaseModel):
     type: str = Field(description="Drill category", examples=["general"])
 
 
-class DrillSearchResponse(BaseModel):
+class DrillSearchResponse(MobileWriteOnlyPasswordMixin):
     """Drill search results for the Edit Practice Plan drill picker."""
 
     model_config = ConfigDict(

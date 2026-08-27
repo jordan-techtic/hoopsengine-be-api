@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
+
 
 class PlayerRosterItem(BaseModel):
     """One player returned from roster search."""
@@ -21,7 +23,7 @@ class PlayerRosterItem(BaseModel):
     )
 
 
-class PlayerRosterSearchResponse(BaseModel):
+class PlayerRosterSearchResponse(MobileWriteOnlyPasswordMixin):
     """Filtered team roster results for the Practice Plans player search input."""
 
     model_config = ConfigDict(

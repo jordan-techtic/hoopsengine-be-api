@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
+
 FAQ_LIST_EXAMPLE = {
     "success": True,
     "message": "FAQs loaded successfully",
@@ -48,7 +50,7 @@ class FaqItem(BaseModel):
     answer: str = Field(description="FAQ answer revealed when the question is tapped")
 
 
-class FaqsListResponse(BaseModel):
+class FaqsListResponse(MobileWriteOnlyPasswordMixin):
     """GET /faqs response for the public FAQs screen."""
 
     model_config = ConfigDict(json_schema_extra={"example": FAQ_LIST_EXAMPLE})

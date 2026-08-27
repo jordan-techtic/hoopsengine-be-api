@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
 from app.schemas.profile import CoachProfileResponse
 
 CHANGE_PASSWORD_EXAMPLE = {
@@ -70,7 +71,7 @@ class ChangePasswordRequest(BaseModel):
     )
 
 
-class ChangePasswordResponse(BaseModel):
+class ChangePasswordResponse(MobileWriteOnlyPasswordMixin):
     """Successful password change response."""
 
     model_config = ConfigDict(
@@ -95,7 +96,6 @@ class ChangePasswordResponse(BaseModel):
     link: str | None = None
     error: None = None
     id: UUID
-    password: None = None
     phone: str | None = None
 
 
@@ -117,7 +117,7 @@ class OrganizationSettingsRequest(BaseModel):
     )
 
 
-class OrganizationSettingsResponse(BaseModel):
+class OrganizationSettingsResponse(MobileWriteOnlyPasswordMixin):
     """Organization settings update response."""
 
     model_config = ConfigDict(
@@ -165,7 +165,7 @@ class AuthKeysRequest(BaseModel):
     )
 
 
-class AuthKeysResponse(BaseModel):
+class AuthKeysResponse(MobileWriteOnlyPasswordMixin):
     """Authentication keys update response."""
 
     model_config = ConfigDict(
@@ -209,7 +209,7 @@ class PushNotificationsRequest(BaseModel):
     )
 
 
-class PushNotificationsResponse(BaseModel):
+class PushNotificationsResponse(MobileWriteOnlyPasswordMixin):
     """Push notification preference response."""
 
     model_config = ConfigDict(
@@ -261,7 +261,7 @@ class AccountSettingsProfileSummary(BaseModel):
     profile: dict[str, str | None] = Field(description="Nested profile fields for the client")
 
 
-class HelpSupportResponse(BaseModel):
+class HelpSupportResponse(MobileWriteOnlyPasswordMixin):
     """GET /account/settings/help-support response."""
 
     model_config = ConfigDict(
@@ -339,7 +339,7 @@ class SupportSubmitRequest(BaseModel):
     )
 
 
-class SupportSubmitResponse(BaseModel):
+class SupportSubmitResponse(MobileWriteOnlyPasswordMixin):
     """Successful support submission from Account Settings."""
 
     model_config = ConfigDict(

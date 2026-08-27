@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
+
 
 class ProfileImageResponse(BaseModel):
     url: str | None = None
@@ -116,7 +118,7 @@ class CoachProfileData(BaseModel):
     )
 
 
-class CoachProfileResponse(BaseModel):
+class CoachProfileResponse(MobileWriteOnlyPasswordMixin):
     """Coach edit profile response envelope."""
 
     model_config = ConfigDict(
