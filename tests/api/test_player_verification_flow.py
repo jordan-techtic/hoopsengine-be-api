@@ -1,5 +1,7 @@
 """Integration tests for coach cancel/continue verification endpoints (HE-297)."""
 
+# NOTE: legacy filename test_player_verification_flow.py; routes are /api/v1/coach/*
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -195,3 +197,16 @@ def test_continue_verification_already_verified_409(
     assert response.status_code == 409
     body = response.json()
     assert body["error"]["code"] == "VERIFICATION_ALREADY_COMPLETED"
+
+def test_cancel_verification_expired_jwt_403(
+    client: TestClient,
+    expired_user_headers: dict[str, str],
+) -> None:
+    """HE-297: only authenticated users may cancel verification."""
+    response = client.post(
+        CANCEL_BASE,
+        headers=expired_user_headers,
+        json=_cancel_payload(),
+    )
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"

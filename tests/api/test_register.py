@@ -134,3 +134,84 @@ def test_register_invalid_email_422(client: TestClient, seeded_users: dict) -> N
     assert response.status_code == 422
     body = response.json()
     assert body["error"]["code"] == "VALIDATION_ERROR"
+
+import pytest
+
+
+@pytest.mark.parametrize("missing_field", [
+    "first_name",
+    "last_name",
+    "username",
+    "email",
+    "password",
+    "confirm_password",
+    "terms_accepted",
+])
+def test_register_missing_required_field_returns_validation_error(
+    client: TestClient,
+    seeded_users: dict,
+    missing_field: str,
+) -> None:
+    """HE-323: missing required fields return a validation error (422 via Pydantic)."""
+    payload = _register_payload()
+    del payload[missing_field]
+    response = client.post(REGISTER_BASE, json=payload)
+    assert response.status_code == 422
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_register_success_response_contains_all_frontend_fields(
+    client: TestClient,
+    seeded_users: dict,
+) -> None:
+    """HE-323: successful registration returns complete response body for FE Register."""
+    response = client.post(
+        REGISTER_BASE,
+        json=_register_payload(
+            username="fecontract",
+            email="fe.contract@example.com",
+        ),
+    )
+    assert response.status_code == 201
+    body = response.json()
+    for key in (
+        "first_name",
+        "last_name",
+        "username",
+        "email",
+        "access_token",
+        "expires_in_hours",
+        "link",
+        "description",
+        "message",
+        "status",
+    ):
+        assert key in body
+    assert body["phone"] is None or isinstance(body.get("phone"), str)
+
+
+def test_register_unicode_name_success_201(client: TestClient, seeded_users: dict) -> None:
+    """Edge case: unicode characters in name fields are accepted."""
+    response = client.post(
+        REGISTER_BASE,
+        json=_register_payload(
+            first_name="José",
+            last_name="Müller",
+            username="unicode_coach",
+            email="unicode.coach@example.com",
+        ),
+    )
+    assert response.status_code == 201
+    assert response.json()["name"] == "José Müller"
+
+
+def test_register_username_max_length_boundary_400(client: TestClient, seeded_users: dict) -> None:
+    """Edge case: username longer than 30 characters is rejected."""
+    response = client.post(
+        REGISTER_BASE,
+        json=_register_payload(username="a" * 31, email="long.user@example.com"),
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["details"][0]["field"] == "username"

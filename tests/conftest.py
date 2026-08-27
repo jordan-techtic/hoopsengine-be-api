@@ -94,6 +94,8 @@ COACH_LOGIN_BASE = "/api/v1/coach/login"
 COACH_FORGOT_PASSWORD_BASE = "/api/v1/coach/forgot-password"
 COACH_CANCEL_VERIFICATION_BASE = "/api/v1/coach/cancel-verification"
 COACH_CONTINUE_VERIFICATION_BASE = "/api/v1/coach/continue-verification"
+RESET_PASSWORD_BASE = "/api/v1/reset-password"
+VALIDATE_PASSWORD_BASE = "/api/v1/reset-password/validate"
 
 UNVERIFIED_COACH_ID = UUID("00000000-0000-4000-8000-000000000020")
 UNVERIFIED_COACH_EMAIL = os.environ.get("TEST_UNVERIFIED_COACH_EMAIL", "unverified.coach@test.com")
@@ -189,6 +191,7 @@ def mock_third_party_services() -> Generator[dict[str, Any], None, None]:
         patch("app.core.email.send_password_reset_email", return_value=None),
         patch("app.core.email.send_verification_email", return_value=None),
         patch("app.services.email_verification.send_verification_email", return_value=None),
+        patch("app.services.registration.send_verification_email", return_value=None),
         patch("app.services.stripe_client.stripe") as stripe_mod,
     ):
         sendgrid_cls.return_value.send.return_value = sendgrid_response
@@ -376,6 +379,12 @@ def unverified_coach_headers(unverified_coach_user: User) -> dict[str, str]:
         extra_claims={"email": unverified_coach_user.email, "role": unverified_coach_user.role},
     )
     return auth_headers(token)
+
+
+@pytest.fixture
+def expired_user_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
+    """Authorization header with an expired JWT for auth failure tests."""
+    return auth_headers(make_expired_token(seeded_users["user"]["id"]))
 
 
 @pytest.fixture

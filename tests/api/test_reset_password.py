@@ -17,8 +17,7 @@ from tests.conftest import (
     sync_engine,
 )
 
-RESET_PASSWORD_BASE = "/api/v1/reset-password"
-VALIDATE_PASSWORD_BASE = "/api/v1/reset-password/validate"
+from tests.conftest import RESET_PASSWORD_BASE, VALIDATE_PASSWORD_BASE
 
 
 def _reset_payload(**overrides: object) -> dict[str, object]:
@@ -181,3 +180,31 @@ def test_validate_password_strength_unauthorized_403(client: TestClient) -> None
     assert response.status_code == 403
     body = response.json()
     assert body["error"]["code"] == "FORBIDDEN"
+
+def test_reset_password_insufficient_strength_missing_special_400(
+    client: TestClient,
+    user_headers: dict[str, str],
+) -> None:
+    """HE-298: password missing special characters returns 400."""
+    weak = "Password1234"
+    response = client.post(
+        RESET_PASSWORD_BASE,
+        headers=user_headers,
+        json=_reset_payload(new_password=weak, confirm_password=weak),
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_reset_password_expired_jwt_403(
+    client: TestClient,
+    expired_user_headers: dict[str, str],
+) -> None:
+    """Auth: expired JWT cannot reset password."""
+    response = client.post(
+        RESET_PASSWORD_BASE,
+        headers=expired_user_headers,
+        json=_reset_payload(),
+    )
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"

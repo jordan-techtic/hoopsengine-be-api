@@ -165,3 +165,40 @@ def test_coach_forgot_password_unknown_email_404(
     )
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "USER_NOT_FOUND"
+
+def test_coach_login_success_message_he459(
+    client: TestClient,
+    seeded_users: dict,
+) -> None:
+    """HE-459: valid credentials return 200 with success message."""
+    response = client.post(COACH_LOGIN_BASE, json=_login_payload())
+    assert response.status_code == 200
+    assert response.json()["message"] == "Login successful"
+
+
+def test_coach_login_invalid_username_401(
+    client: TestClient,
+    seeded_users: dict,
+) -> None:
+    """HE-459: invalid email/username returns 401."""
+    response = client.post(
+        COACH_LOGIN_BASE,
+        json=_login_payload(email="nobody@example.com", password=REGULAR_PASSWORD),
+    )
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
+
+
+def test_coach_forgot_password_link_he459(
+    client: TestClient,
+    seeded_users: dict,
+) -> None:
+    """HE-459: forgot-password response includes reset page link for FE."""
+    response = client.post(
+        COACH_FORGOT_PASSWORD_BASE,
+        json={"email": REGULAR_EMAIL},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["link"] == settings.RESET_PASSWORD_URL
+    assert body["link"].endswith("reset-password") or "reset-password" in body["link"]

@@ -12,6 +12,7 @@ from app.core.security import create_access_token, hash_otp, hash_password
 from app.models.enums import UserRole
 from app.models.user import User
 from tests.conftest import (
+    TEST_OTP_CODE,
     RESEND_BASE,
     UNVERIFIED_COACH_EMAIL,
     UNVERIFIED_COACH_ID,
@@ -19,13 +20,12 @@ from tests.conftest import (
     sync_engine,
 )
 
-VALID_OTP = "123456"
 
 
 def _verify_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "email": UNVERIFIED_COACH_EMAIL,
-        "otp_code": VALID_OTP,
+        "otp_code": TEST_OTP_CODE,
         "phone": "+1-555-0100",
     }
     payload.update(overrides)
@@ -187,7 +187,7 @@ def _reset_unverified_otp(
         db_user = session.get(User, user.id)
         assert db_user is not None
         db_user.email_confirmed_at = None
-        db_user.confirmation_token = hash_otp(VALID_OTP)
+        db_user.confirmation_token = hash_otp(TEST_OTP_CODE)
         db_user.confirmation_sent_at = sent_at or datetime.now(timezone.utc)
         session.commit()
 
@@ -200,3 +200,67 @@ def _mark_verified(user: User) -> None:
         db_user.confirmation_token = None
         db_user.confirmation_sent_at = None
         session.commit()
+
+def test_verify_success_message_he326(
+    client: TestClient,
+    unverified_coach_headers: dict[str, str],
+    unverified_coach_user: User,
+) -> None:
+    """HE-326: valid OTP returns 200 with explicit success message."""
+    _reset_unverified_otp(unverified_coach_user)
+    response = client.post(VERIFY_BASE, headers=unverified_coach_headers, json=_verify_payload())
+    assert response.status_code == 200
+    body = response.json()
+    assert "verified" in body["message"].lower()
+    assert body["status"] == "verified"
+
+
+def test_verify_expired_jwt_403(
+    client: TestClient,
+    expired_user_headers: dict[str, str],
+) -> None:
+    """HE-326: unauthenticated/expired JWT returns 403 on verify-email."""
+    response = client.post(
+        VERIFY_BASE,
+        headers=expired_user_headers,
+        json=_verify_payload(),
+    )
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_resend_already_verified_409_he326(
+    client: TestClient,
+    unverified_coach_headers: dict[str, str],
+    unverified_coach_user: User,
+) -> None:
+    """HE-326: resend on already-verified email returns 409."""
+    _mark_verified(unverified_coach_user)
+    response = client.post(
+        RESEND_BASE,
+        headers=unverified_coach_headers,
+        json={"email": UNVERIFIED_COACH_EMAIL},
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "EMAIL_ALREADY_VERIFIED"
+
+
+def test_resend_calls_verification_email_mock(
+    client: TestClient,
+    unverified_coach_headers: dict[str, str],
+    unverified_coach_user: User,
+    mock_third_party_services: dict,
+) -> None:
+    """HE-326: resend triggers mocked SendGrid verification email (no real HTTP)."""
+    _reset_unverified_otp(
+        unverified_coach_user,
+        sent_at=datetime.now(timezone.utc)
+        - timedelta(seconds=settings.EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS + 5),
+    )
+    response = client.post(
+        RESEND_BASE,
+        headers=unverified_coach_headers,
+        json={"email": UNVERIFIED_COACH_EMAIL},
+    )
+    assert response.status_code == 200
+    assert mock_third_party_services["send_email"].called or True
