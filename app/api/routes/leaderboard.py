@@ -78,6 +78,7 @@ async def get_leaderboard(
     org_id: UUID | None = Query(
         default=None,
         description="Optional organization UUID to scope leaderboard results",
+        examples=["00000000-0000-4000-8000-000000000010"],
     ),
     db: AsyncSession = Depends(get_db),
 ) -> LeaderboardListResponse:
@@ -100,6 +101,11 @@ async def get_leaderboard(
     responses={
         **AUTH_ERROR_RESPONSES,
         **VALIDATION_ERROR_RESPONSE,
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
     },
 )
 async def search_leaderboard_post(
@@ -129,6 +135,11 @@ async def search_leaderboard_post(
     responses={
         **AUTH_ERROR_RESPONSES,
         **VALIDATION_ERROR_RESPONSE,
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
     },
 )
 async def search_leaderboard_get(
@@ -173,6 +184,11 @@ async def search_leaderboard_get(
             "Invalid filter_metric value",
             code="VALIDATION_ERROR",
             message="Request validation failed",
+        ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
         ),
     },
 )

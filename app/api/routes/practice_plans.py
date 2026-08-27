@@ -98,7 +98,7 @@ NOT_FOUND_ERROR_RESPONSE = {
         503: openapi_error(
             "Practice plan tables unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
-            message="Session recording is temporarily unavailable",
+            message="Practice plan operations are temporarily unavailable",
         ),
     },
 )
@@ -132,7 +132,7 @@ async def create_practice_plan(
         503: openapi_error(
             "Practice plan tables unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
-            message="Session recording is temporarily unavailable",
+            message="Practice plan operations are temporarily unavailable",
         ),
     },
 )
@@ -170,7 +170,7 @@ async def list_practice_plans(
         503: openapi_error(
             "Practice plan tables unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
-            message="Session recording is temporarily unavailable",
+            message="Practice plan operations are temporarily unavailable",
         ),
     },
 )
@@ -206,7 +206,7 @@ async def update_practice_plan(
         503: openapi_error(
             "Practice plan tables unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
-            message="Session recording is temporarily unavailable",
+            message="Practice plan operations are temporarily unavailable",
         ),
     },
 )

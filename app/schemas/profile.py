@@ -93,15 +93,27 @@ class CoachProfileUpdateRequest(BaseModel):
 class CoachProfileData(BaseModel):
     """Nested editable profile fields for the mobile client."""
 
-    first_name: str | None = None
-    last_name: str | None = None
-    email: EmailStr
-    username: str | None = None
-    phone_number: str | None = None
-    date_of_birth: str | None = None
-    gender: str | None = None
-    grade: str | None = None
-    parent_guardian: str | None = None
+    first_name: str | None = Field(default=None, description="First name", examples=["Lebron"])
+    last_name: str | None = Field(default=None, description="Last name", examples=["James"])
+    email: EmailStr = Field(description="Email address", examples=["alex.morgan@academy.com"])
+    username: str | None = Field(default=None, description="Unique username", examples=["alex_morgan"])
+    phone_number: str | None = Field(
+        default=None,
+        description="Contact phone number",
+        examples=["+1 (555) 382-9102"],
+    )
+    date_of_birth: str | None = Field(
+        default=None,
+        description="Date of birth in MM/DD/YYYY format",
+        examples=["08/24/1992"],
+    )
+    gender: str | None = Field(default=None, description="Gender", examples=["Male"])
+    grade: str | None = Field(default=None, description="Grade or role label", examples=["Academy Head"])
+    parent_guardian: str | None = Field(
+        default=None,
+        description="Parent or guardian name",
+        examples=["Not Applicable"],
+    )
 
 
 class CoachProfileResponse(BaseModel):

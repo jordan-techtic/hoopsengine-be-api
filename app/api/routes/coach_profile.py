@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.errors import openapi_error
+from app.schemas.errors import openapi_error, openapi_error_examples
 from app.schemas.profile import CoachProfileResponse, CoachProfileUpdateRequest
 from app.services import profile as profile_service
 
@@ -37,16 +37,30 @@ VALIDATION_ERROR_RESPONSES = {
 }
 
 CONFLICT_ERROR_RESPONSES = {
-    409: openapi_error(
-        "Duplicate email or username",
-        code="EMAIL_ALREADY_IN_USE",
-        message="This email is already in use by another account",
-        details=[
-            {
-                "field": "email",
+    409: openapi_error_examples(
+        "Duplicate email or username already used by another account",
+        examples={
+            "email_already_in_use": {
+                "code": "EMAIL_ALREADY_IN_USE",
                 "message": "This email is already in use by another account",
-            }
-        ],
+                "details": [
+                    {
+                        "field": "email",
+                        "message": "This email is already in use by another account",
+                    }
+                ],
+            },
+            "username_already_in_use": {
+                "code": "USERNAME_ALREADY_IN_USE",
+                "message": "This username is already in use by another account",
+                "details": [
+                    {
+                        "field": "username",
+                        "message": "This username is already in use by another account",
+                    }
+                ],
+            },
+        },
     ),
 }
 

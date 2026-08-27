@@ -84,13 +84,34 @@ class SessionModesResponse(BaseModel):
 class SessionModeDetailResponse(BaseModel):
     """Single session mode lookup response."""
 
-    success: bool = Field(default=True)
-    message: str
-    status: str = Field(default="ready")
-    description: str | None = None
-    link: str | None = None
-    error: None = None
-    mode: SessionModeItem
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "success": True,
+                "message": "Session mode loaded successfully",
+                "status": "ready",
+                "description": "Focus on a single drill and track reps, time, or performance",
+                "link": None,
+                "error": None,
+                "mode": {
+                    "mode": "one_drill",
+                    "label": "One Drill",
+                    "description": "Focus on a single drill and track reps, time, or performance",
+                },
+            }
+        }
+    )
+
+    success: bool = Field(default=True, description="Always true on success")
+    message: str = Field(description="Human-readable success message for the UI")
+    status: str = Field(default="ready", description="Screen state indicator for the mobile client")
+    description: str | None = Field(
+        default=None,
+        description="Mode helper text shown under the header",
+    )
+    link: str | None = Field(default=None, description="Optional in-app navigation target")
+    error: None = Field(default=None, description="Always null on success")
+    mode: SessionModeItem = Field(description="Requested session mode details")
 
 
 class SessionRecordCreateRequest(BaseModel):

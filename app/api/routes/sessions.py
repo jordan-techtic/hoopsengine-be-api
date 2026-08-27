@@ -165,6 +165,11 @@ async def get_session_mode(
             message="Request validation failed",
             details=[{"field": "session_mode", "message": "Field required"}],
         ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
         503: openapi_error(
             "Client session table unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
@@ -215,6 +220,11 @@ async def create_session_record(
             code="VALIDATION_ERROR",
             message="Request validation failed",
         ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
         503: openapi_error(
             "Client session table unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
@@ -263,6 +273,11 @@ async def update_session_record(
             code="SESSION_NOT_FOUND",
             message="Session not found",
         ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
         503: openapi_error(
             "Client session table unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
@@ -310,6 +325,11 @@ async def get_session_summary(
             code="SESSION_NOT_FOUND",
             message="Session not found",
         ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
         503: openapi_error(
             "Client session table unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
@@ -355,6 +375,11 @@ async def advance_session_next_drill(
             "Session not found",
             code="SESSION_NOT_FOUND",
             message="Session not found",
+        ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
         ),
         503: openapi_error(
             "Client session table unavailable",

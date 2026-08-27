@@ -73,6 +73,33 @@ OPENAPI_TAGS = [
             "subscription, and revenue totals for the Super Admin home screen."
         ),
     },
+    {
+        "name": "coach-sessions",
+        "description": (
+            "Coach session mode selection, recording, summary, and lifecycle actions "
+            "for the Record Session and Session Summary mobile screens."
+        ),
+    },
+    {
+        "name": "coach-leaderboard",
+        "description": (
+            "Player leaderboard rankings, name search, and performance metric filtering "
+            "for the Coach Leaderboard screen."
+        ),
+    },
+    {
+        "name": "coach-practice-plans",
+        "description": (
+            "Practice plan CRUD for the Coach Practice Plan screen. Authenticated coaches "
+            "manage active plans and associated drills."
+        ),
+    },
+    {
+        "name": "coach-profile",
+        "description": (
+            "Authenticated user profile retrieval and update for the Edit Profile screen."
+        ),
+    },
 ]
 
 
