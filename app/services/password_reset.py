@@ -9,7 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppException
 from app.core.security import hash_password, verify_password
 from app.models.user import User
-from app.services.user import analyze_password_strength, is_password_strong, validate_password
+from app.services.user import (
+    analyze_password_strength,
+    is_password_strong,
+    validate_password,
+)
 
 
 def _utcnow() -> datetime:

@@ -19,7 +19,12 @@ from app.core.security import (
 from app.models.enums import UserRole
 from app.models.revoked_token import RevokedToken
 from app.models.user import User
-from app.schemas.auth import CoachLoginResponse, CoachUserPublic, LoginResponse, UserPublic
+from app.schemas.auth import (
+    CoachLoginResponse,
+    CoachUserPublic,
+    LoginResponse,
+    UserPublic,
+)
 
 logger = logging.getLogger(__name__)
 

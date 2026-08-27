@@ -4,7 +4,11 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Content, Email, Mail, To
 
 from app.core.config import settings
-from app.core.email_templates import EmailContent, build_email_verification_email, build_password_reset_email
+from app.core.email_templates import (
+    EmailContent,
+    build_email_verification_email,
+    build_password_reset_email,
+)
 
 logger = logging.getLogger(__name__)
 

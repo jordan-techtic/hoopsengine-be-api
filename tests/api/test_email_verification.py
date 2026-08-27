@@ -8,18 +8,16 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import create_access_token, hash_otp, hash_password
-from app.models.enums import UserRole
+from app.core.security import hash_otp
 from app.models.user import User
 from tests.conftest import (
-    TEST_OTP_CODE,
     RESEND_BASE,
+    TEST_OTP_CODE,
     UNVERIFIED_COACH_EMAIL,
     UNVERIFIED_COACH_ID,
     VERIFY_BASE,
     sync_engine,
 )
-
 
 
 def _verify_payload(**overrides: object) -> dict[str, object]:

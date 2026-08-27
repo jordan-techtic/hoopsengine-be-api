@@ -14,11 +14,11 @@ from app.models.user import User
 from app.services import password_reset as password_reset_service
 from tests.conftest import (
     TEST_CURRENT_PASSWORD,
-    TEST_NEW_SECURE_PASSWORD,
     TEST_DIFFERENT_PASSWORD,
+    TEST_NEW_SECURE_PASSWORD,
+    TEST_VALID_COMPLEX_PASSWORD,
     TEST_WEAK_PASSWORD,
     TEST_WEAK_PASSWORD_LONG,
-    TEST_VALID_COMPLEX_PASSWORD,
 )
 
 

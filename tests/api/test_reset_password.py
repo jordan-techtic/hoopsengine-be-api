@@ -10,14 +10,14 @@ from app.models.user import User
 from tests.conftest import (
     REGULAR_PASSWORD,
     REGULAR_USER_ID,
+    RESET_PASSWORD_BASE,
+    TEST_DIFFERENT_PASSWORD,
     TEST_NEW_PASSWORD,
     TEST_WEAK_PASSWORD,
     TEST_WEAK_PASSWORD_LONG,
-    TEST_DIFFERENT_PASSWORD,
+    VALIDATE_PASSWORD_BASE,
     sync_engine,
 )
-
-from tests.conftest import RESET_PASSWORD_BASE, VALIDATE_PASSWORD_BASE
 
 
 def _reset_payload(**overrides: object) -> dict[str, object]:

@@ -14,7 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.email import send_verification_email
 from app.core.exceptions import AppException
-from app.core.security import create_access_token, generate_otp_code, hash_otp, hash_password
+from app.core.security import (
+    create_access_token,
+    generate_otp_code,
+    hash_otp,
+    hash_password,
+)
 from app.models.enums import UserRole
 from app.models.user import User
 from app.services import auth as auth_service
