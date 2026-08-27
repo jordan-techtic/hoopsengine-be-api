@@ -163,10 +163,7 @@ async def _mark_all_pending_synced(db: AsyncSession, user: User) -> int:
                 WHERE sd.session_id = ps.id
                   AND sd.org_id = :org_id
                   AND sd.synced = false
-                  AND (
-                        ps.recorder_user_id = :user_id
-                     OR ps.recorder_user_id IS NULL
-                  )
+                  AND ps.recorder_user_id = :user_id
                 """
             ),
             {"org_id": recorder.org_id, "user_id": user.id},
