@@ -107,9 +107,11 @@ async def _fetch_active_players(db: AsyncSession, org_id: UUID) -> list[dict[str
     await client_db.require_table(db, PLAYERS_TABLE)
 
     jersey_column = await _column_exists(db, PLAYERS_TABLE, "jersey_number")
+    player_code_column = await _column_exists(db, PLAYERS_TABLE, "player_code")
     active_column = await _column_exists(db, PLAYERS_TABLE, "active")
     active_sql = "AND p.active = true" if active_column else ""
     jersey_select = "p.jersey_number" if jersey_column else "NULL AS jersey_number"
+    player_code_select = "p.player_code" if player_code_column else "NULL AS player_code"
 
     result = await db.execute(
         text(
@@ -118,7 +120,8 @@ async def _fetch_active_players(db: AsyncSession, org_id: UUID) -> list[dict[str
                 p.id,
                 p.first_name,
                 p.last_name,
-                {jersey_select}
+                {jersey_select},
+                {player_code_select}
             FROM players p
             WHERE p.org_id = :org_id
               {active_sql}
@@ -132,9 +135,13 @@ async def _fetch_active_players(db: AsyncSession, org_id: UUID) -> list[dict[str
 
 def _player_item(row: dict[str, Any], status: str) -> dict[str, Any]:
     name = f"{row['first_name']} {row['last_name']}".strip()
+    player_code = row.get("player_code")
+    code_value = str(player_code) if player_code is not None else None
     return {
         "id": UUID(str(row["id"])),
         "name": name,
+        "code": code_value,
+        "player_code": code_value,
         "jersey_number": (
             str(row["jersey_number"]) if row.get("jersey_number") is not None else None
         ),
@@ -332,9 +339,11 @@ async def search_attendance_players(
     attendance_map = _attendance_map(session_details)
 
     jersey_column = await _column_exists(db, PLAYERS_TABLE, "jersey_number")
+    player_code_column = await _column_exists(db, PLAYERS_TABLE, "player_code")
     active_column = await _column_exists(db, PLAYERS_TABLE, "active")
     active_sql = "AND p.active = true" if active_column else ""
     jersey_select = "p.jersey_number" if jersey_column else "NULL AS jersey_number"
+    player_code_select = "p.player_code" if player_code_column else "NULL AS player_code"
     jersey_filter = "OR p.jersey_number ILIKE :pattern" if jersey_column else ""
     pattern = f"%{cleaned}%"
 
@@ -345,7 +354,8 @@ async def search_attendance_players(
                 p.id,
                 p.first_name,
                 p.last_name,
-                {jersey_select}
+                {jersey_select},
+                {player_code_select}
             FROM players p
             WHERE p.org_id = :org_id
               {active_sql}

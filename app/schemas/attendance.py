@@ -19,6 +19,8 @@ ATTENDANCE_SEARCH_EXAMPLE = {
         {
             "id": "11111111-2222-3333-4444-555555555555",
             "name": "Alex Martinez",
+            "code": "PC-ALEX001",
+            "player_code": "PC-ALEX001",
             "jersey_number": "12",
             "status": "present",
         }
@@ -40,12 +42,16 @@ ATTENDANCE_SUMMARY_EXAMPLE = {
         {
             "id": "11111111-2222-3333-4444-555555555555",
             "name": "Alex Martinez",
+            "code": "PC-ALEX001",
+            "player_code": "PC-ALEX001",
             "jersey_number": "12",
             "status": "present",
         },
         {
             "id": "22222222-3333-4444-5555-666666666666",
             "name": "David Park",
+            "code": "PC-DAVID01",
+            "player_code": "PC-DAVID01",
             "jersey_number": "15",
             "status": "absent",
         },
@@ -66,6 +72,8 @@ class AttendancePlayerItem(BaseModel):
 
     id: UUID = Field(description="Player UUID")
     name: str = Field(description="Full display name", examples=["Alex Martinez"])
+    code: str | None = Field(default=None, description="Player code alias for mobile cards")
+    player_code: str | None = Field(default=None, description="Unique player code")
     jersey_number: str | None = Field(
         default=None,
         description="Jersey number when assigned",

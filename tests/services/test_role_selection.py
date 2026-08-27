@@ -68,4 +68,5 @@ def test_build_roles_catalog_response_envelope() -> None:
     assert payload["id"] is None
     assert payload["role"] is None
     assert payload["phone"] is None
+    assert payload["code"] is None
     assert len(payload["roles"]) == 3

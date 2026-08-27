@@ -99,6 +99,7 @@ class RoleCatalogResponse(BaseModel):
                 "first_name": None,
                 "last_name": None,
                 "address": None,
+                "code": None,
                 "roles": [
                     {
                         "value": "coach",
@@ -127,6 +128,7 @@ class RoleCatalogResponse(BaseModel):
     first_name: str | None = Field(default=None, description="Optional first name placeholder for the form")
     last_name: str | None = Field(default=None, description="Optional last name placeholder for the form")
     address: str | None = Field(default=None, description="Optional address placeholder for the form")
+    code: str | None = Field(default=None, description="Optional player code placeholder for the form")
     roles: list[RoleOption] = Field(description="Selectable roles for the role cards")
 
 

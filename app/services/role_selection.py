@@ -264,6 +264,7 @@ def build_roles_catalog_response() -> dict[str, Any]:
         "first_name": None,
         "last_name": None,
         "address": None,
+        "code": None,
         "roles": [role.model_dump() for role in roles],
     }
 
