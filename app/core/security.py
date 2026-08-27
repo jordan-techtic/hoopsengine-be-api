@@ -38,9 +38,12 @@ def verify_password(password: str, hashed_password: str) -> bool:
 def create_access_token(
     subject: str | UUID,
     extra_claims: dict[str, Any] | None = None,
+    *,
+    expire_hours: int | None = None,
 ) -> str:
     now = datetime.now(timezone.utc)
-    expire = now + timedelta(hours=settings.ACCESS_TOKEN_EXPIRE_HOURS)
+    token_hours = expire_hours if expire_hours is not None else settings.ACCESS_TOKEN_EXPIRE_HOURS
+    expire = now + timedelta(hours=token_hours)
     payload: dict[str, Any] = {
         "sub": str(subject),
         "jti": str(uuid.uuid4()),
@@ -85,3 +88,18 @@ def hash_reset_token(token: str) -> str:
 
 def reset_tokens_match(plain_token: str, hashed_token: str) -> bool:
     return hmac.compare_digest(hash_reset_token(plain_token), hashed_token)
+
+
+def generate_otp_code() -> str:
+    """Generate a cryptographically secure 6-digit OTP code."""
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def hash_otp(otp_code: str) -> str:
+    """Hash an OTP code for storage at rest."""
+    return hash_reset_token(otp_code)
+
+
+def otp_matches(plain_otp: str, hashed_otp: str) -> bool:
+    """Compare a plain OTP against its stored hash."""
+    return reset_tokens_match(plain_otp, hashed_otp)

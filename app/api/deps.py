@@ -66,6 +66,62 @@ async def get_current_user(
     return user
 
 
+async def require_authenticated_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """
+    Require a valid Bearer JWT for email verification endpoints.
+
+    Returns 403 when credentials are missing, matching the verification API contract.
+    """
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise AppException(
+            code="FORBIDDEN",
+            message="Authentication is required to access this resource",
+            status_code=403,
+        )
+
+    token = credentials.credentials
+
+    try:
+        payload = decode_token(token)
+        subject = payload.get("sub")
+        token_type = payload.get("type")
+        if not subject or token_type != "access":
+            raise AppException(
+                code="FORBIDDEN",
+                message="Authentication is required to access this resource",
+                status_code=403,
+            )
+        user_id = UUID(str(subject))
+    except (jwt.PyJWTError, ValueError):
+        raise AppException(
+            code="FORBIDDEN",
+            message="Authentication is required to access this resource",
+            status_code=403,
+        ) from None
+
+    if await auth_service.is_token_revoked(db, token, payload):
+        raise AppException(
+            code="FORBIDDEN",
+            message="Authentication is required to access this resource",
+            status_code=403,
+        )
+
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise AppException(
+            code="FORBIDDEN",
+            message="Authentication is required to access this resource",
+            status_code=403,
+        )
+    return user
+
+
 def get_bearer_token(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> str:

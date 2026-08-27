@@ -110,6 +110,25 @@ def validate_password(password: str) -> str:
     return password
 
 
+def analyze_password_strength(password: str) -> dict[str, bool]:
+    """Return password requirement checklist without raising validation errors."""
+    return {
+        "min_length": len(password) >= 8,
+        "has_uppercase": bool(re.search(r"[A-Z]", password)),
+        "has_lowercase": bool(re.search(r"[a-z]", password)),
+        "has_number": bool(re.search(r"[0-9]", password)),
+        "has_special": bool(PASSWORD_SPECIAL.search(password)),
+    }
+
+
+def is_password_strong(password: str) -> bool:
+    """Return True when the password satisfies all complexity rules."""
+    if len(password.encode("utf-8")) > BCRYPT_MAX_PASSWORD_BYTES:
+        return False
+    checks = analyze_password_strength(password)
+    return all(checks.values())
+
+
 def assignable_roles() -> list[RoleOption]:
     """Return roles for the Manage Users Add/Edit dropdown."""
     return list(ROLE_OPTIONS)

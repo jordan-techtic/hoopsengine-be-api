@@ -70,6 +70,16 @@ def test_validate_password_accepts_complex_password() -> None:
     assert validate_password("Coach@123") == "Coach@123"
 
 
+def test_analyze_password_strength_reports_missing_rules() -> None:
+    from app.services.user import analyze_password_strength, is_password_strong
+
+    checks = analyze_password_strength("password")
+    assert checks["min_length"] is True
+    assert checks["has_number"] is False
+    assert checks["has_special"] is False
+    assert is_password_strong("password") is False
+
+
 def test_normalize_role_accepts_display_label() -> None:
     assert normalize_role_value("Coach") == UserRole.COACH
     assert normalize_role_value("Player") == UserRole.PLAYER

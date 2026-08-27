@@ -39,7 +39,7 @@ from app.core import database as database_module
 from app.core.config import settings
 from app.core.database import create_managed_tables
 from app.core.error_handlers import register_exception_handlers
-from app.core.security import create_access_token, hash_password
+from app.core.security import create_access_token, hash_otp, hash_password
 from app.models import Organization, User
 from app.models.enums import UserRole
 
@@ -64,6 +64,15 @@ NEW_USER_PASSWORD = "NewUser123!"
 ORG_BASE = "/api/v1/super-admin/organizations"
 USER_BASE = "/api/v1/super-admin/users"
 DASHBOARD_BASE = "/api/v1/super-admin/dashboard"
+REGISTER_BASE = "/api/v1/register"
+VERIFY_BASE = "/api/v1/verify-email"
+RESEND_BASE = "/api/v1/resend-verification-code"
+COACH_LOGIN_BASE = "/api/v1/coach/login"
+COACH_FORGOT_PASSWORD_BASE = "/api/v1/coach/forgot-password"
+
+UNVERIFIED_COACH_ID = UUID("00000000-0000-4000-8000-000000000020")
+UNVERIFIED_COACH_EMAIL = "unverified.coach@test.com"
+UNVERIFIED_COACH_PASSWORD = "CoachVerify123!"
 
 
 def _sync_database_url() -> str:
@@ -153,6 +162,8 @@ def mock_third_party_services() -> Generator[dict[str, Any], None, None]:
         patch("app.core.email.SendGridAPIClient") as sendgrid_cls,
         patch("app.core.email.send_email", return_value=None) as send_email,
         patch("app.core.email.send_password_reset_email", return_value=None),
+        patch("app.core.email.send_verification_email", return_value=None),
+        patch("app.services.email_verification.send_verification_email", return_value=None),
         patch("app.services.stripe_client.stripe") as stripe_mod,
     ):
         sendgrid_cls.return_value.send.return_value = sendgrid_response
@@ -191,6 +202,7 @@ def seeded_users(password_hashes: dict[str, str]) -> dict[str, dict[str, Any]]:
     regular = User(
         id=REGULAR_USER_ID,
         email=REGULAR_EMAIL,
+        username="regularcoach",
         encrypted_password=password_hashes[REGULAR_PASSWORD],
         role=UserRole.COACH.value,
         first_name="Regular",
@@ -198,6 +210,7 @@ def seeded_users(password_hashes: dict[str, str]) -> dict[str, dict[str, Any]]:
         is_super_admin=False,
         is_active=True,
         org_id=SEEDED_ORG_ID,
+        email_confirmed_at=datetime.now(timezone.utc),
     )
     viewer = User(
         id=VIEWER_ID,
@@ -288,6 +301,56 @@ def viewer_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
 def inactive_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
     """Authorization header for the deactivated fixture user."""
     return auth_headers(seeded_users["inactive"]["token"])
+
+
+@pytest.fixture
+def unverified_coach_user(password_hashes: dict[str, str]) -> User:
+    """Coach awaiting email verification with a known OTP hash."""
+    now = datetime.now(timezone.utc)
+    with Session(sync_engine) as session:
+        existing = session.get(User, UNVERIFIED_COACH_ID)
+        if existing is None:
+            user = User(
+                id=UNVERIFIED_COACH_ID,
+                email=UNVERIFIED_COACH_EMAIL,
+                username="unverifiedcoach",
+                encrypted_password=hash_password(UNVERIFIED_COACH_PASSWORD),
+                role=UserRole.COACH.value,
+                first_name="Unverified",
+                last_name="Coach",
+                is_super_admin=False,
+                is_active=True,
+                org_id=None,
+                email_confirmed_at=None,
+                confirmation_token=hash_otp("123456"),
+                confirmation_sent_at=now,
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            return user
+
+        existing.email = UNVERIFIED_COACH_EMAIL
+        existing.username = "unverifiedcoach"
+        existing.encrypted_password = hash_password(UNVERIFIED_COACH_PASSWORD)
+        existing.email_confirmed_at = None
+        existing.confirmation_token = hash_otp("123456")
+        existing.confirmation_sent_at = now
+        existing.is_active = True
+        existing.deleted_at = None
+        session.commit()
+        session.refresh(existing)
+        return existing
+
+
+@pytest.fixture
+def unverified_coach_headers(unverified_coach_user: User) -> dict[str, str]:
+    """JWT auth header for the unverified coach fixture."""
+    token = create_access_token(
+        unverified_coach_user.id,
+        extra_claims={"email": unverified_coach_user.email, "role": unverified_coach_user.role},
+    )
+    return auth_headers(token)
 
 
 @pytest.fixture
