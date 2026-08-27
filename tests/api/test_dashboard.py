@@ -52,6 +52,22 @@ def _truncate_subscription_tables() -> None:
         )
 
 
+def _persist_plans_then_subscriptions(
+    plans: list[SubscriptionPlan],
+    subscriptions: list[StripeSubscription],
+) -> None:
+    """Insert plans first so stripe_subscriptions_staging.plan_id FK is satisfied.
+
+    SubscriptionPlan and StripeSubscription have no ORM relationship(), so
+    add_all() + commit can flush child rows before parents.
+    """
+    with Session(sync_engine) as session:
+        session.add_all(plans)
+        session.flush()
+        session.add_all(subscriptions)
+        session.commit()
+
+
 def test_dashboard_loads_successfully_after_super_admin_login(
     client: TestClient, admin_headers: dict[str, str], seeded_users: dict
 ) -> None:
@@ -340,11 +356,10 @@ def test_get_dashboard_active_subscription_and_revenue(
         status=SubscriptionStatus.CANCELED.value,
     )
 
-    with Session(sync_engine) as session:
-        session.add_all(
-            [monthly_plan, yearly_plan, active_monthly, active_yearly, canceled]
-        )
-        session.commit()
+    _persist_plans_then_subscriptions(
+        [monthly_plan, yearly_plan],
+        [active_monthly, active_yearly, canceled],
+    )
 
     response = client.get(DASHBOARD_BASE, headers=admin_headers)
     assert response.status_code == 200
@@ -391,9 +406,7 @@ def test_get_dashboard_past_due_counts_unpaid_does_not(
         stripe_price_id="price_dash_pastdue",
         status=SubscriptionStatus.UNPAID.value,
     )
-    with Session(sync_engine) as session:
-        session.add_all([plan, past_due, unpaid])
-        session.commit()
+    _persist_plans_then_subscriptions([plan], [past_due, unpaid])
 
     response = client.get(DASHBOARD_BASE, headers=admin_headers)
     assert response.status_code == 200
