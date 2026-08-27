@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from tests.conftest import SEEDED_PLAYER_JANE_ID, STATISTICS_BASE, seed_leaderboard_data
+from tests.conftest import SEEDED_PLAYER_JANE_ID, STATISTICS_BASE
 
 
 def test_get_player_statistics_200(

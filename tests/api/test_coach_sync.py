@@ -17,7 +17,6 @@ from tests.conftest import (
     SEEDED_ORG_ID,
     SEEDED_PLAYER_ID,
     sync_engine,
-    viewer_headers,
 )
 
 

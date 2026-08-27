@@ -22,7 +22,14 @@ from tests.api.test_dashboard import (
     _persist_plans_then_subscriptions,
     _truncate_subscription_tables,
 )
-from tests.conftest import VIEWER_EMAIL, VIEWER_ID, REGULAR_EMAIL, REGULAR_USER_ID, SUBSCRIPTION_BASE, sync_engine
+from tests.conftest import (
+    REGULAR_EMAIL,
+    REGULAR_USER_ID,
+    SUBSCRIPTION_BASE,
+    VIEWER_EMAIL,
+    VIEWER_ID,
+    sync_engine,
+)
 
 PRO_FEATURES = [
     "Unlimited Drill Library Access",

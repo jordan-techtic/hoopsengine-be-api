@@ -8,16 +8,14 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.services.coach_home import NOTIFICATIONS_META_KEY
 from app.services import account_settings
+from app.services.coach_home import NOTIFICATIONS_META_KEY
 from tests.conftest import (
     COACH_HOME_BASE,
     HOME_BASE,
     REGULAR_USER_ID,
     SEEDED_ORG_ID,
-    seed_session_summary_data,
     sync_engine,
-    viewer_headers,
 )
 
 

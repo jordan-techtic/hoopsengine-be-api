@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from tests.conftest import COACH_SYNC_ACTIVITY_BASE, REGULAR_USER_ID, viewer_headers
+from tests.conftest import COACH_SYNC_ACTIVITY_BASE, REGULAR_USER_ID
 
 
 def test_get_sync_activity_200(
