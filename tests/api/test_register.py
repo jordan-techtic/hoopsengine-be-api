@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from tests.conftest import REGISTER_BASE, REGULAR_EMAIL
-
-VALID_PASSWORD = "StrongPassword123!"
+from tests.conftest import (
+    REGISTER_BASE,
+    REGULAR_EMAIL,
+    TEST_MISMATCH_PASSWORD,
+    TEST_VALID_PASSWORD,
+    TEST_WEAK_PASSWORD_LONG,
+)
 
 
 def _register_payload(**overrides: object) -> dict[str, object]:
@@ -15,8 +19,8 @@ def _register_payload(**overrides: object) -> dict[str, object]:
         "last_name": "Doe",
         "username": "newcoach",
         "email": "new.coach@example.com",
-        "password": VALID_PASSWORD,
-        "confirm_password": VALID_PASSWORD,
+        "password": TEST_VALID_PASSWORD,
+        "confirm_password": TEST_VALID_PASSWORD,
         "terms_accepted": True,
         "phone": "+1-555-0100",
     }
@@ -86,7 +90,10 @@ def test_register_duplicate_username_409(client: TestClient, seeded_users: dict)
 def test_register_weak_password_400(client: TestClient, seeded_users: dict) -> None:
     response = client.post(
         REGISTER_BASE,
-        json=_register_payload(password="password123", confirm_password="password123"),
+        json=_register_payload(
+            password=TEST_WEAK_PASSWORD_LONG,
+            confirm_password=TEST_WEAK_PASSWORD_LONG,
+        ),
     )
     assert response.status_code == 400
     body = response.json()
@@ -114,7 +121,7 @@ def test_register_missing_required_field_422(client: TestClient, seeded_users: d
 def test_register_password_mismatch_400(client: TestClient, seeded_users: dict) -> None:
     response = client.post(
         REGISTER_BASE,
-        json=_register_payload(confirm_password="OtherPassword123!"),
+        json=_register_payload(confirm_password=TEST_MISMATCH_PASSWORD),
     )
     assert response.status_code == 400
     body = response.json()

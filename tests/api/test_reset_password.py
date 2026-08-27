@@ -7,18 +7,24 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.models.user import User
-from tests.conftest import REGULAR_PASSWORD, REGULAR_USER_ID, sync_engine
+from tests.conftest import (
+    REGULAR_PASSWORD,
+    REGULAR_USER_ID,
+    TEST_NEW_PASSWORD,
+    TEST_WEAK_PASSWORD,
+    TEST_WEAK_PASSWORD_LONG,
+    TEST_DIFFERENT_PASSWORD,
+    sync_engine,
+)
 
 RESET_PASSWORD_BASE = "/api/v1/reset-password"
 VALIDATE_PASSWORD_BASE = "/api/v1/reset-password/validate"
 
-NEW_PASSWORD = "UpdatedCoach456!"
-
 
 def _reset_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
-        "new_password": NEW_PASSWORD,
-        "confirm_password": NEW_PASSWORD,
+        "new_password": TEST_NEW_PASSWORD,
+        "confirm_password": TEST_NEW_PASSWORD,
         "phone": "+1-555-0100",
     }
     payload.update(overrides)
@@ -71,7 +77,7 @@ def test_reset_password_weak_password_400(
     response = client.post(
         RESET_PASSWORD_BASE,
         headers=user_headers,
-        json=_reset_payload(new_password="weakpass", confirm_password="weakpass"),
+        json=_reset_payload(new_password=TEST_WEAK_PASSWORD, confirm_password=TEST_WEAK_PASSWORD),
     )
     assert response.status_code == 400
     body = response.json()
@@ -85,7 +91,7 @@ def test_reset_password_mismatch_400(
     response = client.post(
         RESET_PASSWORD_BASE,
         headers=user_headers,
-        json=_reset_payload(confirm_password="Different456!"),
+        json=_reset_payload(confirm_password=TEST_DIFFERENT_PASSWORD),
     )
     assert response.status_code == 400
     body = response.json()
@@ -130,7 +136,7 @@ def test_validate_password_strength_valid_200(
     response = client.get(
         VALIDATE_PASSWORD_BASE,
         headers=user_headers,
-        params={"password": NEW_PASSWORD, "phone": "+1-555-0100"},
+        params={"password": TEST_NEW_PASSWORD, "phone": "+1-555-0100"},
     )
     assert response.status_code == 200
     body = response.json()
@@ -152,7 +158,7 @@ def test_validate_password_strength_invalid_200(
     response = client.get(
         VALIDATE_PASSWORD_BASE,
         headers=user_headers,
-        params={"password": "password"},
+        params={"password": TEST_WEAK_PASSWORD_LONG},
     )
     assert response.status_code == 200
     body = response.json()
@@ -171,7 +177,7 @@ def test_validate_password_strength_empty_400(
 
 
 def test_validate_password_strength_unauthorized_403(client: TestClient) -> None:
-    response = client.get(VALIDATE_PASSWORD_BASE, params={"password": NEW_PASSWORD})
+    response = client.get(VALIDATE_PASSWORD_BASE, params={"password": TEST_NEW_PASSWORD})
     assert response.status_code == 403
     body = response.json()
     assert body["error"]["code"] == "FORBIDDEN"

@@ -12,15 +12,21 @@ from app.core.security import hash_password, verify_password
 from app.models.enums import UserRole
 from app.models.user import User
 from app.services import password_reset as password_reset_service
-
-CURRENT_PASSWORD = "CurrentPass123!"
+from tests.conftest import (
+    TEST_CURRENT_PASSWORD,
+    TEST_NEW_SECURE_PASSWORD,
+    TEST_DIFFERENT_PASSWORD,
+    TEST_WEAK_PASSWORD,
+    TEST_WEAK_PASSWORD_LONG,
+    TEST_VALID_COMPLEX_PASSWORD,
+)
 
 
 def _user(*, encrypted_password: str | None = None) -> User:
     return User(
         id=MagicMock(),
         email="coach@test.com",
-        encrypted_password=encrypted_password or hash_password(CURRENT_PASSWORD),
+        encrypted_password=encrypted_password or hash_password(TEST_CURRENT_PASSWORD),
         role=UserRole.COACH.value,
         is_active=True,
         created_at=datetime.now(timezone.utc),
@@ -38,12 +44,12 @@ async def test_reset_password_success() -> None:
     result = await password_reset_service.reset_authenticated_password(
         db,
         user=user,
-        new_password="NewSecure456!",
-        confirm_password="NewSecure456!",
+        new_password=TEST_NEW_SECURE_PASSWORD,
+        confirm_password=TEST_NEW_SECURE_PASSWORD,
     )
 
-    assert verify_password("NewSecure456!", result.encrypted_password) is True
-    assert verify_password(CURRENT_PASSWORD, result.encrypted_password) is False
+    assert verify_password(TEST_NEW_SECURE_PASSWORD, result.encrypted_password) is True
+    assert verify_password(TEST_CURRENT_PASSWORD, result.encrypted_password) is False
     db.commit.assert_awaited_once()
 
 
@@ -57,7 +63,7 @@ async def test_reset_password_rejects_empty_new_password() -> None:
             db,
             user=user,
             new_password="",
-            confirm_password="NewSecure456!",
+            confirm_password=TEST_NEW_SECURE_PASSWORD,
         )
 
     assert exc_info.value.status_code == 400
@@ -73,8 +79,8 @@ async def test_reset_password_rejects_mismatch() -> None:
         await password_reset_service.reset_authenticated_password(
             db,
             user=user,
-            new_password="NewSecure456!",
-            confirm_password="Different456!",
+            new_password=TEST_NEW_SECURE_PASSWORD,
+            confirm_password=TEST_DIFFERENT_PASSWORD,
         )
 
     assert exc_info.value.status_code == 400
@@ -90,8 +96,8 @@ async def test_reset_password_rejects_weak_password() -> None:
         await password_reset_service.reset_authenticated_password(
             db,
             user=user,
-            new_password="weakpass",
-            confirm_password="weakpass",
+            new_password=TEST_WEAK_PASSWORD,
+            confirm_password=TEST_WEAK_PASSWORD,
         )
 
     assert exc_info.value.status_code == 400
@@ -107,8 +113,8 @@ async def test_reset_password_rejects_same_password() -> None:
         await password_reset_service.reset_authenticated_password(
             db,
             user=user,
-            new_password=CURRENT_PASSWORD,
-            confirm_password=CURRENT_PASSWORD,
+            new_password=TEST_CURRENT_PASSWORD,
+            confirm_password=TEST_CURRENT_PASSWORD,
         )
 
     assert exc_info.value.status_code == 409
@@ -123,7 +129,9 @@ def test_validate_password_for_reset_requires_value() -> None:
 
 
 def test_validate_password_for_reset_returns_requirements() -> None:
-    requirements, is_valid = password_reset_service.validate_password_for_reset("Coach@123")
+    requirements, is_valid = password_reset_service.validate_password_for_reset(
+        TEST_VALID_COMPLEX_PASSWORD
+    )
     assert is_valid is True
     assert requirements["min_length"] is True
     assert requirements["has_number"] is True
@@ -131,7 +139,9 @@ def test_validate_password_for_reset_returns_requirements() -> None:
 
 
 def test_validate_password_for_reset_detects_weak_password() -> None:
-    requirements, is_valid = password_reset_service.validate_password_for_reset("password")
+    requirements, is_valid = password_reset_service.validate_password_for_reset(
+        TEST_WEAK_PASSWORD_LONG
+    )
     assert is_valid is False
     assert requirements["has_number"] is False
     assert requirements["has_special"] is False

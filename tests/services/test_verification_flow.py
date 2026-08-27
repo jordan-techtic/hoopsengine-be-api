@@ -11,13 +11,14 @@ from app.core.exceptions import AppException
 from app.models.enums import UserRole
 from app.models.user import User
 from app.services import verification_flow as verification_flow_service
+from tests.conftest import TEST_PLACEHOLDER_HASH
 
 
 def _unverified_user(*, with_otp: bool = True) -> User:
     return User(
         id=MagicMock(),
         email="coach@test.com",
-        encrypted_password="hashed",
+        encrypted_password=TEST_PLACEHOLDER_HASH,
         role=UserRole.COACH.value,
         is_active=True,
         email_confirmed_at=None,

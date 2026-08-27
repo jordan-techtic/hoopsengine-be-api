@@ -13,6 +13,12 @@ from app.core.exceptions import AppException
 from app.models.enums import UserRole
 from app.models.user import User
 from app.services.registration import register_coach, validate_username
+from tests.conftest import (
+    TEST_MISMATCH_CONFIRM_PASSWORD,
+    TEST_PLACEHOLDER_HASH,
+    TEST_VALID_PASSWORD,
+    TEST_WEAK_PASSWORD_LONG,
+)
 
 
 def _valid_kwargs(**overrides: object) -> dict[str, object]:
@@ -21,8 +27,8 @@ def _valid_kwargs(**overrides: object) -> dict[str, object]:
         "last_name": "Doe",
         "username": "johndoe",
         "email": "john.doe@example.com",
-        "password": "StrongPassword123!",
-        "confirm_password": "StrongPassword123!",
+        "password": TEST_VALID_PASSWORD,
+        "confirm_password": TEST_VALID_PASSWORD,
         "terms_accepted": True,
         "phone": "+1-555-0100",
     }
@@ -57,7 +63,7 @@ def test_register_rejects_password_mismatch() -> None:
         db = AsyncMock()
         await register_coach(
             db,
-            **_valid_kwargs(confirm_password="DifferentPassword123!"),
+            **_valid_kwargs(confirm_password=TEST_MISMATCH_CONFIRM_PASSWORD),
         )
 
     with pytest.raises(AppException) as exc_info:
@@ -71,7 +77,10 @@ def test_register_rejects_weak_password() -> None:
         db = AsyncMock()
         await register_coach(
             db,
-            **_valid_kwargs(password="password123", confirm_password="password123"),
+            **_valid_kwargs(
+                password=TEST_WEAK_PASSWORD_LONG,
+                confirm_password=TEST_WEAK_PASSWORD_LONG,
+            ),
         )
 
     with pytest.raises(AppException) as exc_info:
@@ -102,7 +111,7 @@ def test_register_duplicate_email_raises_409(
     mock_get_email.return_value = User(
         id=uuid4(),
         email="john.doe@example.com",
-        encrypted_password="hashed",
+        encrypted_password=TEST_PLACEHOLDER_HASH,
         role=UserRole.COACH.value,
         is_super_admin=False,
         is_active=True,
@@ -133,7 +142,7 @@ def test_register_duplicate_username_raises_409(
         id=uuid4(),
         email="other@example.com",
         username="johndoe",
-        encrypted_password="hashed",
+        encrypted_password=TEST_PLACEHOLDER_HASH,
         role=UserRole.COACH.value,
         is_super_admin=False,
         is_active=True,

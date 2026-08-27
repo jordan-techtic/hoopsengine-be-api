@@ -10,6 +10,7 @@ from tests.conftest import (
     COACH_LOGIN_BASE,
     REGULAR_EMAIL,
     REGULAR_PASSWORD,
+    TEST_INVALID_PASSWORD,
     UNVERIFIED_COACH_EMAIL,
     UNVERIFIED_COACH_PASSWORD,
 )
@@ -61,7 +62,7 @@ def test_coach_login_invalid_credentials_401(
 ) -> None:
     response = client.post(
         COACH_LOGIN_BASE,
-        json=_login_payload(password="WrongPassword123!"),
+        json=_login_payload(password=TEST_INVALID_PASSWORD),
     )
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
