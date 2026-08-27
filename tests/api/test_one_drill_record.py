@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import DRILLS_BASE, REGULAR_USER_ID, SEEDED_FIELD_DRILL_ID, SESSIONS_BASE
+from tests.conftest import (
+    DRILLS_BASE,
+    REGULAR_USER_ID,
+    SEEDED_FIELD_DRILL_ID,
+    SESSIONS_BASE,
+)
 
 RECORD_URL = f"{SESSIONS_BASE}/record"
 

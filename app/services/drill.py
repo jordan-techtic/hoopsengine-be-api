@@ -13,7 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException
 from app.models.user import User
-from app.schemas.drill import DrillContinueRequest, DrillCreateRequest, DrillUpdateRequest
+from app.schemas.drill import (
+    DrillContinueRequest,
+    DrillCreateRequest,
+    DrillUpdateRequest,
+)
 from app.services import client_db, one_drill_flow
 
 logger = logging.getLogger(__name__)

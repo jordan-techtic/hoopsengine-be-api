@@ -24,6 +24,7 @@ from app.schemas.session_record import (
     SessionRecordUpdateRequest,
 )
 from app.services import client_db, coach_identity
+
 ONE_DRILL_QUICK_RECORD_KEY = "one_drill_quick_record"
 
 logger = logging.getLogger(__name__)

@@ -5,7 +5,11 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import COACH_DRILLS_BASE, SEEDED_PLAYER_BOB_ID, SEEDED_PLAYER_JANE_ID
+from tests.conftest import (
+    COACH_DRILLS_BASE,
+    SEEDED_PLAYER_BOB_ID,
+    SEEDED_PLAYER_JANE_ID,
+)
 
 SEARCH_URL = f"{COACH_DRILLS_BASE}/search"
 SELECT_URL = f"{COACH_DRILLS_BASE}/select_player"

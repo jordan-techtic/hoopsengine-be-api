@@ -11,18 +11,18 @@ from app.api.deps import get_current_coach
 from app.core.database import get_db
 from app.models.user import User
 from app.schemas.errors import openapi_error, openapi_error_examples
+from app.schemas.one_drill_session import (
+    OneDrillSessionCreateRequest,
+    OneDrillSessionResponse,
+    OneDrillSessionsSummaryResponse,
+    OneDrillSessionUpdateRequest,
+)
 from app.schemas.session_record import (
     SessionModeDetailResponse,
     SessionModesResponse,
     SessionRecordCreateRequest,
     SessionRecordResponse,
     SessionRecordUpdateRequest,
-)
-from app.schemas.one_drill_session import (
-    OneDrillSessionCreateRequest,
-    OneDrillSessionResponse,
-    OneDrillSessionUpdateRequest,
-    OneDrillSessionsSummaryResponse,
 )
 from app.schemas.session_summary import (
     SessionActionRequest,

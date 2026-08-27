@@ -16,9 +16,16 @@ from app.core.config import settings
 from app.core.exceptions import AppException
 from app.models.enums import SessionMode, SessionStatus
 from app.models.user import User
-from app.schemas.one_drill_session import OneDrillSessionCreateRequest, OneDrillSessionUpdateRequest
+from app.schemas.one_drill_session import (
+    OneDrillSessionCreateRequest,
+    OneDrillSessionUpdateRequest,
+)
 from app.services import client_db, coach_identity
-from app.services.one_drill_flow import ONE_DRILL_FLOW_KEY, _json_dumps, _merge_flow_details
+from app.services.one_drill_flow import (
+    ONE_DRILL_FLOW_KEY,
+    _json_dumps,
+    _merge_flow_details,
+)
 
 logger = logging.getLogger(__name__)
 
