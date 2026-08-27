@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from app.core.tables import (
     STRIPE_SUBSCRIPTIONS_TABLE,
     SUBSCRIPTION_PLANS_TABLE,
+    SUPPORT_REQUESTS_TABLE,
 )
 
 logger = logging.getLogger(__name__)
@@ -332,6 +333,25 @@ async def migrate_users_staging_to_users(connection: AsyncConnection) -> None:
             logger.debug("Skipped rename op: %s", statement)
 
 
+async def migrate_support_request_phone_column(connection: AsyncConnection) -> None:
+    """Add phone to support_requests when the table predates the column."""
+    if not await _table_exists(connection, SUPPORT_REQUESTS_TABLE):
+        return
+
+    if not await _column_exists(
+        connection,
+        table_name=SUPPORT_REQUESTS_TABLE,
+        column_name="phone",
+    ):
+        await connection.execute(
+            text(
+                f"ALTER TABLE {SUPPORT_REQUESTS_TABLE} "
+                "ADD COLUMN phone VARCHAR(32) NULL"
+            )
+        )
+        logger.info("Added phone to %s", SUPPORT_REQUESTS_TABLE)
+
+
 async def migrate_organization_contact_columns(connection: AsyncConnection) -> None:
     """Add phone_number and address to client-domain organizations if missing."""
     if not await _table_exists(connection, "organizations"):
@@ -365,3 +385,4 @@ async def run_subscription_schema_migrations(connection: AsyncConnection) -> Non
     await migrate_plan_archive_columns(connection)
     await migrate_offline_sync_column(connection)
     await migrate_organization_contact_columns(connection)
+    await migrate_support_request_phone_column(connection)

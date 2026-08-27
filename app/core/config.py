@@ -46,5 +46,23 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str = ""
     STRIPE_PRICE_MIGRATION_PRORATION_BEHAVIOR: str = "none"
 
+    SUPPORT_CONTACT_EMAIL: str = "support@hoopsengine.com"
+    SUPPORT_CONTACT_PHONE: str = "+15558392001"
+    SUPPORT_INQUIRY_SUBJECTS: list[str] = [
+        "Technical Issue",
+        "Billing Question",
+        "Account Help",
+        "Feature Request",
+        "Other",
+    ]
+    SUPPORT_MESSAGE_MAX_LENGTH: int = 500
+    SUPPORT_DUPLICATE_WINDOW_SECONDS: int = 300
+    HELP_SUPPORT_ARTICLES: list[dict[str, str]] = []
+    FAQ_INTRO_TITLE: str = "How can we help you?"
+    FAQ_INTRO_DESCRIPTION: str = (
+        "Find quick answers to common questions about managing drills, "
+        "subscriptions, and team sessions."
+    )
+
 
 settings = Settings()

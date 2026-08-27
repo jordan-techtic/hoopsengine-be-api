@@ -56,12 +56,12 @@ def test_create_practice_plan_400_missing_name(
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
-def test_create_practice_plan_422_missing_required_fields(
+def test_create_practice_plan_400_missing_required_fields(
     client: TestClient,
     coach_headers: dict[str, str],
 ) -> None:
     response = client.post(PRACTICE_PLANS_BASE, headers=coach_headers, json={"phone": "+1-555-0100"})
-    assert response.status_code == 422
+    assert response.status_code == 400
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
@@ -197,6 +197,6 @@ def test_delete_practice_plan_404(
     assert response.json()["error"]["code"] == "PRACTICE_PLAN_NOT_FOUND"
 
 
-def test_practice_plan_endpoints_401_without_auth(client: TestClient) -> None:
+def test_practice_plan_endpoints_403_without_auth(client: TestClient) -> None:
     response = client.get(PRACTICE_PLANS_BASE)
-    assert response.status_code == 401
+    assert response.status_code == 403

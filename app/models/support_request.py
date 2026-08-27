@@ -26,6 +26,7 @@ class SupportRequest(Base):
     attachment_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     attachment_content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
     attachment_size_bytes: Mapped[int | None] = mapped_column(nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
