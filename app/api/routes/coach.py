@@ -17,7 +17,7 @@ from app.schemas.auth import (
     CoachLoginResponse,
     ContinueVerificationResponse,
 )
-from app.schemas.errors import openapi_error
+from app.schemas.errors import openapi_error, openapi_error_examples
 from app.services import auth as auth_service
 from app.services import verification_flow as verification_flow_service
 
@@ -93,16 +93,30 @@ CANCEL_VALIDATION_ERROR_RESPONSES = {
 }
 
 CONFLICT_ERROR_RESPONSES = {
-    409: openapi_error(
+    409: openapi_error_examples(
         "Verification already completed or not in progress",
-        code="VERIFICATION_NOT_IN_PROGRESS",
-        message="No verification process is currently in progress",
-        details=[
-            {
-                "field": "cancel_verification",
-                "message": "Verification is not in progress or has already been cancelled",
-            }
-        ],
+        examples={
+            "verification_already_completed": {
+                "code": "VERIFICATION_ALREADY_COMPLETED",
+                "message": "Your email has already been verified",
+                "details": [
+                    {
+                        "field": "email",
+                        "message": "Verification has already been completed",
+                    }
+                ],
+            },
+            "verification_not_in_progress": {
+                "code": "VERIFICATION_NOT_IN_PROGRESS",
+                "message": "No verification process is currently in progress",
+                "details": [
+                    {
+                        "field": "cancel_verification",
+                        "message": "Verification is not in progress or has already been cancelled",
+                    }
+                ],
+            },
+        },
     ),
 }
 

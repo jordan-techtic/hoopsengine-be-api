@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.schemas.auth import RegisterRequest, RegisterResponse
-from app.schemas.errors import openapi_error
+from app.schemas.errors import openapi_error, openapi_error_examples
 from app.services import registration as registration_service
 
 router = APIRouter(tags=["auth"])
@@ -29,31 +29,31 @@ VALIDATION_ERROR_RESPONSE = {
     ),
 }
 
-EMAIL_CONFLICT_RESPONSE = {
-    409: openapi_error(
-        "Email already registered",
-        code="EMAIL_ALREADY_IN_USE",
-        message="This email is already in use by another account",
-        details=[
-            {
-                "field": "email",
+CONFLICT_RESPONSE = {
+    409: openapi_error_examples(
+        "Email or username already registered by another account",
+        examples={
+            "email_already_in_use": {
+                "code": "EMAIL_ALREADY_IN_USE",
                 "message": "This email is already in use by another account",
-            }
-        ],
-    ),
-}
-
-USERNAME_CONFLICT_RESPONSE = {
-    409: openapi_error(
-        "Username already taken",
-        code="USERNAME_ALREADY_IN_USE",
-        message="This username is already in use by another account",
-        details=[
-            {
-                "field": "username",
+                "details": [
+                    {
+                        "field": "email",
+                        "message": "This email is already in use by another account",
+                    }
+                ],
+            },
+            "username_already_in_use": {
+                "code": "USERNAME_ALREADY_IN_USE",
                 "message": "This username is already in use by another account",
-            }
-        ],
+                "details": [
+                    {
+                        "field": "username",
+                        "message": "This username is already in use by another account",
+                    }
+                ],
+            },
+        },
     ),
 }
 
@@ -77,8 +77,7 @@ USERNAME_CONFLICT_RESPONSE = {
     ),
     responses={
         **VALIDATION_ERROR_RESPONSE,
-        **EMAIL_CONFLICT_RESPONSE,
-        **USERNAME_CONFLICT_RESPONSE,
+        **CONFLICT_RESPONSE,
         500: openapi_error(
             "Unexpected server error",
             code="INTERNAL_SERVER_ERROR",

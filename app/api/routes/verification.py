@@ -13,7 +13,7 @@ from app.schemas.auth import (
     VerifyEmailRequest,
     VerifyEmailResponse,
 )
-from app.schemas.errors import openapi_error
+from app.schemas.errors import openapi_error, openapi_error_examples
 from app.services import email_verification as email_verification_service
 
 router = APIRouter(tags=["auth"])
@@ -31,11 +31,40 @@ AUTH_ERROR_RESPONSES = {
 }
 
 VALIDATION_ERROR_RESPONSES = {
-    400: openapi_error(
+    400: openapi_error_examples(
         "Invalid OTP, expired OTP, missing OTP, or unregistered email",
-        code="INVALID_OTP",
-        message="The verification code is incorrect",
-        details=[{"field": "otp_code", "message": "The verification code is incorrect"}],
+        examples={
+            "invalid_otp": {
+                "code": "INVALID_OTP",
+                "message": "The verification code is incorrect",
+                "details": [{"field": "otp_code", "message": "The verification code is incorrect"}],
+            },
+            "otp_expired": {
+                "code": "OTP_EXPIRED",
+                "message": "The verification code has expired. Please request a new code.",
+                "details": [
+                    {
+                        "field": "otp_code",
+                        "message": "The verification code has expired. Please request a new code.",
+                    }
+                ],
+            },
+            "missing_otp": {
+                "code": "VALIDATION_ERROR",
+                "message": "Verification code is required",
+                "details": [{"field": "otp_code", "message": "Verification code is required"}],
+            },
+            "email_not_registered": {
+                "code": "EMAIL_NOT_REGISTERED",
+                "message": "We couldn't find an account with that email address",
+                "details": [
+                    {
+                        "field": "email",
+                        "message": "We couldn't find an account with that email address",
+                    }
+                ],
+            },
+        },
     ),
     422: openapi_error(
         "Request validation failed (invalid email format or OTP pattern)",

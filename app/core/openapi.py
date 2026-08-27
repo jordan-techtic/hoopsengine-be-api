@@ -10,7 +10,24 @@ OPENAPI_TAGS = [
     },
     {
         "name": "auth",
-        "description": "Authentication endpoints for login and password reset.",
+        "description": (
+            "Coach authentication and signup flows: registration, email verification OTP, "
+            "and legacy admin login/password reset."
+        ),
+    },
+    {
+        "name": "coach-auth",
+        "description": (
+            "Coach login, forgot-password, and verification flow (cancel/continue) endpoints "
+            "for the Coach module mobile screens."
+        ),
+    },
+    {
+        "name": "reset-password",
+        "description": (
+            "Authenticated coach reset-password form and live password-strength validation "
+            "for the Reset Password UI."
+        ),
     },
     {
         "name": "support",
@@ -71,7 +88,7 @@ def _apply_bearer_auth(openapi_schema: dict) -> None:
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "JWT access token returned by `/api/v1/auth/login`.",
+        "description": "JWT access token returned by `POST /api/v1/coach/login` or `POST /api/v1/register`.",
     }
 
     http_bearer_keys = [
@@ -117,7 +134,7 @@ def setup_openapi(app: FastAPI) -> None:
             description=(
                 "Hoops Engine backend API.\n\n"
                 "Use **Swagger UI** at `/docs` to explore and test endpoints.\n"
-                "After logging in, click **Authorize** and paste the JWT access token.\n\n"
+                "After coach login or registration, click **Authorize** and paste the JWT access token.\n\n"
                 "Super Admin Manage Organizations, Manage Users, and Dashboard endpoints "
                 "require a super-admin JWT (`is_super_admin=true`)."
             ),

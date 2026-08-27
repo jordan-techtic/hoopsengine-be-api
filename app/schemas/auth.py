@@ -55,14 +55,16 @@ class CoachLoginRequest(BaseModel):
 
     model_config = ConfigDict(json_schema_extra={"example": COACH_LOGIN_REQUEST_EXAMPLE})
 
-    email: str | None = Field(
-        default=None,
-        description="Coach email address or username",
-        examples=["john.doe@example.com"],
+    email: str = Field(
+        ...,
+        min_length=1,
+        description="Coach email address or username (required)",
+        examples=["john.doe@example.com", "johndoe"],
     )
-    password: str | None = Field(
-        default=None,
-        description="Account password",
+    password: str = Field(
+        ...,
+        min_length=1,
+        description="Account password (required)",
         examples=["StrongPassword123!"],
     )
     remember_me: bool = Field(
@@ -326,6 +328,7 @@ class RegisterResponse(BaseModel):
                 "name": "John Doe",
                 "username": "johndoe",
                 "email": "john.doe@example.com",
+                "phone": "+1-555-0100",
                 "address": None,
             }
         }
@@ -355,6 +358,11 @@ class RegisterResponse(BaseModel):
     name: str = Field(description="Display name derived from first and last name")
     username: str = Field(description="Registered username")
     email: EmailStr = Field(description="Registered email address")
+    phone: str | None = Field(
+        default=None,
+        description="Optional phone metadata from the registration form status bar",
+        examples=["+1-555-0100"],
+    )
     address: str | None = Field(
         default=None,
         description="Optional address (not collected at registration)",
@@ -380,7 +388,8 @@ class VerifyEmailRequest(BaseModel):
 
     otp_code: str | None = Field(
         default=None,
-        description="Six-digit verification code sent to the user's email",
+        pattern=r"^\d{6}$",
+        description="Six-digit verification code sent to the user's email (exactly 6 digits when provided)",
         examples=["123456"],
     )
     email: EmailStr | None = Field(
@@ -638,134 +647,17 @@ class ResetPasswordFormRequest(BaseModel):
 
     model_config = ConfigDict(json_schema_extra={"example": RESET_PASSWORD_FORM_REQUEST_EXAMPLE})
 
-    new_password: str | None = Field(
-        default=None,
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        max_length=72,
         description="New account password (minimum 8 characters with number and special character)",
         examples=["StrongPassword123!"],
     )
-    confirm_password: str | None = Field(
-        default=None,
-        description="Confirmation of the new password; must match new_password",
-        examples=["StrongPassword123!"],
-    )
-    phone: str | None = Field(
-        default=None,
-        description="Optional phone metadata from the status bar",
-        examples=["+1-555-0100"],
-    )
-
-
-class ResetPasswordFormResponse(BaseModel):
-    """Successful authenticated password reset response."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "success": True,
-                "message": "Password has been reset successfully.",
-                "status": "password_reset",
-                "description": "Your new password is now active. Use it the next time you sign in.",
-                "link": "http://localhost:3000/coach/login",
-                "error": None,
-                "id": "11111111-2222-3333-4444-555555555555",
-                "password": None,
-            }
-        }
-    )
-
-    success: bool = Field(default=True, description="Always true on successful password reset")
-    message: str = Field(description="Human-readable success message for the UI")
-    status: str = Field(default="password_reset", description="Outcome status after reset")
-    description: str | None = Field(
-        default=None,
-        description="Instructional text about the completed password reset",
-    )
-    link: str | None = Field(
-        default=None,
-        description="Navigation target after successful reset (e.g. login screen)",
-    )
-    error: None = Field(default=None, description="Always null on success")
-    id: UUID = Field(description="User UUID whose password was reset")
-    password: None = Field(default=None, description="Always null on success (password is write-only)")
-
-
-class ValidatePasswordStrengthResponse(BaseModel):
-    """Password strength evaluation for the Reset Password strength indicator."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "success": True,
-                "message": "Password meets all strength requirements.",
-                "status": "valid",
-                "description": "Password strength requirements for a secure account.",
-                "link": None,
-                "error": None,
-                "id": "11111111-2222-3333-4444-555555555555",
-                "password": None,
-                "strength": "strong",
-                "requirements": {
-                    "min_length": True,
-                    "has_number": True,
-                    "has_special": True,
-                    "has_uppercase": True,
-                    "has_lowercase": True,
-                },
-                "phone": "+1-555-0100",
-            }
-        }
-    )
-
-    success: bool = Field(default=True, description="Always true when validation completes")
-    message: str = Field(description="Human-readable validation summary for the UI")
-    status: str = Field(description="Validation outcome: valid or invalid")
-    description: str | None = Field(
-        default=None,
-        description="Instructional text about password requirements",
-    )
-    link: str | None = Field(default=None, description="Optional navigation target")
-    error: None = Field(default=None, description="Always null on success")
-    id: UUID = Field(description="Authenticated user UUID")
-    password: None = Field(default=None, description="Always null (password is write-only)")
-    strength: str = Field(description="Overall strength label: weak, medium, or strong")
-    requirements: PasswordStrengthRequirements = Field(
-        description="Checklist of individual password requirements",
-    )
-    phone: str | None = Field(
-        default=None,
-        description="Optional phone metadata echoed from the status bar query parameter",
-    )
-
-
-RESET_PASSWORD_FORM_REQUEST_EXAMPLE = {
-    "new_password": "StrongPassword123!",
-    "confirm_password": "StrongPassword123!",
-    "phone": "+1-555-0100",
-}
-
-
-class PasswordStrengthRequirements(BaseModel):
-    """Checklist of password strength requirements for the Reset Password UI."""
-
-    min_length: bool = Field(description="At least 8 characters")
-    has_number: bool = Field(description="At least one number")
-    has_special: bool = Field(description="At least one special character")
-    has_uppercase: bool = Field(description="At least one uppercase letter")
-    has_lowercase: bool = Field(description="At least one lowercase letter")
-
-
-class ResetPasswordFormRequest(BaseModel):
-    """Payload for resetting the authenticated user's password."""
-
-    model_config = ConfigDict(json_schema_extra={"example": RESET_PASSWORD_FORM_REQUEST_EXAMPLE})
-
-    new_password: str | None = Field(
-        default=None,
-        description="New account password (minimum 8 characters with number and special character)",
-        examples=["StrongPassword123!"],
-    )
-    confirm_password: str | None = Field(
-        default=None,
+    confirm_password: str = Field(
+        ...,
+        min_length=8,
+        max_length=72,
         description="Confirmation of the new password; must match new_password",
         examples=["StrongPassword123!"],
     )
