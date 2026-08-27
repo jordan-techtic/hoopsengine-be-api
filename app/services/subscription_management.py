@@ -24,6 +24,17 @@ from app.services.subscription_plan import ACTIVE_SUBSCRIPTION_STATUSES
 
 logger = logging.getLogger(__name__)
 
+
+def _require_stripe_configured() -> None:
+    """Ensure Stripe billing is available before mutating subscriptions."""
+    if not stripe_client.stripe_configured():
+        raise AppException(
+            code="STRIPE_NOT_CONFIGURED",
+            message="Subscription billing is temporarily unavailable",
+            status_code=503,
+        )
+
+
 DEFAULT_FEATURES = [
     "Unlimited Drill Library Access",
     "Team Management (up to 5 teams)",
@@ -60,25 +71,42 @@ def _subscription_role_for_user(user: User) -> SubscriptionPlanRole:
 async def _get_target_plan(
     db: AsyncSession,
     *,
-    plan_id: UUID,
+    plan_id: UUID | None,
+    plan_name: str | None,
     role: SubscriptionPlanRole,
 ) -> SubscriptionPlan:
-    result = await db.execute(
-        select(SubscriptionPlan).where(
-            SubscriptionPlan.id == plan_id,
-            SubscriptionPlan.role == role.value,
-            SubscriptionPlan.deleted_at.is_(None),
-            SubscriptionPlan.archived_at.is_(None),
-            SubscriptionPlan.is_active.is_(True),
+    if plan_id is not None:
+        result = await db.execute(
+            select(SubscriptionPlan).where(
+                SubscriptionPlan.id == plan_id,
+                SubscriptionPlan.role == role.value,
+                SubscriptionPlan.deleted_at.is_(None),
+                SubscriptionPlan.archived_at.is_(None),
+                SubscriptionPlan.is_active.is_(True),
+            )
         )
-    )
-    plan = result.scalar_one_or_none()
+        plan = result.scalar_one_or_none()
+    elif plan_name and plan_name.strip():
+        result = await db.execute(
+            select(SubscriptionPlan).where(
+                SubscriptionPlan.name.ilike(plan_name.strip()),
+                SubscriptionPlan.role == role.value,
+                SubscriptionPlan.deleted_at.is_(None),
+                SubscriptionPlan.archived_at.is_(None),
+                SubscriptionPlan.is_active.is_(True),
+            )
+        )
+        plan = result.scalar_one_or_none()
+    else:
+        plan = None
+
     if plan is None:
+        field = "plan_id" if plan_id is not None else "full_name"
         raise AppException(
             code="VALIDATION_ERROR",
             message="Invalid subscription plan selected",
             status_code=400,
-            details=[{"field": "plan_id", "message": "Subscription plan is invalid or unavailable"}],
+            details=[{"field": field, "message": "Subscription plan is invalid or unavailable"}],
         )
     return plan
 
@@ -221,7 +249,26 @@ async def upgrade_subscription(
     """Upgrade the authenticated user's subscription to another active plan."""
     subscription = await _get_owned_subscription(db, user)
     role = _subscription_role_for_user(user)
-    target_plan = await _get_target_plan(db, plan_id=payload.plan_id, role=role)
+
+    if payload.plan_id is None and not (payload.full_name and payload.full_name.strip()):
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Plan selection is required",
+            status_code=400,
+            details=[
+                {
+                    "field": "full_name",
+                    "message": "Provide plan_id or full_name with the target plan name",
+                }
+            ],
+        )
+
+    target_plan = await _get_target_plan(
+        db,
+        plan_id=payload.plan_id,
+        plan_name=payload.full_name if payload.plan_id is None else None,
+        role=role,
+    )
 
     if subscription.plan_id == target_plan.id:
         raise AppException(
@@ -239,22 +286,22 @@ async def upgrade_subscription(
             details=[{"field": "plan_id", "message": "Your subscription is not active"}],
         )
 
-    if stripe_client.stripe_configured():
-        try:
-            stripe_client.upgrade_stripe_subscription_price(
-                stripe_subscription_id=subscription.stripe_subscription_id,
-                new_price_id=target_plan.stripe_price_id,
-            )
-        except Exception as exc:
-            logger.exception(
-                "Stripe upgrade failed for subscription %s",
-                subscription.stripe_subscription_id,
-            )
-            raise AppException(
-                code="SUBSCRIPTION_UPGRADE_FAILED",
-                message="Unable to upgrade subscription at this time",
-                status_code=400,
-            ) from exc
+    _require_stripe_configured()
+    try:
+        stripe_client.upgrade_stripe_subscription_price(
+            stripe_subscription_id=subscription.stripe_subscription_id,
+            new_price_id=target_plan.stripe_price_id,
+        )
+    except Exception as exc:
+        logger.exception(
+            "Stripe upgrade failed for subscription %s",
+            subscription.stripe_subscription_id,
+        )
+        raise AppException(
+            code="SUBSCRIPTION_UPGRADE_FAILED",
+            message="Unable to upgrade subscription at this time",
+            status_code=400,
+        ) from exc
 
     subscription.plan_id = target_plan.id
     subscription.stripe_price_id = target_plan.stripe_price_id
@@ -296,29 +343,29 @@ async def cancel_subscription(
             details=[{"field": "subscription", "message": "Subscription is already canceled"}],
         )
 
-    if stripe_client.stripe_configured():
-        try:
-            stripe_client.cancel_stripe_subscription(
-                stripe_subscription_id=subscription.stripe_subscription_id,
-                at_period_end=True,
-            )
-        except Exception as exc:
-            logger.exception(
-                "Stripe cancel failed for subscription %s",
-                subscription.stripe_subscription_id,
-            )
-            raise AppException(
-                code="SUBSCRIPTION_CANCEL_FAILED",
-                message="Unable to cancel subscription at this time",
-                status_code=400,
-            ) from exc
+    _require_stripe_configured()
+    try:
+        stripe_client.cancel_stripe_subscription(
+            stripe_subscription_id=subscription.stripe_subscription_id,
+            at_period_end=True,
+        )
+    except Exception as exc:
+        logger.exception(
+            "Stripe cancel failed for subscription %s",
+            subscription.stripe_subscription_id,
+        )
+        raise AppException(
+            code="SUBSCRIPTION_CANCEL_FAILED",
+            message="Unable to cancel subscription at this time",
+            status_code=400,
+        ) from exc
 
-    subscription.status = SubscriptionStatus.CANCELED.value
+    subscription.status = SubscriptionStatus.ACTIVE.value
     subscription.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(subscription)
 
-    logger.info("User %s canceled subscription %s", user.id, subscription.id)
+    logger.info("User %s scheduled subscription %s for cancellation", user.id, subscription.id)
     return await _build_subscription_response(
         db,
         subscription=subscription,

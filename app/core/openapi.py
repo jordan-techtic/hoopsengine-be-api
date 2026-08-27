@@ -113,6 +113,38 @@ OPENAPI_TAGS = [
         "description": "Public FAQs list for the Coach module help screen.",
     },
     {
+        "name": "coach-home",
+        "description": (
+            "Authenticated coach Home Screen aggregate endpoint: totals, recent activities, "
+            "and attendance records for the mobile home UI."
+        ),
+    },
+    {
+        "name": "coach-sync",
+        "description": (
+            "Coach Offline Sync flow: Sync Now, clear local cache metadata, and read/update "
+            "auto sync and sync frequency preferences."
+        ),
+    },
+    {
+        "name": "coach-sync-activity",
+        "description": (
+            "Coach Sync Activity screen: recent sync activity timeline and save updates."
+        ),
+    },
+    {
+        "name": "home",
+        "description": (
+            "Authenticated coach home split endpoints for activities, user info, and notifications."
+        ),
+    },
+    {
+        "name": "statistics",
+        "description": (
+            "Public player statistics for the View Statistics screen (no authentication required)."
+        ),
+    },
+    {
         "name": "subscription-management",
         "description": (
             "Authenticated subscription management: view current plan, upgrade, and cancel."

@@ -91,11 +91,13 @@ async def get_current_subscription(
     operation_id="upgradeSubscription",
     summary="Upgrade subscription plan",
     description=(
-        "Upgrade the authenticated user's subscription to another active plan.\n\n"
-        "Required body field: `plan_id`. Optional `full_name` is client metadata from "
-        "the plan-name-group field and is not persisted.\n\n"
+        "Upgrade the authenticated user's subscription to another active plan through Stripe.\n\n"
+        "Provide either `plan_id` (UUID) or `full_name` with the target plan display name "
+        "from the plan-name-group field (e.g. `\"Pro Plan\"`). Stripe customer, subscription, "
+        "and price identifiers are resolved server-side and must not be sent by the client.\n\n"
         "Only the subscription owner may upgrade. Returns **404** when the user has no "
-        "subscription. Returns **400** for invalid or unavailable plan data.\n\n"
+        "subscription. Returns **400** for invalid or unavailable plan data. Returns **503** "
+        "when Stripe billing is not configured.\n\n"
         "**Requires authenticated JWT**."
     ),
     responses={
@@ -139,7 +141,7 @@ async def upgrade_subscription(
         "this endpoint.\n\n"
         "Returns **200** with updated subscription details on success. Returns **404** "
         "when no subscription exists. Returns **400** when the subscription is already "
-        "canceled.\n\n"
+        "canceled. Returns **503** when Stripe billing is not configured.\n\n"
         "**Requires authenticated JWT**."
     ),
     responses={

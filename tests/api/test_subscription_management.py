@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -25,6 +26,8 @@ from tests.conftest import (
     REGULAR_EMAIL,
     REGULAR_USER_ID,
     SUBSCRIPTION_BASE,
+    VIEWER_EMAIL,
+    VIEWER_ID,
     sync_engine,
 )
 
@@ -211,13 +214,14 @@ def test_cancel_subscription_200(
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
-    assert body["status"] == "canceled"
+    assert body["status"] == "active"
     assert body["message"] == "Subscription canceled successfully"
+    assert "billing period" in (body["description"] or "")
 
     with Session(sync_engine) as session:
         updated = session.get(StripeSubscription, subscription_id)
         assert updated is not None
-        assert updated.status == SubscriptionStatus.CANCELED.value
+        assert updated.status == SubscriptionStatus.ACTIVE.value
 
 
 def test_cancel_subscription_404(
@@ -233,6 +237,88 @@ def test_cancel_subscription_404(
     assert response.json()["error"]["code"] == "SUBSCRIPTION_NOT_FOUND"
 
 
+def test_upgrade_subscription_200_by_plan_name(
+    client: TestClient,
+    coach_headers: dict[str, str],
+) -> None:
+    basic = _coach_basic_plan()
+    pro = _coach_pro_plan()
+    subscription = _coach_subscription(plan_id=basic.id)
+    _persist_plans_then_subscriptions([basic, pro], [subscription])
+
+    response = client.post(
+        f"{SUBSCRIPTION_BASE}/upgrade",
+        headers=coach_headers,
+        json={"full_name": "Pro Plan"},
+    )
+    assert response.status_code == 200
+    assert response.json()["current_plan"] == "Pro Plan"
+
+
+def test_upgrade_subscription_rejects_other_user_subscription(
+    client: TestClient,
+    coach_headers: dict[str, str],
+    viewer_headers: dict[str, str],
+) -> None:
+    basic = _coach_basic_plan()
+    pro = _coach_pro_plan()
+    pro_id = pro.id
+    subscription = _coach_subscription(plan_id=basic.id)
+    subscription.subscriber_user_id = VIEWER_ID
+    subscription.subscriber_email = VIEWER_EMAIL
+    _persist_plans_then_subscriptions([basic, pro], [subscription])
+
+    response = client.post(
+        f"{SUBSCRIPTION_BASE}/upgrade",
+        headers=coach_headers,
+        json={"plan_id": str(pro_id)},
+    )
+    assert response.status_code == 404
+
+
 def test_subscription_endpoints_403_without_auth(client: TestClient) -> None:
     response = client.get(SUBSCRIPTION_BASE)
     assert response.status_code == 403
+
+
+@patch("app.services.subscription_management.stripe_client.stripe_configured", return_value=False)
+def test_upgrade_subscription_503_stripe_not_configured(
+    _mock_stripe_configured: pytest.Mock,
+    client: TestClient,
+    coach_headers: dict[str, str],
+) -> None:
+    basic = _coach_basic_plan()
+    pro = _coach_pro_plan()
+    subscription = _coach_subscription(plan_id=basic.id)
+    _persist_plans_then_subscriptions([basic, pro], [subscription])
+
+    response = client.post(
+        f"{SUBSCRIPTION_BASE}/upgrade",
+        headers=coach_headers,
+        json={"full_name": "Pro Plan"},
+    )
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "STRIPE_NOT_CONFIGURED"
+
+
+def test_upgrade_rejects_client_supplied_stripe_ids(
+    client: TestClient,
+    coach_headers: dict[str, str],
+) -> None:
+    basic = _coach_basic_plan()
+    pro = _coach_pro_plan()
+    subscription = _coach_subscription(plan_id=basic.id)
+    _persist_plans_then_subscriptions([basic, pro], [subscription])
+
+    response = client.post(
+        f"{SUBSCRIPTION_BASE}/upgrade",
+        headers=coach_headers,
+        json={
+            "full_name": "Pro Plan",
+            "stripe_customer_id": "cus_attacker",
+            "stripe_subscription_id": "sub_attacker",
+            "stripe_price_id": "price_attacker",
+        },
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"

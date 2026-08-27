@@ -13,6 +13,7 @@ REVOKED_TOKENS_TABLE = managed_table_name("revoked_tokens")
 SUPPORT_REQUESTS_TABLE = managed_table_name("support_requests")
 SUBSCRIPTION_PLANS_TABLE = managed_table_name("subscription_plans")
 STRIPE_SUBSCRIPTIONS_TABLE = managed_table_name("stripe_subscriptions")
+STRIPE_WEBHOOK_EVENTS_TABLE = managed_table_name("stripe_webhook_events")
 
 ROLE_SELECTIONS_TABLE = "role_selections"
 
@@ -25,5 +26,6 @@ MANAGED_TABLE_NAMES = frozenset(
         SUPPORT_REQUESTS_TABLE,
         SUBSCRIPTION_PLANS_TABLE,
         STRIPE_SUBSCRIPTIONS_TABLE,
+        STRIPE_WEBHOOK_EVENTS_TABLE,
     }
 )
