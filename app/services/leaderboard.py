@@ -119,7 +119,7 @@ async def _aggregate_player_stats(
         return []
 
     filters = ["1=1"]
-    params: dict[str, Any] = {"limit": limit}
+    params: dict[str, Any] = {}
 
     if org_id is not None:
         filters.append("p.org_id = :org_id")
@@ -148,13 +148,12 @@ async def _aggregate_player_stats(
         LEFT JOIN session_data sd ON sd.player_id = p.id
         WHERE {where_sql}
         GROUP BY p.id, p.first_name, p.last_name
-        LIMIT :limit
     """
 
     result = await db.execute(text(query), params)
     rows = [dict(row) for row in result.mappings().all()]
     items = _build_items(rows)
-    return _rank_items(items, sort_metric)
+    return _rank_items(items, sort_metric)[:limit]
 
 
 async def get_leaderboard(
