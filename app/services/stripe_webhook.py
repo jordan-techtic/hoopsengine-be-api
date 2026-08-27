@@ -1,13 +1,44 @@
+"""Stripe webhook processing with idempotent event handling."""
+
+from __future__ import annotations
+
 import logging
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.stripe_webhook_event import StripeWebhookEvent
 from app.models.subscription import StripeSubscription
 from app.models.subscription_plan import SubscriptionPlan
 
 logger = logging.getLogger(__name__)
+
+
+async def is_webhook_event_processed(db: AsyncSession, stripe_event_id: str) -> bool:
+    """Return True when the Stripe event ID was already processed."""
+    result = await db.execute(
+        select(StripeWebhookEvent.id).where(
+            StripeWebhookEvent.stripe_event_id == stripe_event_id
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def mark_webhook_event_processed(
+    db: AsyncSession,
+    *,
+    stripe_event_id: str,
+    event_type: str,
+) -> None:
+    """Persist a processed Stripe event ID for idempotent webhook handling."""
+    db.add(
+        StripeWebhookEvent(
+            stripe_event_id=stripe_event_id,
+            event_type=event_type,
+        )
+    )
+    await db.commit()
 
 
 async def sync_subscription_from_stripe(
@@ -15,6 +46,7 @@ async def sync_subscription_from_stripe(
     *,
     stripe_subscription: dict,
 ) -> StripeSubscription | None:
+    """Upsert local subscription state from a Stripe subscription payload."""
     stripe_subscription_id = stripe_subscription.get("id")
     if not stripe_subscription_id:
         return None
@@ -69,10 +101,7 @@ async def sync_subscription_from_stripe(
         subscription.status = status
         if stripe_price_id:
             subscription.stripe_price_id = stripe_price_id
-            if (
-                subscription.pending_plan_id is not None
-                and stripe_price_id
-            ):
+            if subscription.pending_plan_id is not None and stripe_price_id:
                 pending_plan = await db.execute(
                     select(SubscriptionPlan).where(
                         SubscriptionPlan.id == subscription.pending_plan_id
@@ -85,4 +114,34 @@ async def sync_subscription_from_stripe(
 
     await db.commit()
     await db.refresh(subscription)
+    return subscription
+
+
+async def sync_subscription_status_from_invoice(
+    db: AsyncSession,
+    *,
+    invoice: dict,
+) -> StripeSubscription | None:
+    """Refresh local subscription status after a successful invoice payment."""
+    subscription_id = invoice.get("subscription")
+    if not subscription_id:
+        return None
+
+    result = await db.execute(
+        select(StripeSubscription).where(
+            StripeSubscription.stripe_subscription_id == str(subscription_id)
+        )
+    )
+    subscription = result.scalar_one_or_none()
+    if subscription is None:
+        logger.info(
+            "Invoice paid for unknown subscription %s — skipping local update",
+            subscription_id,
+        )
+        return None
+
+    subscription.status = "active"
+    await db.commit()
+    await db.refresh(subscription)
+    logger.info("Marked subscription %s active after invoice.paid", subscription.id)
     return subscription

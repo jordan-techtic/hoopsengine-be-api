@@ -13,22 +13,26 @@ class SubscriptionUpgradeRequest(BaseModel):
     """Payload for POST /subscription/upgrade."""
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
-                "plan_id": "11111111-2222-3333-4444-555555555555",
-                "full_name": "Jane Doe",
+                "full_name": "Pro Plan",
             }
-        }
+        },
     )
 
-    plan_id: UUID = Field(
+    plan_id: UUID | None = Field(
+        default=None,
         description="UUID of the subscription plan to upgrade to",
         examples=["11111111-2222-3333-4444-555555555555"],
     )
     full_name: str | None = Field(
         default=None,
-        description="Optional client metadata from the plan-name-group field (not persisted)",
-        examples=["Jane Doe"],
+        description=(
+            "Plan display name from the plan-name-group field (e.g. 'Pro Plan') "
+            "or optional subscriber metadata when plan_id is provided"
+        ),
+        examples=["Pro Plan"],
     )
 
 
@@ -36,11 +40,12 @@ class SubscriptionCancelRequest(BaseModel):
     """Payload for POST /subscription/cancel."""
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "full_name": "Jane Doe",
             }
-        }
+        },
     )
 
     full_name: str | None = Field(
