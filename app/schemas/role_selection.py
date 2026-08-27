@@ -89,6 +89,16 @@ class RoleCatalogResponse(BaseModel):
                 "title": "Select Your Role",
                 "link": None,
                 "error": None,
+                "id": None,
+                "role": None,
+                "image": None,
+                "phone": None,
+                "phone_number": None,
+                "email": None,
+                "name": None,
+                "first_name": None,
+                "last_name": None,
+                "address": None,
                 "roles": [
                     {
                         "value": "coach",
@@ -107,6 +117,16 @@ class RoleCatalogResponse(BaseModel):
     title: str = Field(default="Select Your Role", description="Screen title for the mobile client")
     link: str | None = Field(default=None, description="Optional navigation target")
     error: None = Field(default=None, description="Always null on success")
+    id: UUID | None = Field(default=None, description="Role selection record UUID when a session exists")
+    role: str | None = Field(default=None, description="Selected role value when a session exists")
+    image: str | None = Field(default=None, description="Optional hero image URL for the screen")
+    phone: str | None = Field(default=None, description="Optional client metadata from the status bar")
+    phone_number: str | None = Field(default=None, description="Optional contact phone placeholder for the form")
+    email: str | None = Field(default=None, description="Optional contact email placeholder for the form")
+    name: str | None = Field(default=None, description="Optional display name placeholder for the form")
+    first_name: str | None = Field(default=None, description="Optional first name placeholder for the form")
+    last_name: str | None = Field(default=None, description="Optional last name placeholder for the form")
+    address: str | None = Field(default=None, description="Optional address placeholder for the form")
     roles: list[RoleOption] = Field(description="Selectable roles for the role cards")
 
 

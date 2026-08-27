@@ -253,6 +253,17 @@ def build_roles_catalog_response() -> dict[str, Any]:
         "title": "Select Your Role",
         "link": None,
         "error": None,
+        # Mobile envelope placeholders until the user selects a role / registers.
+        "id": None,
+        "role": None,
+        "image": None,
+        "phone": None,
+        "phone_number": None,
+        "email": None,
+        "name": None,
+        "first_name": None,
+        "last_name": None,
+        "address": None,
         "roles": [role.model_dump() for role in roles],
     }
 

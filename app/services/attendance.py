@@ -415,6 +415,7 @@ async def get_attendance_summary(db: AsyncSession, user: User) -> dict[str, Any]
         "error": None,
         "id": session_id,
         "name": "Attendance",
+        "title": "Attendance",
         "attendance_summary": summary,
         "players": players,
     }
@@ -503,6 +504,7 @@ async def start_attendance_practice(
         "error": None,
         "id": session_id,
         "name": "Attendance",
+        "title": "Attendance",
         "session_id": session_id,
         "attendance_summary": summary,
         "players": players,

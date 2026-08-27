@@ -34,6 +34,7 @@ ATTENDANCE_SUMMARY_EXAMPLE = {
     "error": None,
     "id": "11111111-2222-3333-4444-555555555555",
     "name": "Attendance",
+    "title": "Attendance",
     "attendance_summary": {"present_count": 8, "total_count": 12},
     "players": [
         {
@@ -128,7 +129,8 @@ class AttendanceSummaryResponse(BaseModel):
     link: str | None = None
     error: None = None
     id: UUID | None = Field(default=None, description="Current attendance session UUID when available")
-    name: str = Field(default="Attendance", description="Screen title")
+    name: str = Field(default="Attendance", description="Screen name for the mobile client")
+    title: str = Field(default="Attendance", description="Screen title shown at the top of the Attendance UI")
     attendance_summary: AttendanceSummaryCounts
     players: list[AttendancePlayerItem] = Field(default_factory=list)
 
@@ -155,6 +157,7 @@ class AttendanceStartPracticeResponse(BaseModel):
     error: None = None
     id: UUID = Field(description="Started practice session UUID")
     name: str = Field(default="Attendance")
+    title: str = Field(default="Attendance", description="Screen title shown at the top of the Attendance UI")
     session_id: UUID = Field(description="Same as id — practice session identifier")
     attendance_summary: AttendanceSummaryCounts
     players: list[AttendancePlayerItem] = Field(default_factory=list)
