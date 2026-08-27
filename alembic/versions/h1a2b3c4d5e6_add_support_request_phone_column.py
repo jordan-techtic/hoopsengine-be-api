@@ -10,7 +10,7 @@ from alembic import op
 from app.core.tables import SUPPORT_REQUESTS_TABLE
 
 revision: str = "h1a2b3c4d5e6"
-down_revision: str | Sequence[str] | None = "g3b4c5d6e7f8"
+down_revision: str | Sequence[str] | None = "17d7851bcd17"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
