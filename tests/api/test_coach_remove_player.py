@@ -130,7 +130,10 @@ def test_remove_player_200(
     assert body["full_name"] == "Sarah Jenkins"
     assert body["player_id"] == str(REMOVAL_PLAYER_ID)
 
-    follow_up = client.get(f"/api/v1/players/{REMOVAL_PLAYER_ID}")
+    follow_up = client.get(
+        f"/api/v1/players/{REMOVAL_PLAYER_ID}",
+        headers=coach_headers,
+    )
     assert follow_up.status_code == 404
 
 
