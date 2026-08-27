@@ -20,7 +20,8 @@ from app.services.subscription_plan import (
 logger = logging.getLogger(__name__)
 
 SESSIONS_TABLE = "practice_sessions"
-_ALLOWED_CLIENT_TABLES = frozenset({SESSIONS_TABLE})
+# Identifier is a string literal, never interpolated into SQL from a variable.
+_PRACTICE_SESSIONS_COUNT_SQL = "SELECT COUNT(*) FROM practice_sessions"
 
 
 def monthly_list_price_cents(price_amount_cents: int, billing_frequency: str) -> int:
@@ -61,14 +62,11 @@ async def _table_exists(db: AsyncSession, table_name: str) -> bool:
     return bool(exists)
 
 
-async def _count_client_table(db: AsyncSession, table_name: str) -> int:
-    """Return COUNT(*) for an allowlisted client-domain table, or 0 if it is absent."""
-    if table_name not in _ALLOWED_CLIENT_TABLES:
-        logger.warning("Refusing to count non-allowlisted table %s", table_name)
+async def _count_practice_sessions(db: AsyncSession) -> int:
+    """Return COUNT(*) of practice_sessions, or 0 if that client table is absent."""
+    if not await _table_exists(db, SESSIONS_TABLE):
         return 0
-    if not await _table_exists(db, table_name):
-        return 0
-    return int(await db.scalar(text(f"SELECT COUNT(*) FROM {table_name}")) or 0)
+    return int(await db.scalar(text(_PRACTICE_SESSIONS_COUNT_SQL)) or 0)
 
 
 async def get_dashboard_analytics(db: AsyncSession) -> DashboardAnalyticsResponse:
@@ -88,7 +86,7 @@ async def get_dashboard_analytics(db: AsyncSession) -> DashboardAnalyticsRespons
         .select_from(User)
         .where(User.role == UserRole.PLAYER.value, User.deleted_at.is_(None)),
     )
-    total_sessions = await _count_client_table(db, SESSIONS_TABLE)
+    total_sessions = await _count_practice_sessions(db)
     active_subscriptions = await _count_orm(
         db,
         select(func.count())
