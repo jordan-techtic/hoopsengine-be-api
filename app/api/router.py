@@ -5,10 +5,13 @@ from app.api.routes import (
     attendance,
     auth,
     coach,
+    coach_drills,
     coach_practice_plans,
     coach_profile,
+    coach_queue,
     coach_remove_player,
     dashboard,
+    drill_ideas,
     drills,
     faqs,
     health,
@@ -49,6 +52,8 @@ api_router.include_router(webhooks.router)
 api_router.include_router(profile.router)
 api_router.include_router(coach_profile.router)
 api_router.include_router(coach_practice_plans.router)
+api_router.include_router(coach_drills.router)
+api_router.include_router(coach_queue.router)
 api_router.include_router(account_settings.router)
 api_router.include_router(attendance.router)
 api_router.include_router(organizations.router)
@@ -60,3 +65,4 @@ api_router.include_router(leaderboard.router)
 api_router.include_router(live_practice.router)
 api_router.include_router(practice_plans.router)
 api_router.include_router(drills.router)
+api_router.include_router(drill_ideas.router)

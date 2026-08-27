@@ -98,7 +98,15 @@ def test_he301_post_record_409_duplicate_session(
     client: TestClient, coach_headers: dict[str, str]
 ) -> None:
     assert client.post(RECORD_URL, headers=coach_headers, json=_record_payload()).status_code == 201
-    dup = client.post(RECORD_URL, headers=coach_headers, json=_record_payload(session_mode="one_drill"))
+    dup = client.post(
+        RECORD_URL,
+        headers=coach_headers,
+        json=_record_payload(
+            session_mode="one_drill",
+            drill_id=str(SEEDED_FIELD_DRILL_ID),
+            session_data={"reps": 10, "time": "00:30:00", "performance": "good"},
+        ),
+    )
     assert dup.status_code == 409
     assert dup.json()["error"]["code"] == "SESSION_MODE_ALREADY_RECORDED"
 
@@ -144,7 +152,11 @@ def test_he305_get_summary_200(
     client: TestClient, coach_headers: dict[str, str], seed_session_summary_data: dict
 ) -> None:
     session_id = seed_session_summary_data["session_id"]
-    response = client.get(f"{SESSIONS_BASE}/{session_id}", headers=coach_headers)
+    response = client.post(
+        f"{SESSIONS_BASE}/{session_id}/end-practice",
+        headers=coach_headers,
+        json={"phone": "+1-555-0100"},
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["session_time"] == "9:41"

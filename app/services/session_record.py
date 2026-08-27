@@ -17,12 +17,14 @@ from app.core.exceptions import AppException
 from app.models.enums import SessionMode, SessionStatus
 from app.models.user import User
 from app.schemas.session_record import (
+    OneDrillSessionDataInput,
     SessionDetailsInput,
     SessionModeItem,
     SessionRecordCreateRequest,
     SessionRecordUpdateRequest,
 )
 from app.services import client_db, coach_identity
+from app.services.one_drill_flow import ONE_DRILL_FLOW_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -108,10 +110,114 @@ def _row_to_response(row: dict[str, Any], *, message: str) -> dict[str, Any]:
         "link": link,
         "error": None,
         "id": row["id"],
+        "title": mode_item.label,
         "session_mode": mode_item.mode,
         "session_details": session_details,
         "created_at": row.get("created_at"),
     }
+
+
+def _build_one_drill_details(
+    payload: SessionRecordCreateRequest,
+    base_details: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Merge One Drill session payload into session_details JSON."""
+    details = dict(base_details or {})
+    flow = dict(details.get(ONE_DRILL_FLOW_KEY) or {})
+    if payload.drill_id is not None:
+        flow["selected_drill_id"] = str(payload.drill_id)
+    if payload.session_data is not None:
+        flow["session_data"] = payload.session_data.model_dump()
+    flow["step"] = 1
+    details[ONE_DRILL_FLOW_KEY] = flow
+    return details
+
+
+def _validate_one_drill_payload(payload: SessionRecordCreateRequest, user: User) -> UUID:
+    """Validate One Drill recording fields or raise 400."""
+    if payload.drill_id is None:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Drill selection is required for One Drill sessions",
+            status_code=400,
+            details=[{"field": "drill_id", "message": "drill_id is required for one_drill sessions"}],
+        )
+    if payload.session_data is None:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Session data is required for One Drill sessions",
+            status_code=400,
+            details=[
+                {
+                    "field": "session_data",
+                    "message": "session_data with reps, time, and performance is required",
+                }
+            ],
+        )
+    _validate_session_data(payload.session_data)
+
+    if payload.user_id is not None and payload.user_id != user.id:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="user_id must match the authenticated coach",
+            status_code=400,
+            details=[{"field": "user_id", "message": "user_id must match the authenticated coach"}],
+        )
+    return payload.drill_id
+
+
+def _validate_session_data(session_data: OneDrillSessionDataInput) -> None:
+    details: list[dict[str, str]] = []
+    if not session_data.time.strip():
+        details.append({"field": "session_data.time", "message": "time is required"})
+    if not session_data.performance.strip():
+        details.append({"field": "session_data.performance", "message": "performance is required"})
+    if details:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Session data is invalid",
+            status_code=400,
+            details=details,
+        )
+
+
+async def _fetch_drill_exists(db: AsyncSession, drill_id: UUID) -> bool:
+    if not await client_db.table_exists(db, "drills"):
+        return False
+    result = await db.execute(
+        text("SELECT id FROM drills WHERE id = :drill_id LIMIT 1"),
+        {"drill_id": drill_id},
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def _has_duplicate_one_drill_today(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    drill_id: UUID,
+) -> bool:
+    """Return True when the coach already recorded this drill today."""
+    result = await db.execute(
+        text(
+            """
+            SELECT id
+            FROM practice_sessions
+            WHERE recorder_user_id = :user_id
+              AND session_date = CURRENT_DATE
+              AND session_mode = :session_mode
+              AND status IN ('selecting_mode', 'in_progress')
+              AND session_details->'one_drill_flow'->>'selected_drill_id' = :drill_id
+            LIMIT 1
+            """
+        ),
+        {
+            "user_id": user_id,
+            "session_mode": SessionMode.ONE_DRILL.value,
+            "drill_id": str(drill_id),
+        },
+    )
+    return result.scalar_one_or_none() is not None
 
 
 async def _fetch_session_row(db: AsyncSession, session_id: UUID) -> dict[str, Any] | None:
@@ -161,9 +267,32 @@ async def create_session_record(
 ) -> dict[str, Any]:
     """Create a new practice session after the coach selects a recording mode."""
     await client_db.require_table(db, client_db.PRACTICE_SESSIONS_TABLE)
-    get_mode_or_404(payload.session_mode.value)
+    mode_item = get_mode_or_404(payload.session_mode.value)
 
     recorder = await coach_identity.ensure_recorder_context(db, user)
+
+    drill_id: UUID | None = None
+    if payload.session_mode == SessionMode.ONE_DRILL:
+        drill_id = _validate_one_drill_payload(payload, user)
+        if not await _fetch_drill_exists(db, drill_id):
+            raise AppException(
+                code="DRILL_NOT_FOUND",
+                message="Selected drill was not found",
+                status_code=404,
+                details=[{"field": "drill_id", "message": "Selected drill was not found"}],
+            )
+        if await _has_duplicate_one_drill_today(db, user_id=user.id, drill_id=drill_id):
+            raise AppException(
+                code="SESSION_ALREADY_RECORDED",
+                message="A session for this drill has already been recorded today",
+                status_code=409,
+                details=[
+                    {
+                        "field": "drill_id",
+                        "message": "A session for this drill has already been recorded today",
+                    }
+                ],
+            )
 
     if await _has_active_session_today(db, user.id):
         raise AppException(
@@ -180,7 +309,11 @@ async def create_session_record(
 
     session_id = uuid.uuid4()
     now = _utcnow()
-    details = _details_to_dict(payload.session_details)
+    base_details = _details_to_dict(payload.session_details)
+    if payload.session_mode == SessionMode.ONE_DRILL:
+        details = _build_one_drill_details(payload, base_details)
+    else:
+        details = base_details
 
     await db.execute(
         text(
@@ -237,7 +370,11 @@ async def create_session_record(
         )
 
     logger.info("Created practice session %s for coach user %s", session_id, user.id)
-    return _row_to_response(row, message="Session mode recorded successfully")
+    response = _row_to_response(row, message="Session recorded successfully")
+    if payload.session_mode == SessionMode.ONE_DRILL:
+        response["message"] = "One Drill session recorded successfully"
+        response["link"] = f"{settings.FRONTEND_URL.rstrip('/')}/coach/record/one-drill"
+    return response
 
 
 async def update_session_record(

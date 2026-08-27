@@ -5,20 +5,29 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import SESSIONS_BASE
+from tests.conftest import SEEDED_FIELD_DRILL_ID, SESSIONS_BASE
 
 MODES_URL = f"{SESSIONS_BASE}/modes"
 RECORD_URL = f"{SESSIONS_BASE}/record"
 
 
 @pytest.fixture(autouse=True)
-def _practice_sessions_table(ensure_practice_sessions_table: None) -> None:
-    """Apply session table setup for every test in this module."""
+def _session_tables(
+    ensure_practice_sessions_table: None,
+    ensure_practice_plans_table: None,
+) -> None:
+    """Apply session and drill table setup for every test in this module."""
 
 
 def _record_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "session_mode": "one_drill",
+        "drill_id": str(SEEDED_FIELD_DRILL_ID),
+        "session_data": {
+            "reps": 10,
+            "time": "00:30:00",
+            "performance": "good",
+        },
         "session_details": {
             "description": "Focus on a single drill and track reps, time, or performance",
         },

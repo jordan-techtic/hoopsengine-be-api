@@ -233,11 +233,14 @@ def _build_list_item(row: dict[str, Any]) -> dict[str, Any]:
     name = f"{first_name} {last_name}".strip() or "Unknown Player"
     player_code = row.get("player_code")
     code_value = str(player_code) if player_code is not None else None
+    jersey_number = row.get("jersey_number")
+    jersey_value = str(jersey_number) if jersey_number is not None else None
     return {
         "id": UUID(str(row["id"])),
         "name": name,
         "code": code_value,
         "player_code": code_value,
+        "jersey_number": jersey_value,
         "team_name": row.get("team_name"),
     }
 
@@ -253,10 +256,12 @@ async def _fetch_org_players(
 
     active_column = await _column_exists(db, PLAYERS_TABLE, "active")
     player_code_column = await _column_exists(db, PLAYERS_TABLE, "player_code")
+    jersey_column = await _column_exists(db, PLAYERS_TABLE, "jersey_number")
     team_join = await _teams_table_exists(db)
 
     active_sql = "AND p.active = true" if active_column else ""
     player_code_select = "p.player_code" if player_code_column else "NULL AS player_code"
+    jersey_select = "p.jersey_number" if jersey_column else "NULL AS jersey_number"
     team_select = "t.name AS team_name" if team_join else "NULL AS team_name"
     team_join_sql = "LEFT JOIN teams t ON t.id = p.team_id" if team_join else ""
 
@@ -266,12 +271,14 @@ async def _fetch_org_players(
         pattern = f"%{search_term}%"
         params["pattern"] = pattern
         player_code_filter = "OR p.player_code ILIKE :pattern" if player_code_column else ""
+        jersey_filter = "OR p.jersey_number ILIKE :pattern" if jersey_column else ""
         search_sql = f"""
               AND (
                     p.first_name ILIKE :pattern
                  OR p.last_name ILIKE :pattern
                  OR TRIM(CONCAT(p.first_name, ' ', p.last_name)) ILIKE :pattern
                  {player_code_filter}
+                 {jersey_filter}
               )
         """
 
@@ -283,6 +290,7 @@ async def _fetch_org_players(
                 p.first_name,
                 p.last_name,
                 {player_code_select},
+                {jersey_select},
                 {team_select}
             FROM players p
             {team_join_sql}
@@ -290,6 +298,7 @@ async def _fetch_org_players(
               {active_sql}
               {search_sql}
             ORDER BY p.last_name ASC, p.first_name ASC
+            LIMIT 50
             """
         ),
         params,

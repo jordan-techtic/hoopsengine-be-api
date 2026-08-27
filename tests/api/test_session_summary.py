@@ -21,7 +21,11 @@ def test_get_session_summary_200_with_player_stats(
     seed_session_summary_data: dict,
 ) -> None:
     session_id = seed_session_summary_data["session_id"]
-    response = client.get(f"{SESSIONS_BASE}/{session_id}", headers=coach_headers)
+    response = client.post(
+        f"{SESSIONS_BASE}/{session_id}/end-practice",
+        headers=coach_headers,
+        json={"phone": "+1-555-0100"},
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
