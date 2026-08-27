@@ -9,7 +9,6 @@ from tests.conftest import (
     PRACTICE_PLANS_BASE,
     SEEDED_FIELD_DRILL_ID,
     SEEDED_FT_DRILL_ID,
-    coach_headers,
 )
 
 VALID_CREATE_PAYLOAD = {

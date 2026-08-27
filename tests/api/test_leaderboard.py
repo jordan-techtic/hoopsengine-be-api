@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import LEADERBOARD_BASE, coach_headers
+from tests.conftest import LEADERBOARD_BASE
 
 SEARCH_URL = f"{LEADERBOARD_BASE}/search"
 FILTER_URL = f"{LEADERBOARD_BASE}/filter"

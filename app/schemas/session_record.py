@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import SessionMode, SessionStatus
+from app.models.enums import SessionMode
 
 SESSION_RECORD_CREATE_EXAMPLE = {
     "session_mode": "one_drill",

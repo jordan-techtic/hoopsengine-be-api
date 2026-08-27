@@ -9,8 +9,6 @@ from tests.conftest import (
     PROFILE_BASE,
     REGULAR_EMAIL,
     VIEWER_EMAIL,
-    coach_headers,
-    viewer_headers,
 )
 
 VALID_PROFILE_PAYLOAD = {

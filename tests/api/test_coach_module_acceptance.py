@@ -16,15 +16,8 @@ from tests.conftest import (
     PROFILE_BASE,
     REGULAR_EMAIL,
     SEEDED_FIELD_DRILL_ID,
-    SEEDED_FT_DRILL_ID,
-    SEEDED_ORG_ID,
     SESSIONS_BASE,
     VIEWER_EMAIL,
-    coach_headers,
-    expired_user_headers,
-    inactive_headers,
-    unverified_coach_headers,
-    viewer_headers,
 )
 
 MODES_URL = f"{SESSIONS_BASE}/modes"

@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import UploadFile
-from pydantic import TypeAdapter, ValidationError
-from pydantic import EmailStr
+from pydantic import EmailStr, TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession

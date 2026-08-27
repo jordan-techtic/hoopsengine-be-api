@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import SESSIONS_BASE, coach_headers
+from tests.conftest import SESSIONS_BASE
 
 RECORD_URL = f"{SESSIONS_BASE}/record"
 
