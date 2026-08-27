@@ -37,9 +37,8 @@ FILTER_URL = f"{LEADERBOARD_BASE}/filter"
 def _coach_module_tables(
     ensure_practice_sessions_table: None,
     ensure_practice_plans_table: None,
-    seed_leaderboard_data: dict,
 ) -> None:
-    """Bootstrap client tables and seed data for cross-ticket tests."""
+    """Bootstrap client tables for cross-ticket tests (no session seed — avoids 409 on record tests)."""
 
 
 def _record_payload(**overrides: object) -> dict[str, object]:
@@ -204,7 +203,9 @@ def test_he305_get_summary_403_other_coach(
 # --- HE-314 Leaderboard ---
 
 
-def test_he314_get_leaderboard_200_public(client: TestClient) -> None:
+def test_he314_get_leaderboard_200_public(
+    client: TestClient, seed_leaderboard_data: dict
+) -> None:
     response = client.get(LEADERBOARD_BASE)
     assert response.status_code == 200
     body = response.json()
@@ -213,7 +214,9 @@ def test_he314_get_leaderboard_200_public(client: TestClient) -> None:
     assert "shooting_percent" in body["items"][0]
 
 
-def test_he314_post_search_200(client: TestClient, coach_headers: dict[str, str]) -> None:
+def test_he314_post_search_200(
+    client: TestClient, coach_headers: dict[str, str], seed_leaderboard_data: dict
+) -> None:
     response = client.post(
         SEARCH_URL,
         headers=coach_headers,
@@ -223,7 +226,9 @@ def test_he314_post_search_200(client: TestClient, coach_headers: dict[str, str]
     assert response.json()["items"][0]["full_name"] == "Jane Doe"
 
 
-def test_he314_get_filter_200(client: TestClient, coach_headers: dict[str, str]) -> None:
+def test_he314_get_filter_200(
+    client: TestClient, coach_headers: dict[str, str], seed_leaderboard_data: dict
+) -> None:
     response = client.get(
         FILTER_URL, headers=coach_headers, params={"filter_metric": "shooting_percent"}
     )
@@ -231,13 +236,17 @@ def test_he314_get_filter_200(client: TestClient, coach_headers: dict[str, str])
     assert response.json()["items"][0]["rank"] == 1
 
 
-def test_he314_get_search_200(client: TestClient, coach_headers: dict[str, str]) -> None:
+def test_he314_get_search_200(
+    client: TestClient, coach_headers: dict[str, str], seed_leaderboard_data: dict
+) -> None:
     response = client.get(SEARCH_URL, headers=coach_headers, params={"search_query": "Charlie"})
     assert response.status_code == 200
     assert response.json()["items"][0]["full_name"] == "Charlie Hudson"
 
 
-def test_he314_get_search_400_empty(client: TestClient, coach_headers: dict[str, str]) -> None:
+def test_he314_get_search_400_empty(
+    client: TestClient, coach_headers: dict[str, str], seed_leaderboard_data: dict
+) -> None:
     response = client.get(SEARCH_URL, headers=coach_headers)
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
@@ -247,7 +256,9 @@ def test_he314_search_401(client: TestClient) -> None:
     assert client.post(SEARCH_URL, json={"search_query": "Jane"}).status_code == 401
 
 
-def test_he314_leaderboard_top_player_ranked_first(client: TestClient, coach_headers: dict[str, str]) -> None:
+def test_he314_leaderboard_top_player_ranked_first(
+    client: TestClient, coach_headers: dict[str, str], seed_leaderboard_data: dict
+) -> None:
     """Jane Doe has 80% shooting — should rank first when filtered by shooting_percent."""
     response = client.get(
         FILTER_URL, headers=coach_headers, params={"filter_metric": "shooting_percent"}

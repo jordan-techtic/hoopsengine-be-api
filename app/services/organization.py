@@ -257,10 +257,31 @@ async def _table_exists(db: AsyncSession, table_name: str) -> bool:
     return bool(exists)
 
 
+async def _column_exists(db: AsyncSession, table_name: str, column_name: str) -> bool:
+    """Return True when ``public.{table_name}.{column_name}`` exists."""
+    exists = await db.scalar(
+        text(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = :table_name
+                  AND column_name = :column_name
+            )
+            """
+        ),
+        {"table_name": table_name, "column_name": column_name},
+    )
+    return bool(exists)
+
+
 async def organization_has_dependencies(db: AsyncSession, organization_id: UUID) -> bool:
     """Return True if client-domain rows still reference this organization."""
     for table_name, column_name in ORG_CHILD_CHECKS:
         if not await _table_exists(db, table_name):
+            continue
+        if not await _column_exists(db, table_name, column_name):
             continue
         exists = await db.scalar(
             text(
