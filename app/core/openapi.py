@@ -95,6 +95,47 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "account-settings",
+        "description": (
+            "Authenticated Account Settings screen APIs: change password, organization, "
+            "authentication keys, push notifications, profile, and help/support."
+        ),
+    },
+    {
+        "name": "support-contact",
+        "description": (
+            "Public Contact Support APIs for submitting inquiries and reading support "
+            "directory contact details (email, phone)."
+        ),
+    },
+    {
+        "name": "faqs",
+        "description": "Public FAQs list for the Coach module help screen.",
+    },
+    {
+        "name": "subscription-management",
+        "description": (
+            "Authenticated subscription management: view current plan, upgrade, and cancel."
+        ),
+    },
+    {
+        "name": "practice-plans",
+        "description": (
+            "Practice plan list/create/update/delete and team roster search for the "
+            "Practice Plans screen."
+        ),
+    },
+    {
+        "name": "drills",
+        "description": "Authenticated drill name search for Create/Edit Practice Plan pickers.",
+    },
+    {
+        "name": "coach-edit-practice-plan",
+        "description": (
+            "Coach Edit Practice Plan CRUD under /coach/practice-plans."
+        ),
+    },
+    {
         "name": "coach-profile",
         "description": (
             "Authenticated user profile retrieval and update for the Edit Profile screen."

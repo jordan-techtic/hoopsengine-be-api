@@ -25,7 +25,10 @@ class SupportContactCreateRequest(BaseModel):
         examples=["+15558392001"],
     )
     inquiry_subject: str = Field(
-        description="Selected inquiry subject from predefined options",
+        description=(
+            "Selected inquiry subject from predefined options: "
+            "Technical Issue, Billing Question, Account Help, Feature Request, Other"
+        ),
         examples=["Technical Issue"],
     )
     message_description: str = Field(
