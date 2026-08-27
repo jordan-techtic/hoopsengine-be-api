@@ -77,3 +77,28 @@ def openapi_error(
             }
         },
     }
+
+def openapi_error_examples(
+    description: str,
+    *,
+    examples: dict[str, dict[str, object]],
+) -> dict[str, object]:
+    """Build a FastAPI responses entry with multiple named error examples for one status code."""
+    return {
+        "model": ErrorResponse,
+        "description": description,
+        "content": {
+            "application/json": {
+                "examples": {
+                    name: {
+                        "summary": name.replace("_", " ").title(),
+                        "value": {
+                            "success": False,
+                            "error": payload,
+                        },
+                    }
+                    for name, payload in examples.items()
+                }
+            }
+        },
+    }

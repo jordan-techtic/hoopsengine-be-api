@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_HOURS: int = 24
+    REMEMBER_ME_TOKEN_EXPIRE_HOURS: int = 720
     RESET_TOKEN_EXPIRE_HOURS: int = 1
     RESET_TOKEN_HASH_ALGORITHM: str = "sha256"
     BCRYPT_ROUNDS: int = 12
@@ -33,6 +34,8 @@ class Settings(BaseSettings):
     SENDGRID_FROM_NAME: str = "Hoops Engine"
     FRONTEND_URL: str = "http://localhost:3000"
     RESET_PASSWORD_URL: str = "http://localhost:5173/reset-password"
+    EMAIL_VERIFICATION_OTP_EXPIRE_MINUTES: int = 15
+    EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
     SUPPORT_REQUEST_UPLOAD_DIR: str = "storage/support_requests"
     SUPPORT_REQUEST_MAX_ATTACHMENT_SIZE_MB: int = 5
     PROFILE_IMAGE_UPLOAD_DIR: str = "storage/profile_images"

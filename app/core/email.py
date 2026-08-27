@@ -4,7 +4,11 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Content, Email, Mail, To
 
 from app.core.config import settings
-from app.core.email_templates import EmailContent, build_password_reset_email
+from app.core.email_templates import (
+    EmailContent,
+    build_email_verification_email,
+    build_password_reset_email,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +49,16 @@ def send_password_reset_email(to_email: str, reset_token: str) -> None:
 
     reset_url = _build_reset_url(reset_token)
     content = build_password_reset_email(to_email=to_email, reset_url=reset_url)
+    send_email(content, to_email)
+
+
+def send_verification_email(to_email: str, otp_code: str) -> None:
+    """Send the 6-digit email verification code after coach registration."""
+    if not email_configured():
+        logger.warning("SendGrid is not configured; verification email was not sent")
+        return
+
+    content = build_email_verification_email(to_email=to_email, otp_code=otp_code)
     send_email(content, to_email)
 
 

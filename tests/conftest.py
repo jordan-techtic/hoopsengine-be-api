@@ -25,13 +25,36 @@ from sqlalchemy.pool import NullPool
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env.test")
 
-os.environ.setdefault(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:1234@localhost:5432/hoops-engine-db",
+# Test-only credentials loaded from environment (.env.test) — never use production secrets.
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:1234@localhost:5432/hoops-engine-db"),
 )
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-organizations-api")
-os.environ.setdefault("SUPERADMIN_PASSWORD", "TestPass123!")
-os.environ.setdefault("SUPERADMIN_EMAIL", "admin@test.com")
+TEST_SECRET_KEY = os.environ.get("TEST_SECRET_KEY", "test-only-secret-key-not-for-production")
+TEST_ADMIN_PASSWORD = os.environ.get("TEST_ADMIN_PASSWORD", "TestAdmin123!")
+TEST_REGULAR_PASSWORD = os.environ.get("TEST_REGULAR_PASSWORD", "TestUser123!")
+TEST_VIEWER_PASSWORD = os.environ.get("TEST_VIEWER_PASSWORD", "TestViewer123!")
+TEST_INACTIVE_PASSWORD = os.environ.get("TEST_INACTIVE_PASSWORD", "TestInactive123!")
+TEST_NEW_USER_PASSWORD = os.environ.get("TEST_NEW_USER_PASSWORD", "NewUser123!")
+TEST_UNVERIFIED_COACH_PASSWORD = os.environ.get("TEST_UNVERIFIED_COACH_PASSWORD", "CoachVerify123!")
+TEST_VALID_PASSWORD = os.environ.get("TEST_VALID_PASSWORD", "StrongPassword123!")
+TEST_NEW_PASSWORD = os.environ.get("TEST_NEW_PASSWORD", "UpdatedCoach456!")
+TEST_CURRENT_PASSWORD = os.environ.get("TEST_CURRENT_PASSWORD", "CurrentPass123!")
+TEST_INVALID_PASSWORD = os.environ.get("TEST_INVALID_PASSWORD", "WrongPassword123!")
+TEST_MISMATCH_PASSWORD = os.environ.get("TEST_MISMATCH_PASSWORD", "OtherPassword123!")
+TEST_DIFFERENT_PASSWORD = os.environ.get("TEST_DIFFERENT_PASSWORD", "Different456!")
+TEST_MISMATCH_CONFIRM_PASSWORD = os.environ.get("TEST_MISMATCH_CONFIRM_PASSWORD", "DifferentPassword123!")
+TEST_WEAK_PASSWORD = os.environ.get("TEST_WEAK_PASSWORD", "weakpass")
+TEST_WEAK_PASSWORD_LONG = os.environ.get("TEST_WEAK_PASSWORD_LONG", "password123")
+TEST_VALID_COMPLEX_PASSWORD = os.environ.get("TEST_VALID_COMPLEX_PASSWORD", "Coach@123")
+TEST_NEW_SECURE_PASSWORD = os.environ.get("TEST_NEW_SECURE_PASSWORD", "NewSecure456!")
+TEST_OTP_CODE = os.environ.get("TEST_OTP_CODE", "123456")
+TEST_PLACEHOLDER_HASH = os.environ.get("TEST_PLACEHOLDER_HASH", "hashed")
+
+os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
+os.environ.setdefault("SECRET_KEY", TEST_SECRET_KEY)
+os.environ.setdefault("SUPERADMIN_PASSWORD", TEST_ADMIN_PASSWORD)
+os.environ.setdefault("SUPERADMIN_EMAIL", os.environ.get("TEST_ADMIN_EMAIL", "admin@test.com"))
 os.environ["BCRYPT_ROUNDS"] = "4"
 
 from app.api.router import api_router
@@ -39,7 +62,7 @@ from app.core import database as database_module
 from app.core.config import settings
 from app.core.database import create_managed_tables
 from app.core.error_handlers import register_exception_handlers
-from app.core.security import create_access_token, hash_password
+from app.core.security import create_access_token, hash_otp, hash_password
 from app.models import Organization, User
 from app.models.enums import UserRole
 
@@ -49,21 +72,34 @@ VIEWER_ID = UUID("00000000-0000-4000-8000-000000000003")
 INACTIVE_ID = UUID("00000000-0000-4000-8000-000000000004")
 SEEDED_ORG_ID = UUID("00000000-0000-4000-8000-000000000010")
 
-ADMIN_EMAIL = "admin@test.com"
-REGULAR_EMAIL = "user@test.com"
-VIEWER_EMAIL = "viewer@test.com"
-INACTIVE_EMAIL = "inactive@test.com"
-NEW_USER_EMAIL = "newuser@test.com"
+ADMIN_EMAIL = os.environ.get("TEST_ADMIN_EMAIL", "admin@test.com")
+REGULAR_EMAIL = os.environ.get("TEST_REGULAR_EMAIL", "user@test.com")
+VIEWER_EMAIL = os.environ.get("TEST_VIEWER_EMAIL", "viewer@test.com")
+INACTIVE_EMAIL = os.environ.get("TEST_INACTIVE_EMAIL", "inactive@test.com")
+NEW_USER_EMAIL = os.environ.get("TEST_NEW_USER_EMAIL", "newuser@test.com")
 
-ADMIN_PASSWORD = "TestAdmin123!"
-REGULAR_PASSWORD = "TestUser123!"
-VIEWER_PASSWORD = "TestViewer123!"
-INACTIVE_PASSWORD = "TestInactive123!"
-NEW_USER_PASSWORD = "NewUser123!"
+ADMIN_PASSWORD = TEST_ADMIN_PASSWORD
+REGULAR_PASSWORD = TEST_REGULAR_PASSWORD
+VIEWER_PASSWORD = TEST_VIEWER_PASSWORD
+INACTIVE_PASSWORD = TEST_INACTIVE_PASSWORD
+NEW_USER_PASSWORD = TEST_NEW_USER_PASSWORD
 
 ORG_BASE = "/api/v1/super-admin/organizations"
 USER_BASE = "/api/v1/super-admin/users"
 DASHBOARD_BASE = "/api/v1/super-admin/dashboard"
+REGISTER_BASE = "/api/v1/register"
+VERIFY_BASE = "/api/v1/verify-email"
+RESEND_BASE = "/api/v1/resend-verification-code"
+COACH_LOGIN_BASE = "/api/v1/coach/login"
+COACH_FORGOT_PASSWORD_BASE = "/api/v1/coach/forgot-password"
+COACH_CANCEL_VERIFICATION_BASE = "/api/v1/coach/cancel-verification"
+COACH_CONTINUE_VERIFICATION_BASE = "/api/v1/coach/continue-verification"
+RESET_PASSWORD_BASE = "/api/v1/reset-password"
+VALIDATE_PASSWORD_BASE = "/api/v1/reset-password/validate"
+
+UNVERIFIED_COACH_ID = UUID("00000000-0000-4000-8000-000000000020")
+UNVERIFIED_COACH_EMAIL = os.environ.get("TEST_UNVERIFIED_COACH_EMAIL", "unverified.coach@test.com")
+UNVERIFIED_COACH_PASSWORD = TEST_UNVERIFIED_COACH_PASSWORD
 
 
 def _sync_database_url() -> str:
@@ -153,6 +189,9 @@ def mock_third_party_services() -> Generator[dict[str, Any], None, None]:
         patch("app.core.email.SendGridAPIClient") as sendgrid_cls,
         patch("app.core.email.send_email", return_value=None) as send_email,
         patch("app.core.email.send_password_reset_email", return_value=None),
+        patch("app.core.email.send_verification_email", return_value=None),
+        patch("app.services.email_verification.send_verification_email", return_value=None),
+        patch("app.services.registration.send_verification_email", return_value=None),
         patch("app.services.stripe_client.stripe") as stripe_mod,
     ):
         sendgrid_cls.return_value.send.return_value = sendgrid_response
@@ -191,6 +230,7 @@ def seeded_users(password_hashes: dict[str, str]) -> dict[str, dict[str, Any]]:
     regular = User(
         id=REGULAR_USER_ID,
         email=REGULAR_EMAIL,
+        username="regularcoach",
         encrypted_password=password_hashes[REGULAR_PASSWORD],
         role=UserRole.COACH.value,
         first_name="Regular",
@@ -198,6 +238,7 @@ def seeded_users(password_hashes: dict[str, str]) -> dict[str, dict[str, Any]]:
         is_super_admin=False,
         is_active=True,
         org_id=SEEDED_ORG_ID,
+        email_confirmed_at=datetime.now(timezone.utc),
     )
     viewer = User(
         id=VIEWER_ID,
@@ -288,6 +329,62 @@ def viewer_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
 def inactive_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
     """Authorization header for the deactivated fixture user."""
     return auth_headers(seeded_users["inactive"]["token"])
+
+
+@pytest.fixture
+def unverified_coach_user(password_hashes: dict[str, str]) -> User:
+    """Coach awaiting email verification with a known OTP hash."""
+    now = datetime.now(timezone.utc)
+    with Session(sync_engine) as session:
+        existing = session.get(User, UNVERIFIED_COACH_ID)
+        if existing is None:
+            user = User(
+                id=UNVERIFIED_COACH_ID,
+                email=UNVERIFIED_COACH_EMAIL,
+                username="unverifiedcoach",
+                encrypted_password=hash_password(UNVERIFIED_COACH_PASSWORD),
+                role=UserRole.COACH.value,
+                first_name="Unverified",
+                last_name="Coach",
+                is_super_admin=False,
+                is_active=True,
+                org_id=None,
+                email_confirmed_at=None,
+                confirmation_token=hash_otp(TEST_OTP_CODE),
+                confirmation_sent_at=now,
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            return user
+
+        existing.email = UNVERIFIED_COACH_EMAIL
+        existing.username = "unverifiedcoach"
+        existing.encrypted_password = hash_password(UNVERIFIED_COACH_PASSWORD)
+        existing.email_confirmed_at = None
+        existing.confirmation_token = hash_otp(TEST_OTP_CODE)
+        existing.confirmation_sent_at = now
+        existing.is_active = True
+        existing.deleted_at = None
+        session.commit()
+        session.refresh(existing)
+        return existing
+
+
+@pytest.fixture
+def unverified_coach_headers(unverified_coach_user: User) -> dict[str, str]:
+    """JWT auth header for the unverified coach fixture."""
+    token = create_access_token(
+        unverified_coach_user.id,
+        extra_claims={"email": unverified_coach_user.email, "role": unverified_coach_user.role},
+    )
+    return auth_headers(token)
+
+
+@pytest.fixture
+def expired_user_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
+    """Authorization header with an expired JWT for auth failure tests."""
+    return auth_headers(make_expired_token(seeded_users["user"]["id"]))
 
 
 @pytest.fixture

@@ -186,6 +186,52 @@ def build_password_reset_email(*, to_email: str, reset_url: str) -> EmailContent
     return EmailContent(subject=subject, plain_text=plain_text, html=html)
 
 
+def build_email_verification_email(*, to_email: str, otp_code: str) -> EmailContent:
+    """Build the HTML/plain verification email sent after coach registration."""
+    app_name = _display_app_name()
+    expire_minutes = settings.EMAIL_VERIFICATION_OTP_EXPIRE_MINUTES
+    subject = f"Verify your {app_name} email"
+
+    plain_text = (
+        f"Hello,\n\n"
+        f"Thank you for registering with {app_name}.\n\n"
+        f"Your verification code is: {otp_code}\n\n"
+        f"This code expires in {expire_minutes} minute(s).\n\n"
+        f"If you did not create an account, you can safely ignore this email.\n\n"
+        f"Thanks,\n"
+        f"The {app_name} Team"
+    )
+
+    body_html = f"""
+    <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.7; color: #111827;">
+      Hello,
+    </p>
+    <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.7; color: #374151;">
+      Thank you for registering with <strong style="color: #111827;">{app_name}</strong>.
+      Use the verification code below to confirm your email address
+      (<strong style="color: #111827;">{to_email}</strong>).
+    </p>
+    <p style="margin: 0 0 20px; font-size: 28px; line-height: 1.4; letter-spacing: 6px; color: #111827; font-weight: 700;">
+      {otp_code}
+    </p>
+    <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.7; color: #6b7280;">
+      This code expires in <strong style="color: #111827;">{expire_minutes} minute(s)</strong>.
+    </p>
+    <p style="margin: 0; font-size: 15px; line-height: 1.7; color: #374151;">
+      Thanks,<br />
+      <strong style="color: #111827;">The {app_name} Team</strong>
+    </p>
+    """
+
+    html = render_email(
+        title=subject,
+        body_html=body_html,
+        preview_text=f"Your {app_name} verification code is {otp_code}.",
+    )
+
+    return EmailContent(subject=subject, plain_text=plain_text, html=html)
+
+
 def build_subscription_price_change_email(
     *,
     plan_name: str,
