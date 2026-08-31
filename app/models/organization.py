@@ -44,3 +44,5 @@ class Organization(Base):
     )
     phone_number: Mapped[str | None] = mapped_column(Text, nullable=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    profile_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    contact_info: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -300,3 +300,64 @@ def construct_webhook_event(payload: bytes, signature: str) -> stripe.Event:
         signature,
         settings.STRIPE_WEBHOOK_SECRET,
     )
+
+
+def retrieve_payment_method_metadata(payment_method_id: str) -> dict[str, str | int]:
+    """Retrieve PCI-safe card metadata for a client-tokenized Stripe PaymentMethod."""
+    client = get_stripe_client()
+    payment_method = client.payment_methods.retrieve(payment_method_id)
+    if _stripe_value(payment_method, "type") != "card":
+        raise ValueError("Payment method must be a card")
+    card = _stripe_value(payment_method, "card") or {}
+    return {
+        "id": str(_stripe_value(payment_method, "id")),
+        "brand": str(_stripe_value(card, "brand") or "card"),
+        "last4": str(_stripe_value(card, "last4") or ""),
+        "exp_month": int(_stripe_value(card, "exp_month") or 0),
+        "exp_year": int(_stripe_value(card, "exp_year") or 0),
+    }
+
+
+def list_customer_invoices(*, customer_id: str, limit: int = 24) -> list[dict[str, str | int]]:
+    """List recent Stripe invoices for a customer."""
+    client = get_stripe_client()
+    page = client.invoices.list(params={"customer": customer_id, "limit": limit})
+    invoices: list[dict[str, str | int]] = []
+    for invoice in page.data:
+        invoices.append(
+            {
+                "id": str(_stripe_value(invoice, "id")),
+                "amount_due": int(_stripe_value(invoice, "amount_due") or 0),
+                "amount_paid": int(_stripe_value(invoice, "amount_paid") or 0),
+                "currency": str(_stripe_value(invoice, "currency") or "usd").upper(),
+                "status": str(_stripe_value(invoice, "status") or "draft"),
+                "created": int(_stripe_value(invoice, "created") or 0),
+            }
+        )
+    return invoices
+
+
+def create_stripe_customer(*, email: str, name: str, metadata: dict[str, str] | None = None) -> str:
+    """Create a Stripe customer and return the customer id."""
+    client = get_stripe_client()
+    customer = client.customers.create(
+        params={
+            "email": email,
+            "name": name,
+            "metadata": metadata or {},
+        }
+    )
+    return str(_stripe_value(customer, "id"))
+
+
+def attach_payment_method_to_customer(*, customer_id: str, payment_method_id: str) -> None:
+    """Attach a payment method to a customer and set it as the default."""
+    client = get_stripe_client()
+    client.payment_methods.attach(
+        payment_method_id,
+        params={"customer": customer_id},
+    )
+    client.customers.update(
+        customer_id,
+        params={"invoice_settings": {"default_payment_method": payment_method_id}},
+    )

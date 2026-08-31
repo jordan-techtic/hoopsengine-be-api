@@ -21,22 +21,24 @@ from app.api.routes import (
     home,
     leaderboard,
     live_practice,
+    org_admin_auth,
+    org_analytics,
+    org_billing,
+    org_custom_ui,
+    org_reports,
+    organization_profile,
     organizations,
     player_auth,
-<<<<<<< HEAD
     player_drill_submissions,
+    player_drills,
     player_home,
     player_login,
     player_profile,
     player_progress,
+    player_role_selection,
+    player_start,
     player_support,
     player_verification,
-=======
-    player_drills,
-    player_login,
-    player_profile,
-    player_start,
->>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
     players,
     practice_plans,
     profile,
@@ -58,6 +60,7 @@ api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(register.router)
 api_router.include_router(role_selection.router)
+api_router.include_router(player_role_selection.player_alias_router)
 api_router.include_router(verification.router)
 api_router.include_router(coach.router)
 api_router.include_router(coach_remove_player.router)
@@ -82,18 +85,23 @@ api_router.include_router(home.router)
 api_router.include_router(account_settings.router)
 api_router.include_router(attendance.router)
 api_router.include_router(organizations.router)
+api_router.include_router(org_reports.router)
+api_router.include_router(org_analytics.router)
+api_router.include_router(organization_profile.router)
+api_router.include_router(org_admin_auth.router)
+api_router.include_router(org_billing.router)
+api_router.include_router(org_billing.billing_alias_router)
+api_router.include_router(org_custom_ui.router)
+api_router.include_router(org_custom_ui.ui_design_alias_router)
 api_router.include_router(player_auth.router)
 api_router.include_router(player_login.router)
 api_router.include_router(player_profile.router)
-<<<<<<< HEAD
 api_router.include_router(player_drill_submissions.router)
 api_router.include_router(player_home.router)
 api_router.include_router(player_progress.router)
 api_router.include_router(player_verification.router)
-=======
 api_router.include_router(player_drills.router)
 api_router.include_router(player_start.router)
->>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 api_router.include_router(players.router)
 api_router.include_router(users.router)
 api_router.include_router(dashboard.router)
