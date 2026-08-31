@@ -140,25 +140,28 @@ async def _coach_email_exists_in_org(
         return False
 
     params: dict[str, Any] = {"org_id": org_id, "email": email.lower()}
-    exclude_sql = ""
     if exclude_coach_id is not None:
-        exclude_sql = "AND id <> :exclude_coach_id"
         params["exclude_coach_id"] = exclude_coach_id
-
-    exists = await db.scalar(
-        text(
-            f"""
+        exists_sql = """
             SELECT EXISTS (
                 SELECT 1
-                FROM {COACHES_TABLE}
+                FROM coaches
                 WHERE org_id = :org_id
                   AND email ILIKE :email
-                  {exclude_sql}
+                  AND id <> :exclude_coach_id
             )
             """
-        ),
-        params,
-    )
+    else:
+        exists_sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM coaches
+                WHERE org_id = :org_id
+                  AND email ILIKE :email
+            )
+            """
+
+    exists = await db.scalar(text(exists_sql), params)
     return bool(exists)
 
 
@@ -176,10 +179,9 @@ async def _fetch_team_coach_names(db: AsyncSession, *, team_id: UUID, org_id: UU
         return []
 
     result = await db.execute(
-        text(
-            f"""
+        text("""
             SELECT first_name, last_name, role
-            FROM {COACHES_TABLE}
+            FROM coaches
             WHERE team_id = :team_id
               AND org_id = :org_id
             ORDER BY created_at ASC NULLS LAST, last_name ASC, first_name ASC
@@ -203,10 +205,9 @@ async def _fetch_team_player_names(db: AsyncSession, *, team_id: UUID, org_id: U
         return []
 
     result = await db.execute(
-        text(
-            f"""
+        text("""
             SELECT first_name, last_name
-            FROM {PLAYERS_TABLE}
+            FROM players
             WHERE team_id = :team_id
               AND org_id = :org_id
             ORDER BY last_name ASC, first_name ASC
@@ -236,10 +237,9 @@ async def _fetch_primary_coach(
         return None
 
     result = await db.execute(
-        text(
-            f"""
+        text("""
             SELECT id, first_name, last_name, email, role
-            FROM {COACHES_TABLE}
+            FROM coaches
             WHERE team_id = :team_id
               AND org_id = :org_id
             ORDER BY created_at ASC NULLS LAST
@@ -258,10 +258,9 @@ async def _fetch_team_roles(db: AsyncSession, *, team_id: UUID, org_id: UUID) ->
         return []
 
     result = await db.execute(
-        text(
-            f"""
+        text("""
             SELECT DISTINCT role
-            FROM {COACHES_TABLE}
+            FROM coaches
             WHERE team_id = :team_id
               AND org_id = :org_id
               AND role IS NOT NULL
@@ -285,7 +284,7 @@ async def _set_team_season(
         return
 
     await db.execute(
-        text(f"UPDATE {TEAMS_TABLE} SET season = :season WHERE id = :team_id"),
+        text("UPDATE teams SET season = :season WHERE id = :team_id"),
         {"team_id": team_id, "season": season.strip() or None},
     )
     await db.commit()
@@ -376,7 +375,7 @@ async def _fetch_team_season(db: AsyncSession, *, team_id: UUID) -> str | None:
         return None
 
     value = await db.scalar(
-        text(f"SELECT season FROM {TEAMS_TABLE} WHERE id = :team_id"),
+        text("SELECT season FROM teams WHERE id = :team_id"),
         {"team_id": team_id},
     )
     if value is None:
@@ -527,9 +526,8 @@ async def _create_team_with_email(
     last_name = team_name.split()[0] if team_name.split() else "Team"
     if await client_db.table_exists(db, COACHES_TABLE):
         await db.execute(
-            text(
-                f"""
-                INSERT INTO {COACHES_TABLE} (
+            text("""
+                INSERT INTO coaches (
                     id, org_id, team_id, first_name, last_name, email, role
                 ) VALUES (
                     :id, :org_id, :team_id, :first_name, :last_name, :email, :role
@@ -585,9 +583,8 @@ async def _create_listing_members(
             if not first_name:
                 first_name, last_name = coach_name, "Coach"
             await db.execute(
-                text(
-                    f"""
-                    INSERT INTO {COACHES_TABLE} (
+                text("""
+                    INSERT INTO coaches (
                         id, org_id, team_id, first_name, last_name, role
                     ) VALUES (
                         :id, :org_id, :team_id, :first_name, :last_name, :role
@@ -610,9 +607,8 @@ async def _create_listing_members(
             if not first_name:
                 first_name, last_name = player_name, "Player"
             await db.execute(
-                text(
-                    f"""
-                    INSERT INTO {PLAYERS_TABLE} (
+                text("""
+                    INSERT INTO players (
                         id, org_id, team_id, first_name, last_name, active
                     ) VALUES (
                         :id, :org_id, :team_id, :first_name, :last_name, true
@@ -740,40 +736,43 @@ async def _fetch_team_rows_page(
     await org_admin_team_service._ensure_teams_table(db)
 
     params: dict[str, Any] = {"org_id": org_id}
-    filter_sql = ""
     if search_query:
         params["search_term"] = f"%{search_query}%"
-        filter_sql = "AND name ILIKE :search_term"
-
-    total = await db.scalar(
-        text(
-            f"""
+        count_sql = """
             SELECT COUNT(*)
-            FROM {TEAMS_TABLE}
+            FROM teams
             WHERE org_id = :org_id
-            {filter_sql}
+              AND name ILIKE :search_term
             """
-        ),
-        params,
-    )
+        list_sql = """
+            SELECT id, name, description, level, created_at
+            FROM teams
+            WHERE org_id = :org_id
+              AND name ILIKE :search_term
+            ORDER BY name ASC, created_at ASC
+            LIMIT :limit OFFSET :offset
+            """
+    else:
+        count_sql = """
+            SELECT COUNT(*)
+            FROM teams
+            WHERE org_id = :org_id
+            """
+        list_sql = """
+            SELECT id, name, description, level, created_at
+            FROM teams
+            WHERE org_id = :org_id
+            ORDER BY name ASC, created_at ASC
+            LIMIT :limit OFFSET :offset
+            """
+
+    total = await db.scalar(text(count_sql), params)
 
     offset = (page - 1) * page_size
     params["limit"] = page_size
     params["offset"] = offset
 
-    result = await db.execute(
-        text(
-            f"""
-            SELECT id, name, description, level, created_at
-            FROM {TEAMS_TABLE}
-            WHERE org_id = :org_id
-            {filter_sql}
-            ORDER BY name ASC, created_at ASC
-            LIMIT :limit OFFSET :offset
-            """
-        ),
-        params,
-    )
+    result = await db.execute(text(list_sql), params)
     rows = [dict(row) for row in result.mappings().all()]
     return rows, int(total or 0)
 
@@ -939,9 +938,8 @@ async def update_team(
             coach_id = uuid4()
             team_name = str(row["name"])
             await db.execute(
-                text(
-                    f"""
-                    INSERT INTO {COACHES_TABLE} (
+                text("""
+                    INSERT INTO coaches (
                         id, org_id, team_id, first_name, last_name, email, role
                     ) VALUES (
                         :id, :org_id, :team_id, :first_name, :last_name, :email, :role
@@ -960,9 +958,8 @@ async def update_team(
             )
         elif primary_coach is not None:
             await db.execute(
-                text(
-                    f"""
-                    UPDATE {COACHES_TABLE}
+                text("""
+                    UPDATE coaches
                     SET email = :email
                     WHERE id = :coach_id
                       AND org_id = :org_id
@@ -980,9 +977,8 @@ async def update_team(
         cleaned_role = payload.role.strip()
         if cleaned_role:
             await db.execute(
-                text(
-                    f"""
-                    UPDATE {COACHES_TABLE}
+                text("""
+                    UPDATE coaches
                     SET role = :role
                     WHERE id = :coach_id
                       AND org_id = :org_id
