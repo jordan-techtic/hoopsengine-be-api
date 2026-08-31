@@ -18,7 +18,10 @@ from app.models.user import User
 from app.schemas.player_start import PlayerStartDrillItem, PlayerStartWorkoutRequest
 from app.services import client_db, player_identity
 from app.services.player_identity import PlayerContext
-from app.services.player_statistics import _aggregate_field_goal_stats, _format_shooting_percentage
+from app.services.player_statistics import (
+    _aggregate_field_goal_stats,
+    _format_shooting_percentage,
+)
 from app.services.session_summary import FREE_THROW_CATEGORY_PATTERN
 
 logger = logging.getLogger(__name__)

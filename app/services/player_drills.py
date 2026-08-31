@@ -15,7 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppException
 from app.models.enums import SessionMode, SessionStatus
 from app.models.user import User
-from app.schemas.player_drills import PlayerDrillTimerRequest, PlayerDrillTimerUpdateRequest
+from app.schemas.player_drills import (
+    PlayerDrillTimerRequest,
+    PlayerDrillTimerUpdateRequest,
+)
 from app.services import client_db, player_identity
 from app.services.player_identity import PlayerContext
 

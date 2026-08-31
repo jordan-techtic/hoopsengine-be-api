@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from tests.api.test_player_start import VALID_DRILLS
 from tests.conftest import (
     PLAYER_DRILLS_BASE,
     PLAYER_START_BASE,
     SEEDED_PLAYER_DRILL_ONE_ID,
 )
-from tests.api.test_player_start import VALID_DRILLS
 
 
 def test_he455_list_drills_returns_envelope_fields(

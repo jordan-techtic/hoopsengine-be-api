@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from tests.api.test_player_drills import INVALID_DRILL_ID, UNASSIGNED_DRILL_ID
 from tests.conftest import (
     DRILLS_BASE,
     SEEDED_PLAYER_DRILL_ONE_ID,
 )
-from tests.api.test_player_drills import INVALID_DRILL_ID, UNASSIGNED_DRILL_ID
 
 
 def test_get_drill_detail_player_ticket_path_200(

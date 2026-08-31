@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_coach, get_current_user
 from app.core.database import get_db
 from app.core.exceptions import AppException
+from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.drill import (
     DrillContinueRequest,
@@ -22,7 +23,6 @@ from app.schemas.drill import (
     DrillSearchResponse,
     DrillUpdateRequest,
 )
-from app.models.enums import UserRole
 from app.schemas.errors import openapi_error, openapi_error_examples
 from app.schemas.player_drills import PlayerDrillDetailResponse
 from app.services import drill as drill_service
