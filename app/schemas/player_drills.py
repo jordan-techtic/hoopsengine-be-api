@@ -82,8 +82,8 @@ class PlayerDrillListItem(BaseModel):
     drill_id: UUID = Field(description="Drill UUID")
     name: str = Field(description="Drill display name", examples=["Warm-up Lap"])
     duration: int = Field(description="Drill duration in seconds", examples=[600], ge=0)
-    status: Literal["playing", "stopped", "reset"] = Field(
-        description="Current timer status for this drill",
+    status: PlayerDrillStatus = Field(
+        description="Current timer playback status for this drill",
         examples=["stopped"],
     )
     time_remaining: str = Field(

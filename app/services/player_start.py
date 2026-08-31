@@ -85,19 +85,46 @@ def _drill_item_from_session_entry(entry: dict[str, Any]) -> PlayerStartDrillIte
     return PlayerStartDrillItem(name=name, duration=duration)
 
 
-def _serialize_workout_drills(items: list[PlayerStartDrillItem]) -> list[dict[str, Any]]:
-    """Convert request drill items into session_details storage."""
+async def _resolve_and_serialize_workout_drills(
+    db: AsyncSession,
+    player_ctx: PlayerContext,
+    items: list[PlayerStartDrillItem],
+) -> tuple[list[dict[str, Any]], UUID]:
+    """Resolve submitted drills to catalog IDs and serialize for session storage."""
+    assigned_rows = await _fetch_assigned_drill_rows(db, player_ctx)
+    assigned_by_name = {str(row["name"]).strip().lower(): row for row in assigned_rows}
     serialized: list[dict[str, Any]] = []
+    first_drill_id: UUID | None = None
+
     for index, item in enumerate(items):
-        serialized.append(
-            {
-                "name": item.name,
-                "duration": item.duration,
-                "duration_seconds": _minutes_to_seconds(item.duration),
-                "sort_order": index,
-            }
+        matched = assigned_by_name.get(item.name.strip().lower())
+        entry: dict[str, Any] = {
+            "name": item.name,
+            "duration": item.duration,
+            "duration_seconds": _minutes_to_seconds(item.duration),
+            "sort_order": index,
+        }
+        if matched is not None:
+            drill_id = UUID(str(matched["id"]))
+            entry["drill_id"] = str(drill_id)
+            if first_drill_id is None:
+                first_drill_id = drill_id
+        serialized.append(entry)
+
+    if first_drill_id is None:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Drills must match your assigned workout list",
+            status_code=400,
+            details=[
+                {
+                    "field": "drills",
+                    "message": "Drills must match your assigned workout list",
+                }
+            ],
         )
-    return serialized
+
+    return serialized, first_drill_id
 
 
 def _default_timer(duration_seconds: int) -> dict[str, Any]:
@@ -116,6 +143,7 @@ def _merge_player_workout_details(
     *,
     timer: dict[str, Any] | None = None,
     drills: list[dict[str, Any]] | None = None,
+    current_drill_id: UUID | None = None,
     current_drill_index: int | None = None,
 ) -> dict[str, Any]:
     """Merge updates into the player_workout session_details block."""
@@ -125,6 +153,8 @@ def _merge_player_workout_details(
         workout_block["timer"] = timer
     if drills is not None:
         workout_block["drills"] = drills
+    if current_drill_id is not None:
+        workout_block["current_drill_id"] = str(current_drill_id)
     if current_drill_index is not None:
         workout_block["current_drill_index"] = current_drill_index
     merged[PLAYER_WORKOUT_BLOCK] = workout_block
@@ -423,7 +453,11 @@ async def start_player_workout(
         )
 
     await client_db.require_table(db, client_db.PRACTICE_SESSIONS_TABLE)
-    serialized_drills = _serialize_workout_drills(drills)
+    serialized_drills, first_drill_id = await _resolve_and_serialize_workout_drills(
+        db,
+        player_ctx,
+        drills,
+    )
     first_duration = serialized_drills[0]["duration_seconds"]
     session_id = uuid.uuid4()
     now = _utcnow()
@@ -431,6 +465,7 @@ async def start_player_workout(
         {},
         timer=_default_timer(first_duration),
         drills=serialized_drills,
+        current_drill_id=first_drill_id,
         current_drill_index=0,
     )
 

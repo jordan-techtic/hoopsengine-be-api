@@ -108,7 +108,7 @@ NOT_FOUND_ERROR_RESPONSES = {
     description=(
         "Return active drills assigned to the authenticated player's subteam.\n\n"
         "Each drill includes `drill_id`, `name`, `duration` (seconds), `status` "
-        "(`playing`, `stopped`, or `reset`), and `time_remaining` (`MM:SS`).\n\n"
+        "(`playing`, `paused`, `stopped`, or `reset`), and `time_remaining` (`MM:SS`).\n\n"
         "Optional query parameter `phone` is Figma client metadata and is not persisted.\n\n"
         "**Requires authenticated player JWT** (`Authorization: Bearer <access_token>`)."
     ),
@@ -379,3 +379,167 @@ async def stop_player_drill_timer(
         phone=body.phone,
     )
     return PlayerDrillTimerResponse(**result)
+
+# HE-213 ticket-path alias: /api/v1/drills/{id}* (player JWT only).
+# Mounted before coach /drills routes; GET /{id} is role-dispatched in drills.py.
+alias_router = APIRouter(prefix="/drills", tags=["player-active-drill"])
+
+ALIAS_AUTH_ERROR_RESPONSES = {
+    401: openapi_error(
+        "Missing, invalid, expired, or revoked JWT",
+        code="MISSING_TOKEN",
+        message="Could not validate credentials",
+    ),
+    403: openapi_error(
+        "Authenticated user is not a player or cannot access the drill",
+        code="FORBIDDEN",
+        message="You do not have permission to access this resource",
+    ),
+}
+
+ALIAS_NOT_FOUND_ERROR_RESPONSES = {
+    404: openapi_error_examples(
+        "Player or drill not found",
+        examples={
+            "drill_not_found": {
+                "code": "DRILL_NOT_FOUND",
+                "message": "Drill not found",
+                "details": [{"field": "drill_id", "message": "Drill not found"}],
+            },
+        },
+    ),
+}
+
+
+@alias_router.get(
+    "/{drill_id}",
+    response_model=PlayerDrillDetailResponse,
+    operation_id="getPlayerActiveDrillDetailTicketPath",
+    summary="Get active drill details (HE-213 ticket path alias)",
+    description=(
+        "Ticket-path alias for **GET /api/v1/drills/{id}** (Active Drill 2).
+
+"
+        "Returns player drill playback state including `timer`, `status`, and `progress`.
+
+"
+        "**Requires authenticated player JWT**."
+    ),
+    responses={
+        **ALIAS_AUTH_ERROR_RESPONSES,
+        **ALIAS_NOT_FOUND_ERROR_RESPONSES,
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+    },
+    include_in_schema=True,
+)
+async def get_player_drill_detail_ticket_path(
+    drill_id: UUID = DRILL_ID_PATH,
+    phone: str | None = Query(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+        examples=["+1-555-0100"],
+    ),
+    current_user: User = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+) -> PlayerDrillDetailResponse:
+    result = await player_drills_service.get_player_drill_detail(
+        db,
+        current_user,
+        drill_id,
+        phone=phone,
+    )
+    return PlayerDrillDetailResponse(**result)
+
+
+@alias_router.post(
+    "/{drill_id}/play",
+    response_model=PlayerActiveDrillResponse,
+    status_code=status.HTTP_201_CREATED,
+    operation_id="playPlayerDrillTicketPath",
+    summary="Start drill playback (HE-213 ticket path alias)",
+    description=(
+        "Ticket-path alias for **POST /api/v1/drills/{id}/play**.
+
+"
+        "Returns **201** when playback starts.
+
+"
+        "**Requires authenticated player JWT**."
+    ),
+    responses={
+        **ALIAS_AUTH_ERROR_RESPONSES,
+        **ALIAS_NOT_FOUND_ERROR_RESPONSES,
+        422: openapi_error(
+            "Request body failed schema validation",
+            code="VALIDATION_ERROR",
+            message="Request validation failed",
+        ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+    },
+)
+async def play_player_drill_ticket_path(
+    body: PlayerDrillPlayRequest,
+    drill_id: UUID = DRILL_ID_PATH,
+    current_user: User = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+) -> PlayerActiveDrillResponse:
+    result = await player_drills_service.play_player_drill(
+        db,
+        current_user,
+        drill_id,
+        phone=body.phone,
+    )
+    return PlayerActiveDrillResponse(**result)
+
+
+@alias_router.put(
+    "/{drill_id}/timer",
+    response_model=PlayerActiveDrillResponse,
+    operation_id="updatePlayerDrillTimerTicketPath",
+    summary="Update active drill timer (HE-213 ticket path alias)",
+    description=(
+        "Ticket-path alias for **PUT /api/v1/drills/{id}/timer**.
+
+"
+        "Returns **200** with updated timer state.
+
+"
+        "**Requires authenticated player JWT**."
+    ),
+    responses={
+        **ALIAS_AUTH_ERROR_RESPONSES,
+        **VALIDATION_ERROR_RESPONSES,
+        **ALIAS_NOT_FOUND_ERROR_RESPONSES,
+        422: openapi_error(
+            "Request body failed schema validation",
+            code="VALIDATION_ERROR",
+            message="Request validation failed",
+        ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+    },
+)
+async def update_player_drill_timer_ticket_path(
+    body: PlayerDrillTimerUpdateRequest,
+    drill_id: UUID = DRILL_ID_PATH,
+    current_user: User = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+) -> PlayerActiveDrillResponse:
+    result = await player_drills_service.update_player_drill_timer(
+        db,
+        current_user,
+        drill_id,
+        body,
+    )
+    return PlayerActiveDrillResponse(**result)
