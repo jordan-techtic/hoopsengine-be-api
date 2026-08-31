@@ -405,7 +405,7 @@ def test_he363_search_coaches_200(client: TestClient, org_admin_headers: dict[st
         params={"query": "Jane"},
     )
     assert response.status_code == 200
-    assert isinstance(response.json()["items"], list)
+    assert isinstance(response.json()["coaches"], list)
 
 
 def test_he363_invite_forbidden_403(client: TestClient, seeded_users: dict) -> None:
@@ -456,7 +456,8 @@ def test_he369_remove_coach_forbidden_403(client: TestClient, seeded_users: dict
 
 
 def test_he369_remove_invalid_phone_400(client: TestClient, org_admin_headers: dict[str, str]) -> None:
-    response = client.delete(
+    response = client.request(
+        "DELETE",
         f"{ORG_ADMIN_COACHES_BASE}/{HE_COACH_ID}",
         headers=org_admin_headers,
         json={"phone": "not-a-phone"},
@@ -477,10 +478,17 @@ def test_he365_get_team_details_200(client: TestClient, org_admin_headers: dict[
 
 
 def test_he365_create_empty_email_400(client: TestClient, org_admin_headers: dict[str, str]) -> None:
-    payload = dict(VALID_TEAM_CREATE)
-    payload["email"] = ""
-    response = client.post(TEAMS_BASE, headers=org_admin_headers, json=payload)
+    response = client.post(
+        TEAMS_BASE,
+        headers=org_admin_headers,
+        json={
+            "name": "Junior Squad",
+            "email": "",
+            "phone": "+1-555-0100",
+        },
+    )
     assert response.status_code == 400
+    assert response.json()["error"]["details"][0]["field"] == "email"
 
 
 def test_he365_create_duplicate_email_409(client: TestClient, org_admin_headers: dict[str, str]) -> None:

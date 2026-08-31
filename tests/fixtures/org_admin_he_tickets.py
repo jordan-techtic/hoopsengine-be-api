@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from tests.conftest import (
     SEEDED_ORG_ID,
+    SEEDED_PLAYER_BOB_ID,
     TEST_VALID_PASSWORD,
     auth_headers,
     create_access_token,
@@ -83,6 +84,16 @@ def seed_he_ticket_player(ensure_practice_plans_table: None) -> None:
             ),
             {"id": HE_PLAYER_ID, "org_id": SEEDED_ORG_ID},
         )
+        conn.execute(
+            text(
+                """
+                UPDATE players
+                SET email = 'bob.smith@varsityacademy.com', active = true
+                WHERE id = :bob_id
+                """
+            ),
+            {"bob_id": SEEDED_PLAYER_BOB_ID},
+        )
 
 
 @pytest.fixture
@@ -117,7 +128,7 @@ def seed_he_ticket_team(ensure_teams_table: None) -> None:
             text(
                 """
                 INSERT INTO teams (id, org_id, name, description, level)
-                VALUES (:id, :org_id, 'HE372 Varsity', 'Edit team seed', 'U16')
+                VALUES (:id, :org_id, 'Varsity Squad', 'Edit team seed', 'U16')
                 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
                 """
             ),
