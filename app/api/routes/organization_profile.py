@@ -71,6 +71,11 @@ VALIDATION_ERROR_RESPONSES = {
                 "message": "First Name is required",
                 "details": [{"field": "first_name", "message": "First Name is required"}],
             },
+            "missing_last_name": {
+                "code": "VALIDATION_ERROR",
+                "message": "Last Name is required",
+                "details": [{"field": "last_name", "message": "Last Name is required"}],
+            },
             "invalid_email": {
                 "code": "VALIDATION_ERROR",
                 "message": "Enter a valid email address",

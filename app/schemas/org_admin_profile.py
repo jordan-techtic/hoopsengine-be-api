@@ -143,7 +143,10 @@ class OrganizationProfileResponse(MobileWriteOnlyPasswordMixin):
     success: bool = Field(default=True)
     message: str = Field(description="Human-readable outcome message")
     status: str = Field(default="ready", description="UI state indicator")
-    description: str | None = Field(default=None, description="Secondary UI message")
+    description: str | None = Field(
+        default=None,
+        description="Secondary UI status message (not the organization bio — see organization_description)",
+    )
     link: str | None = Field(default=None, description="Optional related link")
     error: None = Field(default=None)
     title: str = Field(default="Edit Organization Profile")

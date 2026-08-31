@@ -308,6 +308,63 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "org-admin-auth",
+        "description": (
+            "Public organization admin login at POST /organization/login. Returns JWT for "
+            "organization dashboard APIs."
+        ),
+    },
+    {
+        "name": "org-admin-profile",
+        "description": (
+            "Authenticated organization admin profile management (GET/PUT /organization/profile). "
+            "Supports detailed Edit Profile and management name/description/contact_info forms."
+        ),
+    },
+    {
+        "name": "org-admin-reports",
+        "description": (
+            "Authenticated organization admin report generation, retrieval, and CSV/PDF export."
+        ),
+    },
+    {
+        "name": "org-admin-analytics",
+        "description": (
+            "Authenticated organization admin analytics dashboard, filtering, and export."
+        ),
+    },
+    {
+        "name": "org-admin-billing",
+        "description": (
+            "Authenticated organization admin billing history and payment method updates "
+            "under /admin/billing."
+        ),
+    },
+    {
+        "name": "org-admin-billing-alias",
+        "description": (
+            "Ticket-path billing aliases under /billing (history GET, payment-method PUT)."
+        ),
+    },
+    {
+        "name": "org-admin-custom-ui",
+        "description": (
+            "Authenticated custom UI design save and list under /custom-ui."
+        ),
+    },
+    {
+        "name": "org-admin-ui-design",
+        "description": (
+            "Ticket-path UI design aliases: save, templates, and session-limited feedback."
+        ),
+    },
+    {
+        "name": "player-role-selection",
+        "description": (
+            "Public player-module alias for role selection (Coach, Player, Organiser)."
+        ),
+    },
+    {
         "name": "coach-profile",
         "description": (
             "Authenticated user profile retrieval and update for the Edit Profile screen."
@@ -328,7 +385,7 @@ def _apply_bearer_auth(openapi_schema: dict) -> None:
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "JWT access token from `POST /api/v1/coach/login`, `POST /api/v1/login` (player), or `POST /api/v1/register`. Paste access_token only (no Bearer prefix).",
+        "description": "JWT access token from `POST /api/v1/coach/login`, `POST /api/v1/login` (player), `POST /api/v1/organization/login` (org admin), or `POST /api/v1/register`. Paste access_token only (no Bearer prefix).",
     }
 
     http_bearer_keys = [

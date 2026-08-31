@@ -123,13 +123,11 @@ async def get_admin_billing_history(
     operation_id="updateOrgAdminPaymentMethod",
     summary="Update organization payment method",
     description=(
-        "Update the organization payment method using validated card details.\n\n"
-        "**Required body fields:** `card_number`, `expiry_date` (MM/YY), and `cvv`.\n\n"
-        "Card details are tokenized through Stripe — full card numbers and CVV values are "
-        "**never stored** in the application database.\n\n"
-        "Returns **200** with a success message and masked card metadata. Returns **400** when "
-        "required fields are missing or card details are invalid. Returns **503** when Stripe "
-        "billing is unavailable.\n\n"
+        "Update the organization payment method using a **client-tokenized** Stripe PaymentMethod.\n\n"
+        "**Required body field:** `stripe_payment_method_id` (created via Stripe.js / Payment Element).\n\n"
+        "Raw card numbers and CVV values must **never** be sent to this API.\n\n"
+        "Returns **200** with a success message and masked card metadata. Returns **400** when the "
+        "token is missing or invalid. Returns **503** when Stripe billing is unavailable.\n\n"
         "**Requires organization admin JWT**."
     ),
     responses={
