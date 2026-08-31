@@ -24,12 +24,15 @@ ORG_ADMIN_PLAYER_DETAIL_EXAMPLE = {
     "link": None,
     "error": None,
     "id": "11111111-2222-3333-4444-555555555555",
+    "name": "Ava Morales",
     "first_name": "Ava",
     "last_name": "Morales",
+    "full_name": "Ava Morales",
     "email": "ava.morales@varsityacademy.com",
     "phone_number": "+1 (555) 382-9102",
-    "phone": "+1-555-0100",
+    "phone": "+1 (555) 382-9102",
     "team": "Varsity Squad",
+    "team_assignment": "Varsity Squad",
     "position": "Forward",
     "stats": ORG_ADMIN_PLAYER_STATS_EXAMPLE,
 }
@@ -76,8 +79,10 @@ class OrgAdminPlayerDetailResponse(BaseModel):
     link: str | None = None
     error: None = None
     id: UUID = Field(description="Player UUID")
+    name: str = Field(description="Player full display name")
     first_name: str = Field(description="Player first name")
     last_name: str = Field(description="Player last name")
+    full_name: str = Field(description="Figma Name field (`full_name`)")
     email: str | None = Field(default=None, description="Contact email (Coach_Email in Figma)")
     phone_number: str | None = Field(
         default=None,
@@ -85,9 +90,13 @@ class OrgAdminPlayerDetailResponse(BaseModel):
     )
     phone: str | None = Field(
         default=None,
-        description="Optional client metadata from the status bar (not persisted)",
+        description="Echo of stored phone for Figma Phone field display",
     )
     team: str | None = Field(default=None, description="Team display name")
+    team_assignment: str | None = Field(
+        default=None,
+        description="Figma Team Assignment field (team display name)",
+    )
     position: str | None = Field(default=None, description="Player position label")
     stats: OrgAdminPlayerStats = Field(description="Aggregated player statistics")
 

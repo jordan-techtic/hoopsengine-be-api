@@ -272,7 +272,7 @@ def test_he400_removal_confirmation_message_in_detail(
     seed_removal_player: None,
 ) -> None:
     response = client.get(
-        f"{ORG_ADMIN_REMOVE_PLAYERS_BASE}/{REMOVAL_PLAYER_ID}",
+        f"{ORG_ADMIN_REMOVE_PLAYERS_BASE}/{REMOVAL_PLAYER_ID}/removal",
         headers=org_admin_module_headers,
     )
     assert response.status_code == 200

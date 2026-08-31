@@ -325,6 +325,14 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "org-admin-change-password",
+        "description": (
+            "Organization Admin Change Password screen (HE-410). POST /admin/change-password "
+            "accepts current_password, new_password, confirm_password, optional phone metadata, "
+            "and password alias for confirm_password. Requires organization admin JWT."
+        ),
+    },
+    {
         "name": "org-admin-reports",
         "description": (
             "Authenticated organization admin report generation, retrieval, and CSV/PDF export."
@@ -358,11 +366,22 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "teams",
+        "description": (
+            "Team management under /teams for Organization Admin screens. "
+            "List and search teams (GET /teams, GET /teams/search) for the Team "
+            "Listing screen (HE-334). Create, retrieve, update, and delete teams "
+            "for Team Details (HE-337)."
+        ),
+    },
+    {
         "name": "org-admin-teams",
         "description": (
             "Authenticated organization admin team CRUD under /admin/teams. "
-            "Supports team_name, team_code, team_description, age_group, coach assignments, "
-            "and org-scoped duplicate team code validation."
+            "Retrieve and update team details for the Edit Team screen (GET/PUT "
+            "/admin/teams/{team_id}) with Figma fields full_name, description, and "
+            "coach assignments. Supports org-scoped duplicate team name and team code "
+            "validation."
         ),
     },
     {
@@ -373,11 +392,30 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "org-admin-invite-coach",
+        "description": (
+            "Authenticated organization admin coach invitation under /admin/invite-coach "
+            "and roster search under /admin/search-coaches for the Invite Coach screen."
+        ),
+    },
+    {
+        "name": "org-admin-coaches",
+        "description": (
+            "Authenticated organization admin coach management under /admin/coaches. "
+            "Retrieve coach details for the Edit Coach (HE-375) and Remove Coach "
+            "(HE-369) screens via GET /admin/coaches/{coach_id}. Update coaches via "
+            "PUT /admin/coaches/{coach_id}. Remove coaches via DELETE "
+            "/admin/coaches/{coach_id} (returns 204)."
+        ),
+    },
+    {
         "name": "org-admin-players",
         "description": (
-            "Authenticated organization admin player removal under /admin/players. "
-            "Retrieve player details for the Remove Player confirmation modal and remove "
-            "players after validating full_name, email, and phone."
+            "Authenticated organization admin player management under /admin/players. "
+            "Retrieve and update player details for the Edit Player screen (GET/PUT "
+            "/admin/players/{player_id}). Retrieve removal confirmation details at "
+            "/admin/players/{player_id}/removal and remove players via DELETE "
+            "/admin/players/{player_id} after validating full_name, email, and phone."
         ),
     },
     {

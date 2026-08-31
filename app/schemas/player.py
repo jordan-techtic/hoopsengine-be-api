@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.services.account_settings import split_full_name
 
 PLAYER_CREATE_EXAMPLE = {
     "first_name": "John",
@@ -215,17 +218,19 @@ class PlayerSearchResponse(BaseModel):
 
 
 class PlayerUpdateRequest(BaseModel):
-    """Payload for PUT /players/{player_id}."""
+    """Payload for PUT /players/{player_id} and PUT /admin/players/{player_id}."""
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
+                "full_name": "Jane Doe",
+                "email": "ava.morales@varsityacademy.com",
+                "phone": "(555) 123-4567",
+                "team_assignment": "Varsity Squad",
                 "first_name": "Ava",
                 "last_name": "Morales",
-                "email": "ava.morales@varsityacademy.com",
                 "phone_number": "+1 (555) 382-9102",
                 "position": "Forward",
-                "phone": "+1-555-0100",
             }
         }
     )
@@ -240,6 +245,16 @@ class PlayerUpdateRequest(BaseModel):
         description="Player last name",
         examples=["Morales"],
     )
+    full_name: str | None = Field(
+        default=None,
+        description="Figma Name field; split into first_name and last_name when provided",
+        examples=["Jane Doe"],
+    )
+    name: str | None = Field(
+        default=None,
+        description="Alias for full_name from legacy ticket examples",
+        examples=["Sarah Jenkins"],
+    )
     email: str | None = Field(
         default=None,
         description="Player contact email",
@@ -250,6 +265,11 @@ class PlayerUpdateRequest(BaseModel):
         description="Contact phone number stored on the player record",
         examples=["+1 (555) 382-9102"],
     )
+    team_assignment: str | None = Field(
+        default=None,
+        description="Team display name to assign within the organization",
+        examples=["Varsity Squad"],
+    )
     position: str | None = Field(
         default=None,
         description="Player position label",
@@ -257,9 +277,27 @@ class PlayerUpdateRequest(BaseModel):
     )
     phone: str | None = Field(
         default=None,
-        description="Optional client metadata from the status bar (not persisted)",
-        examples=["+1-555-0100"],
+        description=(
+            "Figma Phone field; persisted via phone_number when phone_number is omitted"
+        ),
+        examples=["(555) 123-4567"],
     )
+
+    @model_validator(mode="after")
+    def map_figma_edit_fields(self) -> Self:
+        """Map Edit Player Figma aliases onto persisted player fields."""
+        display_name = (self.full_name or self.name or "").strip()
+        if display_name:
+            first, last = split_full_name(display_name)
+            if self.first_name is None:
+                object.__setattr__(self, "first_name", first)
+            if self.last_name is None:
+                object.__setattr__(self, "last_name", last)
+
+        if self.phone and self.phone.strip() and not (self.phone_number and self.phone_number.strip()):
+            object.__setattr__(self, "phone_number", self.phone.strip())
+
+        return self
 
 
 class PlayerDetailResponse(BaseModel):

@@ -626,6 +626,14 @@ async def update_player(
 
     updates: dict[str, Any] = {}
 
+    if payload.full_name is not None and not payload.full_name.strip():
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Full name is required",
+            status_code=400,
+            details=[{"field": "full_name", "message": "Full name is required"}],
+        )
+
     if payload.first_name is not None:
         cleaned = payload.first_name.strip()
         if not cleaned:
@@ -649,7 +657,15 @@ async def update_player(
         updates["last_name"] = cleaned
 
     if payload.email is not None:
-        normalized_email = validate_profile_email(str(payload.email))
+        cleaned_email = str(payload.email).strip()
+        if not cleaned_email:
+            raise AppException(
+                code="VALIDATION_ERROR",
+                message="Email is required",
+                status_code=400,
+                details=[{"field": "email", "message": "Email is required"}],
+            )
+        normalized_email = validate_profile_email(cleaned_email)
         if await _email_in_use_by_other_player(
             db,
             org_id=org_id,
@@ -679,6 +695,14 @@ async def update_player(
     if payload.position is not None:
         cleaned_position = payload.position.strip()
         updates["position"] = cleaned_position or None
+
+    if payload.team_assignment is not None:
+        team_id, _team_name = await _resolve_team_id(
+            db,
+            org_id=org_id,
+            team_selection=payload.team_assignment,
+        )
+        updates["team_id"] = team_id
 
     if not updates:
         raise AppException(

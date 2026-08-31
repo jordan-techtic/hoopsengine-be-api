@@ -36,10 +36,19 @@ def _to_org_admin_detail_payload(payload: dict[str, Any]) -> dict[str, Any]:
     for key in _COACH_ONLY_DETAIL_KEYS:
         payload.pop(key, None)
 
-    phone_metadata = payload.pop("phone", None)
+    first_name = str(payload.get("first_name") or "").strip()
+    last_name = str(payload.get("last_name") or "").strip()
+    full_name = f"{first_name} {last_name}".strip() or "Unknown Player"
+    team_name = payload.get("team")
+    phone_value = payload.get("phone_number") or payload.pop("phone", None)
+
+    payload["name"] = full_name
+    payload["full_name"] = full_name
+    payload["team_assignment"] = team_name
+    payload["phone"] = phone_value
+    payload["phone_number"] = phone_value
     payload["stats"] = stats
     payload["title"] = "Player Management"
-    payload["phone"] = phone_metadata
     return payload
 
 

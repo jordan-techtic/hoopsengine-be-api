@@ -151,7 +151,7 @@ def test_get_org_admin_removal_detail_200(
     seed_org_admin_removal_player: None,
 ) -> None:
     response = client.get(
-        f"{ORG_ADMIN_REMOVE_PLAYERS_BASE}/{REMOVAL_PLAYER_ID}",
+        f"{ORG_ADMIN_REMOVE_PLAYERS_BASE}/{REMOVAL_PLAYER_ID}/removal",
         headers=org_admin_headers,
     )
     assert response.status_code == 200
@@ -191,7 +191,7 @@ def test_remove_org_admin_player_200(
     assert body["organization"]
 
     follow_up = client.get(
-        f"{ORG_ADMIN_REMOVE_PLAYERS_BASE}/{REMOVAL_PLAYER_ID}",
+        f"{ORG_ADMIN_REMOVE_PLAYERS_BASE}/{REMOVAL_PLAYER_ID}/removal",
         headers=org_admin_headers,
     )
     assert follow_up.status_code == 404

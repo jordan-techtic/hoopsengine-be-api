@@ -1,4 +1,4 @@
-"""Integration tests for organization admin player management API (HE-426)."""
+"""Integration tests for organization admin player management API (HE-426, HE-378)."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User
 from tests.conftest import (
+    ORG_ADMIN_EDIT_PLAYERS_BASE,
     ORG_ADMIN_PLAYERS_BASE,
     PLAYERS_BASE,
     SEEDED_ORG_ID,
@@ -27,6 +28,8 @@ from tests.conftest import (
 ORG_ADMIN_ID = UUID("00000000-0000-4000-8000-000000000081")
 PLAYER_DETAIL_ID = UUID("00000000-0000-4000-8000-000000000036")
 INACTIVE_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000082")
+SEEDED_TEAM_VARSITY_ID = UUID("00000000-0000-4000-8000-000000000093")
+MISSING_PLAYER_ID = UUID("00000000-0000-4000-8000-000000999999")
 
 
 @pytest.fixture
@@ -97,6 +100,38 @@ def seed_org_admin_players(ensure_practice_plans_table: None) -> None:
                 """
             ),
             {"id": INACTIVE_PLAYER_ID, "org_id": SEEDED_ORG_ID},
+        )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.teams (
+                    id uuid PRIMARY KEY,
+                    org_id uuid NOT NULL,
+                    name text NOT NULL,
+                    created_at timestamptz DEFAULT now()
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO teams (id, org_id, name)
+                VALUES (:id, :org_id, 'Varsity Squad')
+                ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+                """
+            ),
+            {"id": SEEDED_TEAM_VARSITY_ID, "org_id": SEEDED_ORG_ID},
+        )
+        connection.execute(
+            text(
+                """
+                UPDATE players
+                SET team_id = :team_id
+                WHERE id = :player_id
+                """
+            ),
+            {"team_id": SEEDED_TEAM_VARSITY_ID, "player_id": PLAYER_DETAIL_ID},
         )
 
 
@@ -244,3 +279,146 @@ def test_org_player_detail_same_path_as_coach(
     )
     assert response.status_code == 200
     assert response.json()["title"] == "Player Management"
+
+
+# --- HE-378: Admin Edit Player (/api/v1/admin/players/{player_id}) ---
+
+
+def test_admin_get_player_for_edit_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.get(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}",
+        headers=org_admin_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["error"] is None
+    assert body["status"] == "ready"
+    assert body["id"] == str(PLAYER_DETAIL_ID)
+    assert body["full_name"] == "Ava Morales"
+    assert body["name"] == "Ava Morales"
+    assert body["email"] == "ava.morales@varsityacademy.com"
+    assert body["phone"] == "+1 (555) 382-9102"
+    assert body["phone_number"] == "+1 (555) 382-9102"
+    assert body["team_assignment"] == "Varsity Squad"
+    assert "stats" in body
+
+
+def test_admin_get_player_for_edit_404_not_found(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.get(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{MISSING_PLAYER_ID}",
+        headers=org_admin_headers,
+    )
+    assert response.status_code == 404
+    body = response.json()
+    assert body["error"]["code"] == "PLAYER_NOT_FOUND"
+
+
+def test_admin_update_player_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.put(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}",
+        headers=org_admin_headers,
+        json={
+            "full_name": "Sarah Jenkins",
+            "email": "sarah.jenkins@school.edu",
+            "phone": "+1 (555) 123-4567",
+            "team_assignment": "Varsity Squad",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["message"] == "Player updated successfully"
+    assert body["full_name"] == "Sarah Jenkins"
+    assert body["name"] == "Sarah Jenkins"
+    assert body["email"] == "sarah.jenkins@school.edu"
+    assert body["phone"] == "+1 (555) 123-4567"
+    assert body["team_assignment"] == "Varsity Squad"
+
+
+def test_admin_update_player_400_empty_full_name(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.put(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}",
+        headers=org_admin_headers,
+        json={"full_name": "   "},
+    )
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["details"][0]["field"] == "full_name"
+
+
+def test_admin_update_player_400_empty_email(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.put(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}",
+        headers=org_admin_headers,
+        json={"email": "   "},
+    )
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["details"][0]["field"] == "email"
+
+
+def test_admin_update_player_400_invalid_email(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.put(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}",
+        headers=org_admin_headers,
+        json={"email": "not-an-email"},
+    )
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["details"][0]["field"] == "email"
+
+
+def test_admin_update_player_409_duplicate_email(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.put(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}",
+        headers=org_admin_headers,
+        json={"email": "bob.smith@varsityacademy.com"},
+    )
+    assert response.status_code == 409
+    body = response.json()
+    assert body["error"]["code"] == "EMAIL_ALREADY_IN_USE"
+    assert body["error"]["details"][0]["field"] == "email"
+
+
+def test_admin_edit_player_forbidden_viewer_403(
+    client: TestClient,
+    viewer_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.get(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}",
+        headers=viewer_headers,
+    )
+    assert response.status_code == 403
