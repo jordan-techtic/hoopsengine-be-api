@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
 
 PLAYER_START_DRILL_EXAMPLE = {
-    "name": "Catch & Shoot From Wing",
+    "name": "Warm-up Lap",
     "duration": 10,
 }
 
@@ -32,7 +32,7 @@ PLAYER_START_GET_EXAMPLE = {
     },
     "drills": [
         {"name": "Warm-up Lap", "duration": 10},
-        {"name": "3-Point Corner", "duration": 8},
+        {"name": "3-Point Corner", "duration": 10},
     ],
 }
 
@@ -46,16 +46,16 @@ PLAYER_START_POST_EXAMPLE = {
     "workout_id": "11111111-2222-3333-4444-555555555555",
     "phone": "+1-555-0100",
     "drills": [
-        {"name": "Catch & Shoot From Wing", "duration": 10},
-        {"name": "Cone Slasher Layup Finishing", "duration": 8},
+        {"name": "Warm-up Lap", "duration": 10},
+        {"name": "3-Point Corner", "duration": 10},
     ],
 }
 
 PLAYER_START_REQUEST_EXAMPLE = {
     "workout_id": None,
     "drills": [
-        {"name": "Catch & Shoot From Wing", "duration": 10},
-        {"name": "Cone Slasher Layup Finishing", "duration": 8},
+        {"name": "Warm-up Lap", "duration": 10},
+        {"name": "3-Point Corner", "duration": 10},
     ],
     "phone": "+1-555-0100",
 }
@@ -65,8 +65,8 @@ class PlayerStartDrillItem(BaseModel):
     """One drill in today's workout schedule."""
 
     name: str = Field(
-        description="Drill display name",
-        examples=["Catch & Shoot From Wing"],
+        description="Drill display name (must match an assigned subteam drill from GET /player/start)",
+        examples=["Warm-up Lap"],
     )
     duration: int = Field(
         description="Planned drill duration in minutes",
@@ -113,7 +113,7 @@ class PlayerStartWorkoutRequest(BaseModel):
     )
     drills: list[PlayerStartDrillItem] | None = Field(
         default=None,
-        description="Today's drill list to start the workout with",
+        description="Non-empty drill list; each name must match the player's assigned subteam drills",
     )
     phone: str | None = Field(
         default=None,
@@ -128,9 +128,9 @@ class PlayerStartGetResponse(MobileWriteOnlyPasswordMixin):
     model_config = ConfigDict(json_schema_extra={"example": PLAYER_START_GET_EXAMPLE})
 
     success: bool = Field(default=True)
-    message: str
-    status: str = Field(default="ready")
-    description: str | None = None
+    message: str = Field(description="Human-readable result message")
+    status: str = Field(default="ready", description="Screen state indicator (ready)")
+    description: str | None = Field(default=None, description="UI helper copy for the Start screen")
     link: str | None = None
     error: None = None
     workout_id: UUID | None = Field(
@@ -152,9 +152,9 @@ class PlayerStartPostResponse(MobileWriteOnlyPasswordMixin):
     model_config = ConfigDict(json_schema_extra={"example": PLAYER_START_POST_EXAMPLE})
 
     success: bool = Field(default=True)
-    message: str
-    status: Literal["started"] = Field(default="started")
-    description: str | None = None
+    message: str = Field(description="Human-readable result message")
+    status: Literal["started"] = Field(default="started", description="Workout session state after create")
+    description: str | None = Field(default=None, description="UI helper copy after workout start")
     link: str | None = None
     error: None = None
     workout_id: UUID = Field(description="Created workout session UUID")
