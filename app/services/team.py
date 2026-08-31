@@ -12,6 +12,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException
+from app.models.enums import UserRole
 from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.org_admin_team import OrgAdminTeamCreateRequest, OrgAdminTeamUpdateRequest
@@ -122,10 +123,44 @@ def _derive_team_code(team_name: str) -> str:
     return f"{slug}-{uuid4().hex[:6].upper()}"
 
 
+async def _email_in_use_by_other_user(
+    db: AsyncSession,
+    *,
+    email: str,
+    exclude_user_id: UUID | None = None,
+) -> bool:
+    """Return True when another user account already owns the email."""
+    query = select(User.id).where(User.email == email)
+    if exclude_user_id is not None:
+        query = query.where(User.id != exclude_user_id)
+    result = await db.execute(query)
+    return result.scalar_one_or_none() is not None
+
+
 async def _email_exists_in_system(db: AsyncSession, *, email: str) -> bool:
     """Return True when the email is already registered to a user account."""
-    result = await db.execute(select(User.id).where(User.email == email))
-    return result.scalar_one_or_none() is not None
+    return await _email_in_use_by_other_user(db, email=email)
+
+
+async def _fetch_linked_coach_user(
+    db: AsyncSession,
+    *,
+    org_id: UUID,
+    email: str | None,
+) -> User | None:
+    """Return the coach user account linked by email within the organization."""
+    cleaned = (email or "").strip()
+    if not cleaned:
+        return None
+
+    result = await db.execute(
+        select(User).where(
+            User.org_id == org_id,
+            User.role == UserRole.COACH.value,
+            User.email.ilike(cleaned),
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def _coach_email_exists_in_org(
@@ -916,7 +951,17 @@ async def update_team(
     if payload.email is not None:
         normalized_email = _validate_required_email(payload.email)
         exclude_coach_id = UUID(str(primary_coach["id"])) if primary_coach else None
-        if await _email_exists_in_system(db, email=normalized_email) or await _coach_email_exists_in_org(
+        linked_user = await _fetch_linked_coach_user(
+            db,
+            org_id=organization.id,
+            email=str(primary_coach.get("email")) if primary_coach else None,
+        )
+        exclude_user_id = linked_user.id if linked_user is not None else None
+        if await _email_in_use_by_other_user(
+            db,
+            email=normalized_email,
+            exclude_user_id=exclude_user_id,
+        ) or await _coach_email_exists_in_org(
             db,
             org_id=organization.id,
             email=normalized_email,

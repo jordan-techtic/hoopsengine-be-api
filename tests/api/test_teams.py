@@ -231,6 +231,49 @@ def test_create_team_409_duplicate_name(
     assert body["error"]["details"][0]["field"] == "name"
 
 
+def test_update_team_200_same_email_with_linked_coach_user(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+) -> None:
+    """Updating with the primary coach's unchanged email must not 409 when a linked user exists."""
+    team_id = _create_team(client, org_admin_headers)
+    coach_email = "newcoach@school.edu"
+    linked_coach_id = UUID("00000000-0000-4000-8000-000000000083")
+
+    with Session(sync_engine) as session:
+        if session.get(User, linked_coach_id) is None:
+            session.add(
+                User(
+                    id=linked_coach_id,
+                    email=coach_email,
+                    username="linkedteamcoach",
+                    encrypted_password=hash_password("Coach123!"),
+                    role=UserRole.COACH.value,
+                    first_name="Linked",
+                    last_name="Coach",
+                    is_super_admin=False,
+                    is_active=True,
+                    org_id=SEEDED_ORG_ID,
+                    email_confirmed_at=datetime.now(timezone.utc),
+                )
+            )
+            session.commit()
+
+    response = client.put(
+        f"{TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+        json={
+            "name": "Varsity Elite",
+            "email": coach_email,
+            "season": "2026-2027",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["email"] == coach_email
+    assert body["name"] == "Varsity Elite"
+
+
 def test_update_team_200(
     client: TestClient,
     org_admin_headers: dict[str, str],
