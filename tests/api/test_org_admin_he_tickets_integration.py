@@ -31,7 +31,6 @@ from tests.conftest import (
     REGULAR_EMAIL,
     REGULAR_USER_ID,
     SEEDED_ORG_ID,
-    SEEDED_PLAYER_BOB_ID,
     TEAMS_BASE,
     TEST_INVALID_PASSWORD,
     TEST_NEW_SECURE_PASSWORD,
@@ -43,17 +42,13 @@ from tests.conftest import (
 )
 from tests.fixtures.org_admin_he_tickets import (
     HE_COACH_ID,
-    HE_COACH_USER_ID,
     HE_ORG_ADMIN_ID,
     HE_PLAYER_ID,
     HE_TEAM_ID,
     MISSING_COACH_ID,
     MISSING_PLAYER_ID,
     MISSING_TEAM_ID,
-    seed_he_ticket_coach,
     seed_he_ticket_org_admin_headers,
-    seed_he_ticket_player,
-    seed_he_ticket_team,
 )
 
 VALID_CHANGE_PASSWORD = {

@@ -15,12 +15,15 @@ from app.core.exceptions import AppException
 from app.models.enums import UserRole
 from app.models.organization import Organization
 from app.models.user import User
-from app.schemas.org_admin_team import OrgAdminTeamCreateRequest, OrgAdminTeamUpdateRequest
+from app.schemas.org_admin_team import (
+    OrgAdminTeamCreateRequest,
+    OrgAdminTeamUpdateRequest,
+)
 from app.schemas.team import TeamCreateRequest, TeamUpdateRequest
 from app.services import client_db
 from app.services import org_admin_team as org_admin_team_service
-from app.services.org_admin_profile import require_admin_organization
 from app.services.account_settings import split_full_name
+from app.services.org_admin_profile import require_admin_organization
 from app.services.organization import build_pagination_meta, get_organization_by_id
 from app.services.profile import validate_profile_email
 

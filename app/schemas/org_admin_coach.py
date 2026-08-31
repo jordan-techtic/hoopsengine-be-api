@@ -7,8 +7,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.services.account_settings import split_full_name
-
 COACH_REMOVAL_CONFIRMATION_MESSAGE = (
     "Are you sure you want to remove this coach from your organization? "
     "This action is permanent."

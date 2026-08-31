@@ -7,12 +7,11 @@ from uuid import UUID
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User
-from sqlalchemy.orm import Session
-
 from tests.conftest import (
     SEEDED_ORG_ID,
     SEEDED_PLAYER_BOB_ID,
