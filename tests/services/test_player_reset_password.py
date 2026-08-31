@@ -9,9 +9,16 @@ from uuid import uuid4
 import pytest
 
 from app.core.exceptions import AppException
+from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User
 from app.services import player_reset_password as player_reset_password_service
+from tests.conftest import (
+    TEST_DIFFERENT_PASSWORD,
+    TEST_NEW_SECURE_PASSWORD,
+    TEST_VALID_PASSWORD,
+    TEST_VIEWER_PASSWORD,
+)
 
 
 def _player_user(**overrides: object) -> User:
@@ -20,7 +27,7 @@ def _player_user(**overrides: object) -> User:
         "id": uuid4(),
         "email": "player@example.com",
         "username": "playeruser",
-        "encrypted_password": "$2b$12$test",
+        "encrypted_password": hash_password(TEST_VIEWER_PASSWORD),
         "role": UserRole.PLAYER.value,
         "is_super_admin": False,
         "is_active": True,
@@ -43,16 +50,16 @@ async def test_reset_player_password_delegates_without_phone() -> None:
         result = await player_reset_password_service.reset_player_password(
             db,
             user=user,
-            new_password="StrongPassword123!",
-            confirm_password="StrongPassword123!",
+            new_password=TEST_NEW_SECURE_PASSWORD,
+            confirm_password=TEST_NEW_SECURE_PASSWORD,
         )
 
     assert result is user
     reset_mock.assert_awaited_once_with(
         db,
         user=user,
-        new_password="StrongPassword123!",
-        confirm_password="StrongPassword123!",
+        new_password=TEST_NEW_SECURE_PASSWORD,
+        confirm_password=TEST_NEW_SECURE_PASSWORD,
         phone=None,
     )
 
@@ -76,8 +83,8 @@ async def test_reset_player_password_propagates_validation_error() -> None:
             await player_reset_password_service.reset_player_password(
                 db,
                 user=user,
-                new_password="StrongPassword123!",
-                confirm_password="Different456!",
+                new_password=TEST_VALID_PASSWORD,
+                confirm_password=TEST_DIFFERENT_PASSWORD,
             )
 
     assert exc_info.value.status_code == 400

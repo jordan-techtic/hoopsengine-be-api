@@ -17,6 +17,7 @@ from app.schemas.player_auth import (
     PlayerInvitationVerifyResponse,
     PlayerResetPasswordRequest,
     PlayerResetPasswordResponse,
+    PlayerResetPasswordWithTokenRequest,
     PlayerVerifyCodeRequest,
     PlayerVerifyCodeResponse,
 )
@@ -251,10 +252,6 @@ async def player_forgot_password(
     return response
 
 
-def _player_login_link() -> str:
-    return f"{settings.FRONTEND_URL.rstrip('/')}/player/login"
-
-
 def _is_invitation_verify_payload(payload: PlayerVerifyCodeRequest) -> bool:
     return bool((payload.invitation_code or "").strip())
 
@@ -332,7 +329,7 @@ async def player_verify_code(
         )
 
     password_provided = payload.password is not None or payload.confirm_password is not None
-    user = await player_recovery_service.verify_player_recovery_code(
+    user, reset_token = await player_recovery_service.verify_player_recovery_code(
         db,
         email=payload.email or "",
         verification_code=payload.verification_code,
@@ -356,6 +353,7 @@ async def player_verify_code(
         email=user.email,
         id=user.id,
         status=status_value,
+        reset_token=reset_token,
     )
 
 
@@ -405,3 +403,74 @@ async def player_reset_password(
         link=_player_login_link(),
         id=user.id,
     )
+
+INVALID_RESET_TOKEN_RESPONSES = {
+    400: openapi_error(
+        "Missing or invalid reset token, or password validation failed",
+        code="INVALID_RESET_TOKEN",
+        message="The password reset token is invalid",
+        details=[{"field": "reset_token", "message": "The password reset token is invalid"}],
+    ),
+    403: openapi_error(
+        "Reset token has expired",
+        code="RESET_TOKEN_EXPIRED",
+        message="The password reset link has expired. Please request a new verification code.",
+        details=[
+            {
+                "field": "reset_token",
+                "message": "The password reset link has expired. Please request a new verification code.",
+            }
+        ],
+    ),
+}
+
+
+@router.post(
+    "/reset-password-with-token",
+    response_model=PlayerResetPasswordResponse,
+    status_code=status.HTTP_201_CREATED,
+    operation_id="playerResetPasswordWithToken",
+    summary="Reset player password with recovery token",
+    description=(
+        "Complete password reset after OTP verification using the short-lived ``reset_token`` "
+        "returned from ``POST /player/verify-code`` (verify-only step).
+
+"
+        "**Public endpoint** — no JWT required.
+
+"
+        "Required fields: ``reset_token``, ``new_password``, ``confirm_password``. Optional "
+        "client ``phone`` and ``password`` metadata are accepted but not persisted.
+
+"
+        "Returns **201** on success. Returns **400** for invalid token or password validation "
+        "failures. Returns **403** when the reset token has expired."
+    ),
+    responses={
+        **RESET_PASSWORD_VALIDATION_RESPONSES,
+        **INVALID_RESET_TOKEN_RESPONSES,
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+    },
+)
+async def player_reset_password_with_token(
+    payload: PlayerResetPasswordWithTokenRequest,
+    db: AsyncSession = Depends(get_db),
+) -> PlayerResetPasswordResponse:
+    """Reset a player password using the recovery reset token (post-OTP verify-only flow)."""
+    user = await player_recovery_service.reset_player_password_with_token(
+        db,
+        reset_token=payload.reset_token,
+        new_password=payload.new_password,
+        confirm_password=payload.confirm_password,
+    )
+    return PlayerResetPasswordResponse(
+        message=RESET_SUCCESS_MESSAGE,
+        description=RESET_DESCRIPTION,
+        link=_player_login_link(),
+        id=user.id,
+    )
+

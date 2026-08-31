@@ -10,9 +10,11 @@ import pytest
 
 from app.core.config import settings
 from app.core.exceptions import AppException
+from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User
 from app.services import player_auth as player_auth_service
+from tests.conftest import TEST_VALID_PASSWORD, TEST_VIEWER_PASSWORD
 
 
 def _verified_player(**overrides: object) -> User:
@@ -21,7 +23,7 @@ def _verified_player(**overrides: object) -> User:
         "id": uuid4(),
         "email": "player@example.com",
         "username": "playeruser",
-        "encrypted_password": "$2b$12$test",
+        "encrypted_password": hash_password(TEST_VIEWER_PASSWORD),
         "role": UserRole.PLAYER.value,
         "is_super_admin": False,
         "is_active": True,
@@ -35,7 +37,7 @@ def _verified_player(**overrides: object) -> User:
 def test_validate_login_fields_success() -> None:
     result = player_auth_service.validate_login_fields(
         email="player@example.com",
-        password="Secret123!",
+        password=TEST_VALID_PASSWORD,
     )
     assert result["valid"] is True
     assert result["title"] == "LOGIN"
@@ -65,7 +67,7 @@ async def test_login_player_unknown_account_raises_401() -> None:
         new=AsyncMock(return_value=None),
     ):
         with pytest.raises(AppException) as exc_info:
-            await player_auth_service.login_player(db, "player@example.com", "Secret123!")
+            await player_auth_service.login_player(db, "player@example.com", TEST_VALID_PASSWORD)
 
     assert exc_info.value.status_code == 401
 
@@ -95,7 +97,7 @@ async def test_login_player_duplicate_session_raises_409() -> None:
                     await player_auth_service.login_player(
                         db,
                         "player@example.com",
-                        "Secret123!",
+                        TEST_VALID_PASSWORD,
                     )
 
     assert exc_info.value.status_code == 409
@@ -121,7 +123,7 @@ async def test_login_player_remember_me_expiry() -> None:
                 result = await player_auth_service.login_player(
                     db,
                     "player@example.com",
-                    "Secret123!",
+                    TEST_VALID_PASSWORD,
                     remember_me=True,
                 )
 

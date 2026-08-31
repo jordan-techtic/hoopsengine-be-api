@@ -154,7 +154,7 @@ class PlayerVerifyCodeResponse(BaseModel):
                 "verification_code": None,
                 "id": "00000000-0000-4000-8000-000000000003",
                 "password": None,
-            }
+                "reset_token": "abc123resettoken",
         }
     )
 
@@ -179,6 +179,13 @@ class PlayerVerifyCodeResponse(BaseModel):
     password: None = Field(
         default=None,
         description="Always null on success (write-only input)",
+    )
+    reset_token: str | None = Field(
+        default=None,
+        description=(
+            "Short-lived token issued after verify-only OTP confirmation; "
+            "submit to POST /player/reset-password-with-token"
+        ),
     )
 
 
@@ -374,6 +381,53 @@ class PlayerLoginValidateResponse(BaseModel):
     errors: list[dict[str, str]] | None = Field(
         default=None,
         description="Field-level validation errors when valid is false",
+    )
+
+
+
+PLAYER_RESET_PASSWORD_WITH_TOKEN_REQUEST_EXAMPLE = {
+    "reset_token": "abc123resettoken",
+    "new_password": "StrongPassword123!",
+    "confirm_password": "StrongPassword123!",
+    "phone": "+1-555-0100",
+}
+
+
+class PlayerResetPasswordWithTokenRequest(BaseModel):
+    """Payload for resetting a player password after OTP verification (no JWT)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": PLAYER_RESET_PASSWORD_WITH_TOKEN_REQUEST_EXAMPLE}
+    )
+
+    reset_token: str = Field(
+        ...,
+        min_length=1,
+        description="Short-lived reset token returned from verify-code (verify-only step)",
+        examples=["abc123resettoken"],
+    )
+    new_password: str = Field(
+        ...,
+        description=(
+            "New account password (minimum 8 characters with uppercase, lowercase, "
+            "number, and special character)"
+        ),
+        examples=["StrongPassword123!"],
+    )
+    confirm_password: str = Field(
+        ...,
+        description="Confirmation of the new password; must match new_password",
+        examples=["StrongPassword123!"],
+    )
+    phone: str | None = Field(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+        examples=["+1-555-0100"],
+    )
+    password: str | None = Field(
+        default=None,
+        description="Optional Password Strength UI echo (not used for reset)",
+        examples=["StrongPassword123!"],
     )
 
 

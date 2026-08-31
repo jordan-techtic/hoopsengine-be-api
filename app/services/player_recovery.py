@@ -6,12 +6,21 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from pydantic import EmailStr, TypeAdapter, ValidationError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.email import send_password_recovery_email
 from app.core.exceptions import AppException
-from app.core.security import generate_otp_code, hash_otp, hash_password, otp_matches
+from app.core.security import (
+    generate_otp_code,
+    generate_reset_token,
+    hash_otp,
+    hash_password,
+    hash_reset_token,
+    otp_matches,
+    reset_tokens_match,
+)
 from app.models.enums import UserRole
 from app.models.user import User
 from app.services import auth as auth_service
@@ -72,6 +81,19 @@ def _recovery_otp_is_expired(user: User) -> bool:
     return _utcnow() > expires_at
 
 
+def _reset_token_is_expired(user: User) -> bool:
+    """Return True when the post-verify reset token has expired."""
+    if user.recovery_sent_at is None:
+        return True
+
+    sent_at = user.recovery_sent_at
+    if sent_at.tzinfo is None:
+        sent_at = sent_at.replace(tzinfo=timezone.utc)
+
+    expires_at = sent_at + timedelta(hours=settings.RESET_TOKEN_EXPIRE_HOURS)
+    return _utcnow() > expires_at
+
+
 def _resend_cooldown_remaining_seconds(user: User) -> int:
     """Return seconds remaining before another recovery code can be sent."""
     if user.recovery_sent_at is None:
@@ -110,6 +132,19 @@ def _validate_verification_code(verification_code: str | None) -> str:
             ],
         )
     return normalized
+
+
+def _validate_reset_token_value(reset_token: str | None) -> str:
+    """Return a trimmed reset token or raise 400 when missing."""
+    cleaned = (reset_token or "").strip()
+    if not cleaned:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Reset token is required",
+            status_code=400,
+            details=[{"field": "reset_token", "message": "Reset token is required"}],
+        )
+    return cleaned
 
 
 def _apply_password_reset(
@@ -155,6 +190,26 @@ def _apply_password_reset(
 
     validate_password(cleaned_password)
     user.encrypted_password = hash_password(cleaned_password)
+
+
+async def _get_player_by_reset_token(db: AsyncSession, token: str) -> User | None:
+    """Return the player user for a valid post-verify reset token, or None."""
+    token_hash = hash_reset_token(token)
+    result = await db.execute(select(User).where(User.recovery_token == token_hash))
+    user = result.scalar_one_or_none()
+    if user is None:
+        return None
+    if user.role != UserRole.PLAYER.value:
+        return None
+    if not user.is_active or user.deleted_at is not None:
+        return None
+    if user.banned_until is not None and user.banned_until > _utcnow():
+        return None
+    if user.recovery_sent_at is None:
+        return None
+    if _reset_token_is_expired(user):
+        return None
+    return user
 
 
 async def request_player_password_recovery(db: AsyncSession, email: str) -> tuple[User, str]:
@@ -222,12 +277,15 @@ async def verify_player_recovery_code(
     verification_code: str | None,
     password: str | None = None,
     confirm_password: str | None = None,
-) -> User:
+) -> tuple[User, str | None]:
     """
     Verify a password recovery OTP for a player account.
 
     When ``password`` and ``confirm_password`` are supplied, resets the password
-    after successful OTP verification.
+    after successful OTP verification and returns ``(user, None)``.
+
+    On verify-only, issues a short-lived ``reset_token`` for the follow-up
+    ``reset-password-with-token`` endpoint and returns ``(user, reset_token)``.
 
     Raises AppException 404 when the email is not registered to a player.
     Raises AppException 400 for invalid or missing verification codes.
@@ -289,7 +347,87 @@ async def verify_player_recovery_code(
             ],
         )
 
-    _apply_password_reset(user, password=password, confirm_password=confirm_password)
+    password_provided = password is not None or confirm_password is not None
+    reset_token_out: str | None = None
+
+    if password_provided:
+        _apply_password_reset(user, password=password, confirm_password=confirm_password)
+        user.recovery_token = None
+        user.recovery_sent_at = None
+    else:
+        reset_token_out = generate_reset_token()
+        user.recovery_token = hash_reset_token(reset_token_out)
+
+    now = _utcnow()
+    user.updated_at = now
+    await db.commit()
+    await db.refresh(user)
+
+    logger.info("Verified password recovery for player user %s", user.id)
+    return user, reset_token_out
+
+
+async def reset_player_password_with_token(
+    db: AsyncSession,
+    *,
+    reset_token: str,
+    new_password: str | None,
+    confirm_password: str | None,
+) -> User:
+    """
+    Reset a player password using the short-lived token issued after OTP verification.
+
+    Raises AppException 400 for missing/invalid token or password validation failures.
+    Raises AppException 403 when the reset token has expired.
+    """
+    cleaned_token = _validate_reset_token_value(reset_token)
+    user = await _get_player_by_reset_token(db, cleaned_token)
+    if user is None:
+        token_hash = hash_reset_token(cleaned_token)
+        result = await db.execute(select(User).where(User.recovery_token == token_hash))
+        stale_user = result.scalar_one_or_none()
+        if stale_user is not None and _reset_token_is_expired(stale_user):
+            raise AppException(
+                code="RESET_TOKEN_EXPIRED",
+                message="The password reset link has expired. Please request a new verification code.",
+                status_code=403,
+                details=[
+                    {
+                        "field": "reset_token",
+                        "message": "The password reset link has expired. Please request a new verification code.",
+                    }
+                ],
+            )
+        raise AppException(
+            code="INVALID_RESET_TOKEN",
+            message="The password reset token is invalid",
+            status_code=400,
+            details=[
+                {
+                    "field": "reset_token",
+                    "message": "The password reset token is invalid",
+                }
+            ],
+        )
+
+    if not reset_tokens_match(cleaned_token, user.recovery_token or ""):
+        raise AppException(
+            code="INVALID_RESET_TOKEN",
+            message="The password reset token is invalid",
+            status_code=400,
+            details=[
+                {
+                    "field": "reset_token",
+                    "message": "The password reset token is invalid",
+                }
+            ],
+        )
+
+    _apply_password_reset(
+        user,
+        password=new_password,
+        confirm_password=confirm_password,
+    )
 
     now = _utcnow()
     user.recovery_token = None
@@ -298,5 +436,5 @@ async def verify_player_recovery_code(
     await db.commit()
     await db.refresh(user)
 
-    logger.info("Verified password recovery for player user %s", user.id)
+    logger.info("Reset player password via recovery token for user %s", user.id)
     return user
