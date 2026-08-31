@@ -380,8 +380,8 @@ async def stop_player_drill_timer(
     )
     return PlayerDrillTimerResponse(**result)
 
-# HE-213 ticket-path alias: /api/v1/drills/{id}* (player JWT only).
-# Mounted before coach /drills routes; GET /{id} is role-dispatched in drills.py.
+# HE-213 ticket-path aliases for POST /play and PUT /timer under /api/v1/drills/{id}*.
+# GET /api/v1/drills/{id} is role-dispatched in drills.py (player vs coach).
 alias_router = APIRouter(prefix="/drills", tags=["player-active-drill"])
 
 ALIAS_AUTH_ERROR_RESPONSES = {
@@ -411,50 +411,6 @@ ALIAS_NOT_FOUND_ERROR_RESPONSES = {
 }
 
 
-@alias_router.get(
-    "/{drill_id}",
-    response_model=PlayerDrillDetailResponse,
-    operation_id="getPlayerActiveDrillDetailTicketPath",
-    summary="Get active drill details (HE-213 ticket path alias)",
-    description=(
-        "Ticket-path alias for **GET /api/v1/drills/{id}** (Active Drill 2).
-
-"
-        "Returns player drill playback state including `timer`, `status`, and `progress`.
-
-"
-        "**Requires authenticated player JWT**."
-    ),
-    responses={
-        **ALIAS_AUTH_ERROR_RESPONSES,
-        **ALIAS_NOT_FOUND_ERROR_RESPONSES,
-        500: openapi_error(
-            "Unexpected server error",
-            code="INTERNAL_SERVER_ERROR",
-            message="An unexpected error occurred",
-        ),
-    },
-    include_in_schema=True,
-)
-async def get_player_drill_detail_ticket_path(
-    drill_id: UUID = DRILL_ID_PATH,
-    phone: str | None = Query(
-        default=None,
-        description="Optional client metadata from the status bar (not persisted)",
-        examples=["+1-555-0100"],
-    ),
-    current_user: User = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db),
-) -> PlayerDrillDetailResponse:
-    result = await player_drills_service.get_player_drill_detail(
-        db,
-        current_user,
-        drill_id,
-        phone=phone,
-    )
-    return PlayerDrillDetailResponse(**result)
-
-
 @alias_router.post(
     "/{drill_id}/play",
     response_model=PlayerActiveDrillResponse,
@@ -462,12 +418,8 @@ async def get_player_drill_detail_ticket_path(
     operation_id="playPlayerDrillTicketPath",
     summary="Start drill playback (HE-213 ticket path alias)",
     description=(
-        "Ticket-path alias for **POST /api/v1/drills/{id}/play**.
-
-"
-        "Returns **201** when playback starts.
-
-"
+        "Ticket-path alias for **POST /api/v1/drills/{id}/play**.\n\n"
+        "Returns **201** when playback starts.\n\n"
         "**Requires authenticated player JWT**."
     ),
     responses={
@@ -506,12 +458,8 @@ async def play_player_drill_ticket_path(
     operation_id="updatePlayerDrillTimerTicketPath",
     summary="Update active drill timer (HE-213 ticket path alias)",
     description=(
-        "Ticket-path alias for **PUT /api/v1/drills/{id}/timer**.
-
-"
-        "Returns **200** with updated timer state.
-
-"
+        "Ticket-path alias for **PUT /api/v1/drills/{id}/timer**.\n\n"
+        "Returns **200** with updated timer state.\n\n"
         "**Requires authenticated player JWT**."
     ),
     responses={
