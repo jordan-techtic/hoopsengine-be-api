@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppException
 from app.models.organization import Organization
 from app.models.user import User
+from app.schemas.account_settings import ChangePasswordRequest
+from app.schemas.org_admin_change_password import OrgAdminChangePasswordRequest
 from app.schemas.org_admin_profile import OrganizationProfileUpdateRequest
 from app.services import account_settings as account_settings_service
 from app.services import profile as profile_service
@@ -151,6 +153,8 @@ def build_organization_profile_payload(
     phone_number = organization.phone_number
     organization_description = organization.profile_description
     contact_info = _resolve_contact_info(organization)
+    full_name = profile_service.build_coach_display_name(user)
+    role = user.role
     nested = {
         "organization_name": organization.name,
         "address": organization.address,
@@ -158,6 +162,8 @@ def build_organization_profile_payload(
         "phone_number": phone_number,
         "first_name": user.first_name,
         "last_name": user.last_name,
+        "full_name": full_name,
+        "role": role,
         "organization_description": organization_description,
         "contact_info": contact_info,
     }
@@ -179,6 +185,8 @@ def build_organization_profile_payload(
         "phone": phone_number,
         "first_name": user.first_name,
         "last_name": user.last_name,
+        "full_name": full_name,
+        "role": role,
         "organization_description": organization_description,
         "contact_info": contact_info,
         "avatar": _build_avatar(organization, user),
@@ -361,4 +369,40 @@ async def update_organization_profile(
         message="Organization profile updated successfully",
         status="saved",
         description="Your organization details have been saved",
+    )
+
+
+async def change_org_admin_password(
+    db: AsyncSession,
+    user: User,
+    payload: OrgAdminChangePasswordRequest,
+) -> User:
+    """Change the org admin password after validating confirmation matches."""
+    new_password = (payload.new_password or "").strip()
+    confirm_password = (payload.confirm_password or "").strip()
+
+    if not confirm_password:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Confirm password is required",
+            status_code=400,
+            details=[{"field": "confirm_password", "message": "Confirm password is required"}],
+        )
+
+    if new_password != confirm_password:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Passwords do not match",
+            status_code=400,
+            details=[{"field": "confirm_password", "message": "Passwords do not match"}],
+        )
+
+    return await account_settings_service.change_password(
+        db,
+        user,
+        ChangePasswordRequest(
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+            phone=payload.phone,
+        ),
     )

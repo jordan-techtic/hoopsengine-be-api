@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.teams (
   name text NOT NULL,
   season text,
   level text,
+  description text,
   team_view_code text UNIQUE,
   created_at timestamptz DEFAULT now()
 );
@@ -135,6 +136,7 @@ CREATE TABLE IF NOT EXISTS public.practice_plans (
   created_by_user uuid,
   created_by_name text,
   drill_count integer DEFAULT 0,
+  description text,
   created_at timestamptz DEFAULT now(),
   active boolean DEFAULT true
 );
@@ -144,8 +146,23 @@ CREATE TABLE IF NOT EXISTS public.practice_plan_drills (
   plan_id uuid REFERENCES public.practice_plans(id),
   drill_id uuid REFERENCES public.drills(id),
   drill_name text,
+  drill_description text,
   reps integer DEFAULT 1,
   order_num integer DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS public.practice_plan_assignments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL REFERENCES public.organizations(id),
+  plan_id uuid NOT NULL REFERENCES public.practice_plans(id),
+  coach_id uuid NOT NULL,
+  team_id uuid REFERENCES public.teams(id),
+  start_date date NOT NULL,
+  frequency text,
+  active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE (plan_id, coach_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.drill_submissions (

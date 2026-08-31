@@ -18,7 +18,12 @@ from app.schemas.player_removal import (
 )
 from app.services import client_db
 from app.services.account_settings import validate_numeric_phone
-from app.services.player import PLAYERS_TABLE, _column_exists, _ensure_coach_org
+from app.services.player import (
+    PLAYERS_TABLE,
+    TEAMS_TABLE,
+    _column_exists,
+    _ensure_coach_org,
+)
 from app.services.profile import validate_profile_email
 
 logger = logging.getLogger(__name__)
@@ -104,6 +109,48 @@ def _preview_fields_valid(
     except AppException:
         return False
     return True
+
+
+async def _fetch_player_row_for_removal(
+    db: AsyncSession,
+    player_id: UUID,
+) -> dict[str, Any] | None:
+    """Load a single active player row with optional team name for removal flows."""
+    await client_db.require_table(db, PLAYERS_TABLE)
+
+    email_column = await _column_exists(db, PLAYERS_TABLE, "email")
+    phone_column = await _column_exists(db, PLAYERS_TABLE, "phone")
+    active_column = await _column_exists(db, PLAYERS_TABLE, "active")
+    team_join = await client_db.table_exists(db, TEAMS_TABLE)
+
+    email_select = "p.email" if email_column else "NULL AS email"
+    phone_select = "p.phone" if phone_column else "NULL AS phone"
+    team_select = "t.name AS team_name" if team_join else "NULL AS team_name"
+    team_join_sql = "LEFT JOIN teams t ON t.id = p.team_id" if team_join else ""
+    active_sql = "AND p.active = true" if active_column else ""
+
+    result = await db.execute(
+        text(
+            f"""
+            SELECT
+                p.id,
+                p.org_id,
+                p.first_name,
+                p.last_name,
+                {email_select},
+                {phone_select},
+                {team_select}
+            FROM players p
+            {team_join_sql}
+            WHERE p.id = :player_id
+              {active_sql}
+            LIMIT 1
+            """
+        ),
+        {"player_id": player_id},
+    )
+    row = result.mappings().first()
+    return dict(row) if row is not None else None
 
 
 async def _fetch_org_players_by_email(

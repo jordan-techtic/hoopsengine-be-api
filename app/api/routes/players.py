@@ -1,4 +1,4 @@
-"""Coach player detail endpoints."""
+"""Coach and organization admin player detail endpoints."""
 
 from __future__ import annotations
 
@@ -7,10 +7,16 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_coach
+from app.api.deps import get_current_coach, get_current_user
 from app.core.database import get_db
+from app.core.exceptions import AppException
+from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.errors import openapi_error, openapi_error_examples
+from app.schemas.org_admin_player import (
+    OrgAdminPlayerDetailResponse,
+    OrgAdminPlayerListResponse,
+)
 from app.schemas.player import (
     PlayerCreateRequest,
     PlayerCreateResponse,
@@ -20,6 +26,7 @@ from app.schemas.player import (
     PlayerSearchResponse,
     PlayerUpdateRequest,
 )
+from app.services import org_admin_player as org_admin_player_service
 from app.services import player as player_service
 
 router = APIRouter(prefix="/players", tags=["players"])
@@ -109,6 +116,32 @@ SEARCH_VALIDATION_ERROR_RESPONSE = {
 }
 
 
+def _authorize_coach_or_org_admin(current_user: User) -> User:
+    """Allow verified coaches or organization admins to manage roster players."""
+    if current_user.role == UserRole.ORG_ADMIN.value:
+        return current_user
+    if current_user.role == UserRole.COACH.value:
+        if current_user.email_confirmed_at is None:
+            raise AppException(
+                code="FORBIDDEN",
+                message="Email verification is required to access this resource",
+                status_code=403,
+            )
+        return current_user
+    raise AppException(
+        code="FORBIDDEN",
+        message="You do not have permission to access this resource",
+        status_code=403,
+    )
+
+
+async def get_coach_or_org_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Dependency that permits coach or organization admin access."""
+    return _authorize_coach_or_org_admin(current_user)
+
+
 @router.post(
     "",
     response_model=PlayerCreateResponse,
@@ -154,19 +187,26 @@ async def create_player(
 
 @router.get(
     "",
-    response_model=PlayerListResponse,
+    response_model=PlayerListResponse | OrgAdminPlayerListResponse,
     operation_id="listPlayers",
-    summary="List coach players",
+    summary="List organization players",
     description=(
-        "Return active players associated with the authenticated coach's organization "
-        "for the **My Players** screen.\n\n"
-        "**Requires authenticated verified coach JWT** (`Authorization: Bearer <access_token>`).\n\n"
-        "Each player card includes `id`, `name`, `player_code`, `code` (alias), and "
-        "`team_name`.\n\n"
+        "Return active players associated with the authenticated user's organization.\n\n"
+        "**Requires authenticated verified coach or organization admin JWT** "
+        "(`Authorization: Bearer <access_token>`).\n\n"
+        "Coaches receive the **My Players** list shape. Organization admins receive "
+        "the **Player Management** list with the same player summary cards "
+        "(`id`, `name`, `player_code`, `code`, `team_name`).\n\n"
+        "Only **active** roster players are included.\n\n"
         "Returns **200** with an empty `players` array when no active roster players exist."
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
+        403: openapi_error(
+            "User is not an authenticated verified coach or organization admin",
+            code="FORBIDDEN",
+            message="You do not have permission to access this resource",
+        ),
         503: openapi_error(
             "Players table unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
@@ -180,10 +220,13 @@ async def create_player(
     },
 )
 async def list_players(
-    current_user: User = Depends(get_current_coach),
+    current_user: User = Depends(get_coach_or_org_admin),
     db: AsyncSession = Depends(get_db),
-) -> PlayerListResponse:
-    """List active players for the My Players screen."""
+) -> PlayerListResponse | OrgAdminPlayerListResponse:
+    """List active players for the coach My Players or org-admin Player Management screen."""
+    if current_user.role == UserRole.ORG_ADMIN.value:
+        result = await org_admin_player_service.list_players(db, current_user)
+        return OrgAdminPlayerListResponse(**result)
     result = await player_service.list_players(db, current_user)
     return PlayerListResponse(**result)
 
@@ -249,21 +292,29 @@ async def search_players(
 
 @router.get(
     "/{player_id}",
-    response_model=PlayerDetailResponse,
+    response_model=PlayerDetailResponse | OrgAdminPlayerDetailResponse,
     operation_id="getPlayerDetail",
     summary="Get player details",
     description=(
         "Return player profile, statistics, and contact information for the "
         "**Player Details** screen.\n\n"
-        "**Requires authenticated verified coach JWT**.\n\n"
-        "The player must belong to the coach's organization and be active.\n\n"
-        "Statistics map basketball session data to the UI cards: "
-        "`games_played`, `goals` (makes), `assists`, and `yellow_cards`.\n\n"
+        "**Requires authenticated verified coach or organization admin JWT**.\n\n"
+        "The player must belong to the caller's organization and be active.\n\n"
+        "Coaches receive flat statistic fields (`games_played`, `goals`, etc.). "
+        "Organization admins receive `first_name`, `last_name`, and a nested `stats` "
+        "object with `games_played`, `goals`, `assists`, and `yellow_cards`.\n\n"
+        "Accepts Figma fields `email` and `phone_number` in responses. Optional `phone` "
+        "is client metadata and is not persisted.\n\n"
         "Returns **404** when the player does not exist, is inactive, or is outside "
-        "the coach's organization."
+        "the caller's organization."
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
+        403: openapi_error(
+            "User is not an authenticated verified coach or organization admin",
+            code="FORBIDDEN",
+            message="You do not have permission to access this resource",
+        ),
         **NOT_FOUND_ERROR_RESPONSE,
         503: openapi_error(
             "Players table unavailable",
@@ -279,30 +330,42 @@ async def search_players(
 )
 async def get_player_detail(
     player_id: UUID = PLAYER_ID_PATH,
-    current_user: User = Depends(get_current_coach),
+    current_user: User = Depends(get_coach_or_org_admin),
     db: AsyncSession = Depends(get_db),
-) -> PlayerDetailResponse:
-    """Retrieve player details by id for the authenticated coach."""
+) -> PlayerDetailResponse | OrgAdminPlayerDetailResponse:
+    """Retrieve player details by id for an authenticated coach or organization admin."""
+    if current_user.role == UserRole.ORG_ADMIN.value:
+        result = await org_admin_player_service.get_player_detail(db, current_user, player_id)
+        return OrgAdminPlayerDetailResponse(**result)
     result = await player_service.get_player_detail_for_coach(db, current_user, player_id)
     return PlayerDetailResponse(**result)
 
 
 @router.put(
     "/{player_id}",
-    response_model=PlayerDetailResponse,
+    response_model=PlayerDetailResponse | OrgAdminPlayerDetailResponse,
     operation_id="updatePlayerDetail",
     summary="Update player details",
     description=(
-        "Update player contact and profile fields for the authenticated coach.\n\n"
-        "**Requires authenticated verified coach JWT** (`Authorization: Bearer <access_token>`).\n\n"
-        "Accepts Figma fields `email` and `phone_number` (stored as `players.phone`). "
-        "Optional `phone` is client metadata and is not persisted.\n\n"
+        "Update player contact and profile fields for an authenticated coach or "
+        "organization admin.\n\n"
+        "**Requires authenticated verified coach or organization admin JWT** "
+        "(`Authorization: Bearer <access_token>`).\n\n"
+        "Accepts Figma fields `email` (Coach_Email) and `phone_number` (stored as "
+        "`players.phone`). Optional `phone` is client metadata and is not persisted.\n\n"
+        "Also accepts `first_name`, `last_name`, and `position`.\n\n"
         "Returns **400** for invalid email or phone format, or empty required text fields.\n\n"
         "Returns **409** when the email is already registered to another player in the organization.\n\n"
-        "Returns **404** when the player is not found in the coach's organization."
+        "Returns **404** when the player is not found in the caller's organization.\n\n"
+        "Organization admins receive the nested `stats` response shape on success."
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
+        403: openapi_error(
+            "User is not an authenticated verified coach or organization admin",
+            code="FORBIDDEN",
+            message="You do not have permission to access this resource",
+        ),
         **VALIDATION_ERROR_RESPONSES,
         **CONFLICT_ERROR_RESPONSE,
         **NOT_FOUND_ERROR_RESPONSE,
@@ -321,10 +384,13 @@ async def get_player_detail(
 async def update_player_detail(
     body: PlayerUpdateRequest,
     player_id: UUID = PLAYER_ID_PATH,
-    current_user: User = Depends(get_current_coach),
+    current_user: User = Depends(get_coach_or_org_admin),
     db: AsyncSession = Depends(get_db),
-) -> PlayerDetailResponse:
-    """Update player details for a coach-owned roster player."""
+) -> PlayerDetailResponse | OrgAdminPlayerDetailResponse:
+    """Update player details for a coach-owned or org-admin-managed roster player."""
+    if current_user.role == UserRole.ORG_ADMIN.value:
+        result = await org_admin_player_service.update_player(db, current_user, player_id, body)
+        return OrgAdminPlayerDetailResponse(**result)
     result = await player_service.update_player(db, current_user, player_id, body)
     return PlayerDetailResponse(**result)
 

@@ -22,6 +22,11 @@ from app.api.routes import (
     leaderboard,
     live_practice,
     org_admin_auth,
+    org_admin_players,
+    org_admin_practice_plans,
+    org_admin_reset_password,
+    org_admin_subscription,
+    org_admin_teams,
     org_analytics,
     org_billing,
     org_custom_ui,
@@ -91,6 +96,11 @@ api_router.include_router(organization_profile.router)
 api_router.include_router(org_admin_auth.router)
 api_router.include_router(org_billing.router)
 api_router.include_router(org_billing.billing_alias_router)
+api_router.include_router(org_admin_practice_plans.router)
+api_router.include_router(org_admin_teams.router)
+api_router.include_router(org_admin_players.router)
+api_router.include_router(org_admin_reset_password.router)
+api_router.include_router(org_admin_subscription.router)
 api_router.include_router(org_custom_ui.router)
 api_router.include_router(org_custom_ui.ui_design_alias_router)
 api_router.include_router(player_auth.router)

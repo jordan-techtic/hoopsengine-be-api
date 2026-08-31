@@ -104,7 +104,11 @@ def test_get_organization_profile_200(
     assert body["organization_name"] == "Seeded Hoops Club"
     assert body["address"] == "1 Court Ave"
     assert body["email"] == "seeded-org@test.com"
+    assert body["full_name"] == "Org Admin"
+    assert body["role"] == UserRole.ORG_ADMIN.value
     assert body["profile"]["organization_name"] == "Seeded Hoops Club"
+    assert body["profile"]["full_name"] == "Org Admin"
+    assert body["profile"]["role"] == UserRole.ORG_ADMIN.value
     assert body["error"] is None
 
 
