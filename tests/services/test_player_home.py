@@ -11,7 +11,11 @@ from app.core.exceptions import AppException
 from app.models.enums import UserRole
 from app.models.user import User
 from app.services import player_home as player_home_service
-from tests.conftest import TEST_PLACEHOLDER_HASH, UNVERIFIED_PLAYER_EMAIL, UNVERIFIED_PLAYER_ID
+from tests.conftest import (
+    TEST_PLACEHOLDER_HASH,
+    UNVERIFIED_PLAYER_EMAIL,
+    UNVERIFIED_PLAYER_ID,
+)
 
 
 def test_format_session_name_prefers_practice_plan() -> None:

@@ -11,7 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppException
 from app.models.enums import LeaderboardFilterMetric, UserRole
 from app.models.user import User
-from app.services import leaderboard as leaderboard_service, player_identity
+from app.services import leaderboard as leaderboard_service
+from app.services import player_identity
 
 logger = logging.getLogger(__name__)
 

@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 
 from tests.conftest import LEADERBOARD_BASE, SEEDED_PLAYER_JANE_ID
 
-
 SEARCH_URL = f"{LEADERBOARD_BASE}/search"
 
 
