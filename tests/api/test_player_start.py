@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 from tests.conftest import PLAYER_START_BASE
 
 VALID_DRILLS = [
-    {"name": "Catch & Shoot From Wing", "duration": 10},
-    {"name": "Cone Slasher Layup Finishing", "duration": 8},
+    {"name": "Warm-up Lap", "duration": 10},
+    {"name": "3-Point Corner", "duration": 10},
 ]
 
 
