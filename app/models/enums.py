@@ -51,6 +51,7 @@ class SessionMode(StrEnum):
     ONE_DRILL = "one_drill"
     DAILY_OPTIONS = "daily_options"
     PRACTICE_PLAN = "practice_plan"
+    PLAYER_WORKOUT = "player_workout"
 
 
 class SessionStatus(StrEnum):

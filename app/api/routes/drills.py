@@ -7,8 +7,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_coach
+from app.api.deps import get_current_coach, get_current_user
 from app.core.database import get_db
+from app.core.exceptions import AppException
+from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.drill import (
     DrillContinueRequest,
@@ -22,7 +24,9 @@ from app.schemas.drill import (
     DrillUpdateRequest,
 )
 from app.schemas.errors import openapi_error, openapi_error_examples
+from app.schemas.player_drills import PlayerDrillDetailResponse
 from app.services import drill as drill_service
+from app.services import player_drills as player_drills_service
 
 router = APIRouter(prefix="/drills", tags=["drills"])
 
@@ -246,14 +250,17 @@ async def search_drills(
 
 @router.get(
     "/{drill_id}",
-    response_model=DrillDetailResponse,
+    response_model=DrillDetailResponse | PlayerDrillDetailResponse,
     operation_id="getDrillDetail",
     summary="Get drill details",
     description=(
-        "Return drill details for the **One Drill Step-2** screen.\n\n"
+        "Return drill details for the **One Drill Step-2** screen (coach) or "
+        "Active Drill 2 playback state (player).\n\n"
+        "Players receive timer/status/progress via the player active-drill payload. "
+        "Coaches receive catalog metadata for One Drill Step-2.\n\n"
         "Includes `id`, `name`, `category`, `duration`, optional `image`, and helper `description`.\n\n"
         "Returns **404** when the drill is not found or is not part of the approved catalog.\n\n"
-        "**Requires authenticated verified coach JWT**."
+        "**Requires authenticated JWT** (player or verified coach)."
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
@@ -267,9 +274,30 @@ async def search_drills(
 )
 async def get_drill_detail(
     drill_id: UUID = DRILL_ID_PATH,
-    _: User = Depends(get_current_coach),
+    phone: str | None = Query(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+        examples=["+1-555-0100"],
+    ),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> DrillDetailResponse:
+) -> DrillDetailResponse | PlayerDrillDetailResponse:
+    if current_user.role == UserRole.PLAYER.value:
+        result = await player_drills_service.get_player_drill_detail(
+            db,
+            current_user,
+            drill_id,
+            phone=phone,
+        )
+        return PlayerDrillDetailResponse(**result)
+
+    if current_user.role != UserRole.COACH.value or current_user.email_confirmed_at is None:
+        raise AppException(
+            code="FORBIDDEN",
+            message="You do not have permission to access this resource",
+            status_code=403,
+        )
+
     result = await drill_service.get_drill(db, drill_id)
     return DrillDetailResponse(**result)
 

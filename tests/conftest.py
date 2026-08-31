@@ -128,6 +128,7 @@ PLAYER_LOGIN_VALIDATE_BASE = "/api/v1/login/validate"
 PLAYER_PROFILE_BASE = "/api/v1/player/profile"
 PLAYER_RESET_PASSWORD_BASE = "/api/v1/player/reset-password"
 PLAYER_RESET_PASSWORD_WITH_TOKEN_BASE = "/api/v1/player/reset-password-with-token"
+<<<<<<< HEAD
 PLAYER_HOME_BASE = "/api/v1/player/home"
 PLAYER_MY_PROGRESS_BASE = "/api/v1/player/my-progress"
 PLAYER_SESSION_HISTORY_BASE = "/api/v1/player/session-history"
@@ -137,6 +138,10 @@ PLAYER_CHANGE_PASSWORD_BASE = "/api/v1/player/change-password"
 PLAYER_SUPPORT_INQUIRIES_BASE = "/api/v1/support/inquiries"
 PLAYER_SUPPORT_CONTACT_BASE = "/api/v1/support/contact"
 PLAYER_DRILL_SUBMISSIONS_BASE = "/api/v1/player/drill-submissions"
+=======
+PLAYER_DRILLS_BASE = "/api/v1/player/drills"
+PLAYER_START_BASE = "/api/v1/player/start"
+>>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 
 UNVERIFIED_COACH_ID = UUID("00000000-0000-4000-8000-000000000020")
 OTHER_COACH_ID = UUID("00000000-0000-4000-8000-000000000021")
@@ -147,13 +152,23 @@ SEEDED_PLAYER_JANE_ID = UUID("00000000-0000-4000-8000-000000000033")
 SEEDED_PLAYER_BOB_ID = UUID("00000000-0000-4000-8000-000000000034")
 SEEDED_INVITATION_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000037")
 SEEDED_REDEEMED_INVITATION_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000038")
+<<<<<<< HEAD
+=======
+SEEDED_VIEWER_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000039")
+SEEDED_SUBTEAM_ID = UUID("00000000-0000-4000-8000-000000000040")
+SEEDED_PLAYER_DRILL_ONE_ID = UUID("00000000-0000-4000-8000-000000000041")
+SEEDED_PLAYER_DRILL_TWO_ID = UUID("00000000-0000-4000-8000-000000000043")
+>>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 PLAYER_INVITATION_CODE = "PC-A1B2C3D4"
 REDEEMED_PLAYER_INVITATION_CODE = "PC-B2C3D4E5"
 UNVERIFIED_COACH_EMAIL = os.environ.get("TEST_UNVERIFIED_COACH_EMAIL", "unverified.coach@test.com")
 UNVERIFIED_COACH_PASSWORD = TEST_UNVERIFIED_COACH_PASSWORD
+<<<<<<< HEAD
 UNVERIFIED_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000039")
 UNVERIFIED_PLAYER_EMAIL = os.environ.get("TEST_UNVERIFIED_PLAYER_EMAIL", "unverified.player@test.com")
 UNVERIFIED_PLAYER_PASSWORD = os.environ.get("TEST_UNVERIFIED_PLAYER_PASSWORD", "PlayerVerify123!")
+=======
+>>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 
 
 def _sync_database_url() -> str:
@@ -716,6 +731,7 @@ def seed_leaderboard_data(seed_session_summary_data: dict[str, Any]) -> dict[str
                 "field_drill": SEEDED_FIELD_DRILL_ID,
             },
         )
+<<<<<<< HEAD
         connection.execute(
             text("ALTER TABLE players ADD COLUMN IF NOT EXISTS user_id uuid")
         )
@@ -729,6 +745,8 @@ def seed_leaderboard_data(seed_session_summary_data: dict[str, Any]) -> dict[str
             ),
             {"viewer_id": VIEWER_ID, "jane_id": SEEDED_PLAYER_JANE_ID},
         )
+=======
+>>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 
     return {
         **seed_session_summary_data,
@@ -959,6 +977,127 @@ def seed_player_invitation_players(
 
 
 @pytest.fixture
+<<<<<<< HEAD
+=======
+def seed_player_drills(
+    ensure_practice_plans_table: None,
+    seeded_users: dict[str, dict[str, Any]],
+) -> None:
+    """Seed roster, subteam drill assignments, and viewer player link for player drill APIs."""
+    with sync_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.subteams (
+                    id uuid PRIMARY KEY,
+                    team_id uuid,
+                    org_id uuid NOT NULL,
+                    name text NOT NULL,
+                    created_at timestamptz DEFAULT now()
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.subteam_drill_sets (
+                    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                    subteam_id uuid NOT NULL,
+                    drill_id uuid NOT NULL,
+                    active boolean DEFAULT true,
+                    sort_order integer DEFAULT 0,
+                    added_at timestamptz DEFAULT now()
+                )
+                """
+            )
+        )
+        connection.execute(
+            text("ALTER TABLE public.players ADD COLUMN IF NOT EXISTS user_id uuid")
+        )
+        connection.execute(
+            text("ALTER TABLE public.players ADD COLUMN IF NOT EXISTS email text")
+        )
+        connection.execute(
+            text("ALTER TABLE public.players ADD COLUMN IF NOT EXISTS subteam_id uuid")
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO subteams (id, org_id, name)
+                VALUES (:subteam_id, :org_id, 'Test Subteam')
+                ON CONFLICT (id) DO NOTHING
+                """
+            ),
+            {"subteam_id": SEEDED_SUBTEAM_ID, "org_id": SEEDED_ORG_ID},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO players (
+                    id, org_id, subteam_id, first_name, last_name,
+                    player_code, email, user_id, active
+                )
+                VALUES (
+                    :player_id, :org_id, :subteam_id, 'Viewer', 'Player',
+                    'PC-VIEWER01', :email, :user_id, true
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                    org_id = EXCLUDED.org_id,
+                    subteam_id = EXCLUDED.subteam_id,
+                    email = EXCLUDED.email,
+                    user_id = EXCLUDED.user_id,
+                    active = true
+                """
+            ),
+            {
+                "player_id": SEEDED_VIEWER_PLAYER_ID,
+                "org_id": SEEDED_ORG_ID,
+                "subteam_id": SEEDED_SUBTEAM_ID,
+                "email": VIEWER_EMAIL,
+                "user_id": VIEWER_ID,
+            },
+        )
+        connection.execute(
+            text("DELETE FROM subteam_drill_sets WHERE subteam_id = :subteam_id"),
+            {"subteam_id": SEEDED_SUBTEAM_ID},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO subteam_drill_sets (id, subteam_id, drill_id, active, sort_order)
+                VALUES
+                    ('00000000-0000-4000-8000-000000000050', :subteam_id, :drill_one, true, 1),
+                    ('00000000-0000-4000-8000-000000000051', :subteam_id, :drill_two, true, 2)
+                """
+            ),
+            {
+                "subteam_id": SEEDED_SUBTEAM_ID,
+                "drill_one": SEEDED_PLAYER_DRILL_ONE_ID,
+                "drill_two": SEEDED_PLAYER_DRILL_TWO_ID,
+            },
+        )
+        connection.execute(
+            text(
+                """
+                UPDATE drills
+                SET time_seconds = 600, approved = true
+                WHERE id IN (:drill_one, :drill_two)
+                """
+            ),
+            {
+                "drill_one": SEEDED_PLAYER_DRILL_ONE_ID,
+                "drill_two": SEEDED_PLAYER_DRILL_TWO_ID,
+            },
+        )
+        connection.execute(
+            text("DELETE FROM practice_sessions WHERE recorder_user_id = :user_id"),
+            {"user_id": VIEWER_ID},
+        )
+
+
+@pytest.fixture
+>>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 def viewer_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
     """Authorization header for the readonly player fixture user."""
     return auth_headers(seeded_users["viewer"]["token"])
@@ -1021,6 +1160,7 @@ def unverified_coach_headers(unverified_coach_user: User) -> dict[str, str]:
 
 
 @pytest.fixture
+<<<<<<< HEAD
 def unverified_player_user(password_hashes: dict[str, str]) -> User:
     """Player awaiting email verification with a known OTP hash."""
     now = datetime.now(timezone.utc)
@@ -1072,6 +1212,8 @@ def unverified_player_headers(unverified_player_user: User) -> dict[str, str]:
 
 
 @pytest.fixture
+=======
+>>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 def expired_user_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
     """Authorization header with an expired JWT for auth failure tests."""
     return auth_headers(make_expired_token(seeded_users["user"]["id"]))

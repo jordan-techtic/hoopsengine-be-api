@@ -165,7 +165,34 @@ OPENAPI_TAGS = [
         "name": "drills",
         "description": (
             "Drill catalog APIs for One Drill Step-2 and practice plan pickers: list/search, "
-            "CRUD, drill detail, and continue-to-step-3 after drill selection."
+            "CRUD, drill detail, and continue-to-step-3 after drill selection. "
+            "GET /drills/{id} is role-dispatched: verified coaches receive catalog metadata; "
+            "players receive Active Drill 2 playback state (timer, status, progress)."
+        ),
+    },
+    {
+        "name": "player-drills",
+        "description": (
+            "Authenticated player Active Drill 1 & 2 APIs (HE-455, HE-213) under /player/drills: "
+            "list assigned drills, start/stop/reset timers, drill detail, playback, and timer sync. "
+            "Optional `phone` query/body field is Figma status-bar metadata (not persisted). "
+            "Requires player JWT."
+        ),
+    },
+    {
+        "name": "player-active-drill",
+        "description": (
+            "HE-213 ticket-path aliases under /drills/{id}/play and /drills/{id}/timer for mobile "
+            "clients that call /api/v1/drills/* instead of /api/v1/player/drills/*. "
+            "Same request/response schemas and auth as primary player routes."
+        ),
+    },
+    {
+        "name": "player-start",
+        "description": (
+            "Authenticated player Start screen APIs (HE-229): GET returns quick stats and today's "
+            "assigned drill list; POST starts an in-progress workout session. Drill names in POST "
+            "must match assigned subteam drills from GET. Requires player JWT."
         ),
     },
     {

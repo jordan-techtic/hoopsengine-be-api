@@ -23,6 +23,7 @@ from app.api.routes import (
     live_practice,
     organizations,
     player_auth,
+<<<<<<< HEAD
     player_drill_submissions,
     player_home,
     player_login,
@@ -30,6 +31,12 @@ from app.api.routes import (
     player_progress,
     player_support,
     player_verification,
+=======
+    player_drills,
+    player_login,
+    player_profile,
+    player_start,
+>>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
     players,
     practice_plans,
     profile,
@@ -78,10 +85,15 @@ api_router.include_router(organizations.router)
 api_router.include_router(player_auth.router)
 api_router.include_router(player_login.router)
 api_router.include_router(player_profile.router)
+<<<<<<< HEAD
 api_router.include_router(player_drill_submissions.router)
 api_router.include_router(player_home.router)
 api_router.include_router(player_progress.router)
 api_router.include_router(player_verification.router)
+=======
+api_router.include_router(player_drills.router)
+api_router.include_router(player_start.router)
+>>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 api_router.include_router(players.router)
 api_router.include_router(users.router)
 api_router.include_router(dashboard.router)
@@ -91,4 +103,5 @@ api_router.include_router(live_practice.router)
 api_router.include_router(statistics.router)
 api_router.include_router(practice_plans.router)
 api_router.include_router(drills.router)
+api_router.include_router(player_drills.alias_router)
 api_router.include_router(drill_ideas.router)
