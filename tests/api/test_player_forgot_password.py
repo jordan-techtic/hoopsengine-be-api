@@ -285,3 +285,19 @@ def test_forgot_password_resend_cooldown_429(
     response = client.post(PLAYER_FORGOT_PASSWORD_BASE, json=_forgot_payload())
     assert response.status_code == 429
     assert response.json()["error"]["code"] == "RESEND_COOLDOWN"
+
+def test_verify_recovery_code_includes_reset_token_for_two_step_flow(
+    client: TestClient,
+    seeded_users: dict,
+) -> None:
+    """HE-227: correct OTP returns 200 with reset_token to proceed to password reset."""
+    _clear_recovery_otp(VIEWER_ID)
+    _seed_recovery_otp(VIEWER_ID)
+    response = client.post(PLAYER_VERIFY_CODE_BASE, json=_verify_payload())
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "verified"
+    assert body["reset_token"] is not None
+    assert body["reset_token"].strip() != ""
+    _clear_recovery_otp(VIEWER_ID)
+

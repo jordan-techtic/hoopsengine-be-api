@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -93,3 +93,60 @@ async def test_verify_recovery_otp_matches() -> None:
     assert verified_user.email == "player@test.com"
     assert reset_token is not None
     db.commit.assert_awaited_once()
+
+@pytest.mark.asyncio
+async def test_reset_player_password_with_token_success() -> None:
+    from app.core.security import generate_reset_token, hash_reset_token
+
+    db = AsyncMock()
+    reset_token = generate_reset_token()
+    user = User(
+        id=uuid4(),
+        email="player@test.com",
+        encrypted_password="hash",
+        role="player",
+        is_active=True,
+        recovery_token=hash_reset_token(reset_token),
+        recovery_sent_at=datetime.now(timezone.utc),
+    )
+    with patch(
+        "app.services.player_recovery._get_player_by_reset_token",
+        new=AsyncMock(return_value=user),
+    ):
+        with patch("app.services.player_recovery.reset_tokens_match", return_value=True):
+            db.commit = AsyncMock()
+            db.refresh = AsyncMock()
+
+            result = await player_recovery_service.reset_player_password_with_token(
+                db,
+                reset_token=reset_token,
+                new_password="NewSecure456!",
+                confirm_password="NewSecure456!",
+            )
+
+    assert result.email == "player@test.com"
+    db.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_reset_player_password_with_token_invalid_raises_400() -> None:
+    db = AsyncMock()
+    with patch(
+        "app.services.player_recovery._get_player_by_reset_token",
+        new=AsyncMock(return_value=None),
+    ):
+        with patch(
+            "app.services.player_recovery.hash_reset_token",
+            return_value="hash",
+        ):
+            db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: None))
+            with pytest.raises(AppException) as exc_info:
+                await player_recovery_service.reset_player_password_with_token(
+                    db,
+                    reset_token="bad-token",
+                    new_password="NewSecure456!",
+                    confirm_password="NewSecure456!",
+                )
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.code == "INVALID_RESET_TOKEN"
+

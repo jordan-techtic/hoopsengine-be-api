@@ -136,6 +136,12 @@ AC_COVERAGE = [
     ("HE-227", "verify recovery code expired 403", "tests.api.test_player_forgot_password::test_verify_recovery_code_expired_403"),
     ("HE-227", "verify recovery weak password 400", "tests.api.test_player_forgot_password::test_verify_recovery_code_weak_password_400"),
     ("HE-227", "verify recovery password mismatch 400", "tests.api.test_player_forgot_password::test_verify_recovery_code_password_mismatch_400"),
+    ("HE-227", "verify-only returns reset_token", "tests.api.test_player_forgot_password::test_verify_recovery_code_includes_reset_token_for_two_step_flow"),
+    ("HE-227", "reset password with token success 201", "tests.api.test_player_reset_password_with_token::test_reset_password_with_token_success_201"),
+    ("HE-227", "full recovery flow login", "tests.api.test_player_reset_password_with_token::test_reset_password_with_token_full_flow_login_201"),
+    ("HE-227", "expired reset token 403", "tests.api.test_player_reset_password_with_token::test_reset_password_with_token_expired_403"),
+    ("HE-227", "invalid reset token 400", "tests.api.test_player_reset_password_with_token::test_reset_password_with_token_invalid_token_400"),
+
     ("HE-228", "player login valid 201 jwt", "tests.api.test_player_login::test_player_login_valid_credentials_201_jwt"),
     ("HE-228", "player login empty email 400", "tests.api.test_player_login::test_player_login_empty_email_400"),
     ("HE-228", "player login empty password 400", "tests.api.test_player_login::test_player_login_empty_password_400"),
