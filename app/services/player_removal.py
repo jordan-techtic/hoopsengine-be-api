@@ -18,7 +18,12 @@ from app.schemas.player_removal import (
 )
 from app.services import client_db
 from app.services.account_settings import validate_numeric_phone
-from app.services.player import PLAYERS_TABLE, TEAMS_TABLE, _column_exists, _ensure_coach_org
+from app.services.player import (
+    PLAYERS_TABLE,
+    TEAMS_TABLE,
+    _column_exists,
+    _ensure_coach_org,
+)
 from app.services.profile import validate_profile_email
 
 logger = logging.getLogger(__name__)

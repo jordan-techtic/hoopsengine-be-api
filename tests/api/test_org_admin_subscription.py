@@ -22,7 +22,10 @@ from app.models.enums import (
 from app.models.subscription import StripeSubscription
 from app.models.subscription_plan import SubscriptionPlan
 from app.models.user import User
-from tests.api.test_dashboard import _persist_plans_then_subscriptions, _truncate_subscription_tables
+from tests.api.test_dashboard import (
+    _persist_plans_then_subscriptions,
+    _truncate_subscription_tables,
+)
 from tests.api.test_subscription_management import PRO_FEATURES
 from tests.conftest import (
     ORG_ADMIN_SUBSCRIPTION_BASE,

@@ -7,7 +7,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Path, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_coach, get_current_org_admin, require_authenticated_user
+from app.api.deps import (
+    get_current_coach,
+    get_current_org_admin,
+    require_authenticated_user,
+)
 from app.core.database import get_db
 from app.core.exceptions import AppException
 from app.models.enums import UserRole
@@ -20,10 +24,10 @@ from app.schemas.practice_plan import (
     PracticePlanUpdateRequest,
 )
 from app.schemas.practice_plan_assignment import (
-    PracticePlanAssignRequest,
     PracticePlanAssignmentListResponse,
     PracticePlanAssignmentResponse,
     PracticePlanAssignmentUpdateRequest,
+    PracticePlanAssignRequest,
     PracticePlanPutRequest,
 )
 from app.schemas.roster import PlayerRosterSearchResponse

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import date
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -14,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppException
 from app.models.user import User
 from app.schemas.practice_plan_assignment import (
-    PracticePlanAssignRequest,
     PracticePlanAssignmentUpdateRequest,
+    PracticePlanAssignRequest,
 )
 from app.services import client_db
 from app.services.org_admin_profile import require_admin_organization

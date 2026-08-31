@@ -13,7 +13,10 @@ from app.core.exceptions import AppException
 from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.errors import openapi_error, openapi_error_examples
-from app.schemas.org_admin_player import OrgAdminPlayerDetailResponse, OrgAdminPlayerListResponse
+from app.schemas.org_admin_player import (
+    OrgAdminPlayerDetailResponse,
+    OrgAdminPlayerListResponse,
+)
 from app.schemas.player import (
     PlayerCreateRequest,
     PlayerCreateResponse,

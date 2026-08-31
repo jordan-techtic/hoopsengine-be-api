@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from app.schemas.player_removal import REMOVAL_CONFIRMATION_MESSAGE
 from tests.conftest import (
+    ORG_ADMIN_PLAYERS_BASE,
     ORG_ADMIN_PRACTICE_PLANS_BASE,
     ORG_ADMIN_REMOVE_PLAYERS_BASE,
     ORG_ADMIN_RESET_PASSWORD_BASE,
@@ -21,10 +22,8 @@ from tests.conftest import (
     ORG_ADMIN_TEAMS_BASE,
     ORG_CHANGE_PASSWORD_BASE,
     ORGANIZATION_PROFILE_BASE,
-    ORG_ADMIN_PLAYERS_BASE,
     PRACTICE_PLANS_BASE,
     REGULAR_EMAIL,
-    REGULAR_USER_ID,
     SEEDED_ORG_ID,
     TEST_NEW_SECURE_PASSWORD,
     TEST_VALID_PASSWORD,
@@ -156,8 +155,14 @@ def test_he408_get_subscription_includes_notification(
     client: TestClient,
     org_admin_module_headers: dict[str, str],
 ) -> None:
-    from tests.api.test_dashboard import _persist_plans_then_subscriptions, _truncate_subscription_tables
-    from tests.api.test_org_admin_subscription import _org_admin_subscription, _org_basic_plan
+    from tests.api.test_dashboard import (
+        _persist_plans_then_subscriptions,
+        _truncate_subscription_tables,
+    )
+    from tests.api.test_org_admin_subscription import (
+        _org_admin_subscription,
+        _org_basic_plan,
+    )
 
     _truncate_subscription_tables()
     basic = _org_basic_plan()
@@ -177,8 +182,14 @@ def test_he408_upgrade_invalid_plan_error_message(
     client: TestClient,
     org_admin_module_headers: dict[str, str],
 ) -> None:
-    from tests.api.test_dashboard import _persist_plans_then_subscriptions, _truncate_subscription_tables
-    from tests.api.test_org_admin_subscription import _org_admin_subscription, _org_basic_plan
+    from tests.api.test_dashboard import (
+        _persist_plans_then_subscriptions,
+        _truncate_subscription_tables,
+    )
+    from tests.api.test_org_admin_subscription import (
+        _org_admin_subscription,
+        _org_basic_plan,
+    )
 
     _truncate_subscription_tables()
     basic = _org_basic_plan()

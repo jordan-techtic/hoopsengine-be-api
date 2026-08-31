@@ -13,9 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppException
 from app.models.organization import Organization
 from app.models.user import User
+from app.schemas.account_settings import ChangePasswordRequest
 from app.schemas.org_admin_change_password import OrgAdminChangePasswordRequest
 from app.schemas.org_admin_profile import OrganizationProfileUpdateRequest
-from app.schemas.account_settings import ChangePasswordRequest
 from app.services import account_settings as account_settings_service
 from app.services import profile as profile_service
 from app.services.organization import (

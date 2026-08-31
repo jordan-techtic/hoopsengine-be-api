@@ -14,7 +14,6 @@ from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User
 from tests.conftest import (
-    ORG_ADMIN_PRACTICE_PLANS_BASE,
     PRACTICE_PLANS_BASE,
     SEEDED_ORG_ID,
     auth_headers,
