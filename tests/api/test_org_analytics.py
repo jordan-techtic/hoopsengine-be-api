@@ -6,6 +6,12 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 import pytest
+from unittest.mock import patch
+
+import jwt
+from datetime import timedelta
+
+from app.core.config import settings
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -207,3 +213,52 @@ def test_analytics_forbidden_for_coach_403(
     response = client.get(ANALYTICS_BASE, headers=coach_headers)
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
+
+def _expired_token(user_id) -> dict[str, str]:
+    expired = jwt.encode(
+        {
+            "sub": str(user_id),
+            "type": "access",
+            "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+        },
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
+    return {"Authorization": f"Bearer {expired}"}
+
+
+def test_analytics_missing_token_401(client: TestClient) -> None:
+    response = client.get(ANALYTICS_BASE)
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "MISSING_TOKEN"
+
+
+def test_analytics_expired_token_401(client: TestClient) -> None:
+    response = client.get(ANALYTICS_BASE, headers=_expired_token(ORG_ADMIN_ID))
+    assert response.status_code == 401
+
+
+def test_analytics_insights_contain_trends(
+    org_admin_headers: dict[str, str], client: TestClient
+) -> None:
+    response = client.get(ANALYTICS_BASE, headers=org_admin_headers)
+    assert response.status_code == 200
+    insights = response.json()["insights"]
+    assert isinstance(insights, list)
+    assert len(insights) >= 1
+
+
+def test_export_analytics_network_failure_502(
+    org_admin_headers: dict[str, str], client: TestClient
+) -> None:
+    with patch(
+        "app.services.org_analytics._build_csv_content",
+        side_effect=RuntimeError("network error"),
+    ):
+        response = client.post(
+            f"{ANALYTICS_BASE}/export",
+            json={**VALID_FILTERS, "format": "csv"},
+            headers=org_admin_headers,
+        )
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "EXPORT_FAILED"

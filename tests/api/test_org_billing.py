@@ -255,3 +255,41 @@ def test_billing_forbidden_coach_403(
     response = client.get(BILLING_HISTORY_BASE, headers=coach_headers)
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
+
+def test_get_billing_history_includes_notifications(
+    org_admin_headers: dict[str, str],
+    client: TestClient,
+    seeded_billing_history: None,
+    mock_stripe_billing: None,
+) -> None:
+    response = client.get(BILLING_HISTORY_BASE, headers=org_admin_headers)
+    assert response.status_code == 200
+    notifications = response.json()["data"]["notifications"]
+    assert len(notifications) >= 1
+    assert notifications[0]["type"] == "upcoming_payment"
+
+
+def test_billing_missing_token_401(client: TestClient) -> None:
+    response = client.get(BILLING_HISTORY_BASE)
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "MISSING_TOKEN"
+
+
+def test_update_payment_method_stripe_failure_400(
+    org_admin_headers: dict[str, str],
+    client: TestClient,
+) -> None:
+    with (
+        patch("app.services.org_billing.stripe_client.stripe_configured", return_value=True),
+        patch(
+            "app.services.org_billing.stripe_client.retrieve_payment_method_metadata",
+            side_effect=RuntimeError("stripe unavailable"),
+        ),
+    ):
+        response = client.post(
+            BILLING_PAYMENT_METHOD_BASE,
+            json=VALID_PAYMENT_METHOD,
+            headers=org_admin_headers,
+        )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "PAYMENT_METHOD_INVALID"

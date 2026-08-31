@@ -6,6 +6,12 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 import pytest
+from unittest.mock import patch
+
+import jwt
+from datetime import timedelta
+
+from app.core.config import settings
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -153,3 +159,45 @@ def test_generate_empty_criteria_message(org_admin_headers: dict[str, str], clie
     body = response.json()
     assert body["message"]
     assert body["data"]["total_sessions"] == 0
+
+def _expired_token(user_id) -> dict[str, str]:
+    expired = jwt.encode(
+        {
+            "sub": str(user_id),
+            "type": "access",
+            "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+        },
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
+    return {"Authorization": f"Bearer {expired}"}
+
+
+def test_reports_missing_token_401(client: TestClient) -> None:
+    response = client.post(f"{REPORTS_BASE}/generate", json=VALID_CRITERIA)
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "MISSING_TOKEN"
+
+
+def test_reports_expired_token_401(client: TestClient) -> None:
+    response = client.post(
+        f"{REPORTS_BASE}/generate",
+        json=VALID_CRITERIA,
+        headers=_expired_token(ORG_ADMIN_ID),
+    )
+    assert response.status_code == 401
+
+
+def test_export_report_network_failure_502(
+    org_admin_headers: dict[str, str], client: TestClient
+) -> None:
+    created = client.post(f"{REPORTS_BASE}/generate", json=VALID_CRITERIA, headers=org_admin_headers)
+    report_id = created.json()["report_id"]
+    with patch("app.services.org_reports._build_csv_content", side_effect=RuntimeError("export failed")):
+        response = client.post(
+            f"{REPORTS_BASE}/export",
+            json={"report_id": report_id, "format": "csv"},
+            headers=org_admin_headers,
+        )
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "EXPORT_FAILED"
