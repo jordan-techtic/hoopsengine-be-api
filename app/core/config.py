@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     RESET_PASSWORD_URL: str = "http://localhost:5173/reset-password"
     EMAIL_VERIFICATION_OTP_EXPIRE_MINUTES: int = 15
     EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
+    PASSWORD_RECOVERY_OTP_EXPIRE_MINUTES: int = 1440
+    PLAYER_RESET_PASSWORD_URL: str = "http://localhost:5173/player/reset-password"
     SUPPORT_REQUEST_UPLOAD_DIR: str = "storage/support_requests"
     SUPPORT_REQUEST_MAX_ATTACHMENT_SIZE_MB: int = 5
     PROFILE_IMAGE_UPLOAD_DIR: str = "storage/profile_images"
