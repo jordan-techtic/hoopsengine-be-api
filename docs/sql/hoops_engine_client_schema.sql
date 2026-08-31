@@ -152,6 +152,7 @@ CREATE TABLE IF NOT EXISTS public.drill_submissions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid REFERENCES public.organizations(id),
   submitted_by uuid REFERENCES public.coaches(id),
+  submitted_by_player_id uuid REFERENCES public.players(id),
   drill_name text NOT NULL,
   category text,
   description text,

@@ -378,6 +378,28 @@ async def migrate_organization_contact_columns(connection: AsyncConnection) -> N
         logger.info("Added address to organizations")
 
 
+async def migrate_drill_submissions_player_submitter_column(
+    connection: AsyncConnection,
+) -> None:
+    """Add submitted_by_player_id to client-domain drill_submissions when missing."""
+    if not await _table_exists(connection, "drill_submissions"):
+        return
+
+    if not await _column_exists(
+        connection,
+        table_name="drill_submissions",
+        column_name="submitted_by_player_id",
+    ):
+        await connection.execute(
+            text(
+                "ALTER TABLE drill_submissions "
+                "ADD COLUMN submitted_by_player_id UUID NULL "
+                "REFERENCES players(id)"
+            )
+        )
+        logger.info("Added submitted_by_player_id to drill_submissions")
+
+
 async def run_subscription_schema_migrations(connection: AsyncConnection) -> None:
     await migrate_users_staging_to_users(connection)
     await migrate_subscription_plans_role_column(connection)
@@ -386,3 +408,4 @@ async def run_subscription_schema_migrations(connection: AsyncConnection) -> Non
     await migrate_offline_sync_column(connection)
     await migrate_organization_contact_columns(connection)
     await migrate_support_request_phone_column(connection)
+    await migrate_drill_submissions_player_submitter_column(connection)

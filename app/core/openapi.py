@@ -110,7 +110,11 @@ OPENAPI_TAGS = [
     },
     {
         "name": "faqs",
-        "description": "Public FAQs list for the Coach module help screen.",
+        "description": (
+            "Public FAQs for Coach and Player help screens. Use profile=player (default) "
+            "for player-module articles; profile=coach for coach help articles. Includes "
+            "FAQ detail and contact-support submission."
+        ),
     },
     {
         "name": "coach-home",
@@ -228,9 +232,10 @@ OPENAPI_TAGS = [
     {
         "name": "player-auth",
         "description": (
-            "Player module authentication: forgot-password OTP, verify-code (invitation or recovery), "
-            "reset-password (JWT or recovery token), and player login/validate. Public except "
-            "authenticated reset-password."
+            "Player module authentication and account flows: forgot-password OTP, verify-code "
+            "(invitation or recovery), reset-password (JWT or recovery token), change-password, "
+            "cancel-verification during signup, and player login/validate. Public except "
+            "authenticated reset-password, change-password, and cancel-verification."
         ),
     },
     {
@@ -238,6 +243,41 @@ OPENAPI_TAGS = [
         "description": (
             "Authenticated player Edit Profile screen: GET and PUT /player/profile for personal "
             "details, contact info, and avatar metadata. Requires player JWT."
+        ),
+    },
+    {
+        "name": "player-progress",
+        "description": (
+            "Authenticated player My Progress screen APIs: aggregate shooting stats, "
+            "session history, and per-drill performance metrics. Requires player JWT."
+        ),
+    },
+    {
+        "name": "player-home",
+        "description": (
+            "Authenticated player Home Screen aggregate endpoint: profile header, performance "
+            "totals, recent sessions, and motivational card. Requires player JWT."
+        ),
+    },
+    {
+        "name": "player-support",
+        "description": (
+            "Public player Contact Support APIs: submit support inquiries and retrieve "
+            "support directory contact details (email, phone, operating hours)."
+        ),
+    },
+    {
+        "name": "player-drill-submissions",
+        "description": (
+            "Authenticated player Drill-idea submission APIs: submit, list, and retrieve "
+            "custom drill ideas for tactical library review. Requires player JWT."
+        ),
+    },
+    {
+        "name": "leaderboard",
+        "description": (
+            "Authenticated leaderboard rankings and name search for players and coaches. "
+            "Coach-only filter and POST search endpoints are also grouped here."
         ),
     },
     {
