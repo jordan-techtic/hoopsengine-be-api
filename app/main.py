@@ -26,6 +26,11 @@ from app.core.openapi import setup_openapi
 from app.core.schema_migrations import run_subscription_schema_migrations
 from app.models import (  # noqa: F401
     Organization,
+    OrgBillingHistory,
+    OrgPaymentMethod,
+    OrgReport,
+    OrgUiDesign,
+    OrgUiDesignFeedback,
     RevokedToken,
     RoleSelection,
     StripeSubscription,

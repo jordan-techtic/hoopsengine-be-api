@@ -171,3 +171,42 @@ def get_current_player(current_user: User = Depends(get_current_user)) -> User:
             status_code=403,
         )
     return current_user
+
+
+def get_current_org_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Require an authenticated organization admin account."""
+    if current_user.role != UserRole.ORG_ADMIN.value:
+        raise AppException(
+            code="FORBIDDEN",
+            message="You do not have permission to access this resource",
+            status_code=403,
+        )
+    return current_user
+
+
+def get_access_token_session_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> str:
+    """Return a stable session identifier from the access JWT (jti claim)."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise AppException(
+            code="MISSING_TOKEN",
+            message="Could not validate credentials",
+            status_code=401,
+        )
+    try:
+        payload = decode_token(credentials.credentials)
+    except jwt.PyJWTError:
+        raise AppException(
+            code="INVALID_TOKEN",
+            message="Could not validate credentials",
+            status_code=401,
+        ) from None
+    session_id = payload.get("jti") or payload.get("sub")
+    if not session_id:
+        raise AppException(
+            code="INVALID_TOKEN",
+            message="Could not validate credentials",
+            status_code=401,
+        )
+    return str(session_id)

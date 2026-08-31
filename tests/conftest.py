@@ -63,7 +63,7 @@ from app.core.config import settings
 from app.core.database import create_managed_tables
 from app.core.error_handlers import register_exception_handlers
 from app.core.security import create_access_token, hash_otp, hash_password
-from app.models import Organization, User
+from app.models import Organization, OrgBillingHistory, OrgPaymentMethod, OrgReport, OrgUiDesign, OrgUiDesignFeedback, User
 from app.models.enums import UserRole
 
 ADMIN_ID = UUID("00000000-0000-4000-8000-000000000001")
@@ -128,7 +128,20 @@ PLAYER_LOGIN_VALIDATE_BASE = "/api/v1/login/validate"
 PLAYER_PROFILE_BASE = "/api/v1/player/profile"
 PLAYER_RESET_PASSWORD_BASE = "/api/v1/player/reset-password"
 PLAYER_RESET_PASSWORD_WITH_TOKEN_BASE = "/api/v1/player/reset-password-with-token"
-<<<<<<< HEAD
+REPORTS_BASE = "/api/v1/reports"
+ANALYTICS_BASE = "/api/v1/analytics"
+PLAYER_ROLE_SELECTION_BASE = "/api/v1/player/role-selection"
+ORGANIZATION_PROFILE_BASE = "/api/v1/organization/profile"
+ORG_ADMIN_LOGIN_BASE = "/api/v1/organization/login"
+BILLING_HISTORY_BASE = "/api/v1/admin/billing/history"
+BILLING_PAYMENT_METHOD_BASE = "/api/v1/admin/billing/payment-method"
+BILLING_HISTORY_ALIAS_BASE = "/api/v1/billing/history"
+BILLING_PAYMENT_METHOD_ALIAS_BASE = "/api/v1/billing/payment-method"
+CUSTOM_UI_DESIGN_BASE = "/api/v1/custom-ui/design"
+CUSTOM_UI_DESIGNS_BASE = "/api/v1/custom-ui/designs"
+UI_DESIGN_SAVE_BASE = "/api/v1/ui-design/save"
+UI_DESIGN_TEMPLATES_BASE = "/api/v1/ui-design/templates"
+UI_DESIGN_FEEDBACK_BASE = "/api/v1/ui-design/feedback"
 PLAYER_HOME_BASE = "/api/v1/player/home"
 PLAYER_MY_PROGRESS_BASE = "/api/v1/player/my-progress"
 PLAYER_SESSION_HISTORY_BASE = "/api/v1/player/session-history"
@@ -138,10 +151,8 @@ PLAYER_CHANGE_PASSWORD_BASE = "/api/v1/player/change-password"
 PLAYER_SUPPORT_INQUIRIES_BASE = "/api/v1/support/inquiries"
 PLAYER_SUPPORT_CONTACT_BASE = "/api/v1/support/contact"
 PLAYER_DRILL_SUBMISSIONS_BASE = "/api/v1/player/drill-submissions"
-=======
 PLAYER_DRILLS_BASE = "/api/v1/player/drills"
 PLAYER_START_BASE = "/api/v1/player/start"
->>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 
 UNVERIFIED_COACH_ID = UUID("00000000-0000-4000-8000-000000000020")
 OTHER_COACH_ID = UUID("00000000-0000-4000-8000-000000000021")
@@ -152,23 +163,17 @@ SEEDED_PLAYER_JANE_ID = UUID("00000000-0000-4000-8000-000000000033")
 SEEDED_PLAYER_BOB_ID = UUID("00000000-0000-4000-8000-000000000034")
 SEEDED_INVITATION_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000037")
 SEEDED_REDEEMED_INVITATION_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000038")
-<<<<<<< HEAD
-=======
-SEEDED_VIEWER_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000039")
+SEEDED_VIEWER_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000042")
 SEEDED_SUBTEAM_ID = UUID("00000000-0000-4000-8000-000000000040")
 SEEDED_PLAYER_DRILL_ONE_ID = UUID("00000000-0000-4000-8000-000000000041")
 SEEDED_PLAYER_DRILL_TWO_ID = UUID("00000000-0000-4000-8000-000000000043")
->>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 PLAYER_INVITATION_CODE = "PC-A1B2C3D4"
 REDEEMED_PLAYER_INVITATION_CODE = "PC-B2C3D4E5"
 UNVERIFIED_COACH_EMAIL = os.environ.get("TEST_UNVERIFIED_COACH_EMAIL", "unverified.coach@test.com")
 UNVERIFIED_COACH_PASSWORD = TEST_UNVERIFIED_COACH_PASSWORD
-<<<<<<< HEAD
 UNVERIFIED_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000039")
 UNVERIFIED_PLAYER_EMAIL = os.environ.get("TEST_UNVERIFIED_PLAYER_EMAIL", "unverified.player@test.com")
 UNVERIFIED_PLAYER_PASSWORD = os.environ.get("TEST_UNVERIFIED_PLAYER_PASSWORD", "PlayerVerify123!")
-=======
->>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 
 
 def _sync_database_url() -> str:
@@ -272,6 +277,39 @@ def _ensure_user_profile_columns(_ensure_schema: None) -> Generator[None, None, 
                         FROM information_schema.columns
                         WHERE table_schema = 'public'
                           AND table_name = 'users'
+                          AND column_name = :column_name
+                    )
+                    """
+                ),
+                {"column_name": column},
+            ).scalar()
+            if not exists:
+                connection.execute(text(ddl))
+    yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _ensure_organization_profile_columns(_ensure_schema: None) -> Generator[None, None, None]:
+    """Ensure profile description and contact_info columns exist on organizations."""
+    with sync_engine.begin() as connection:
+        for column, ddl in (
+            (
+                "profile_description",
+                "ALTER TABLE organizations ADD COLUMN profile_description TEXT",
+            ),
+            (
+                "contact_info",
+                "ALTER TABLE organizations ADD COLUMN contact_info TEXT",
+            ),
+        ):
+            exists = connection.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'organizations'
                           AND column_name = :column_name
                     )
                     """
@@ -731,7 +769,6 @@ def seed_leaderboard_data(seed_session_summary_data: dict[str, Any]) -> dict[str
                 "field_drill": SEEDED_FIELD_DRILL_ID,
             },
         )
-<<<<<<< HEAD
         connection.execute(
             text("ALTER TABLE players ADD COLUMN IF NOT EXISTS user_id uuid")
         )
@@ -745,8 +782,6 @@ def seed_leaderboard_data(seed_session_summary_data: dict[str, Any]) -> dict[str
             ),
             {"viewer_id": VIEWER_ID, "jane_id": SEEDED_PLAYER_JANE_ID},
         )
-=======
->>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 
     return {
         **seed_session_summary_data,
@@ -977,8 +1012,6 @@ def seed_player_invitation_players(
 
 
 @pytest.fixture
-<<<<<<< HEAD
-=======
 def seed_player_drills(
     ensure_practice_plans_table: None,
     seeded_users: dict[str, dict[str, Any]],
@@ -1097,7 +1130,6 @@ def seed_player_drills(
 
 
 @pytest.fixture
->>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 def viewer_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
     """Authorization header for the readonly player fixture user."""
     return auth_headers(seeded_users["viewer"]["token"])
@@ -1160,7 +1192,6 @@ def unverified_coach_headers(unverified_coach_user: User) -> dict[str, str]:
 
 
 @pytest.fixture
-<<<<<<< HEAD
 def unverified_player_user(password_hashes: dict[str, str]) -> User:
     """Player awaiting email verification with a known OTP hash."""
     now = datetime.now(timezone.utc)
@@ -1212,8 +1243,6 @@ def unverified_player_headers(unverified_player_user: User) -> dict[str, str]:
 
 
 @pytest.fixture
-=======
->>>>>>> alex/fc9e79c9-cf7a-4d03-a58e-b258a57b5c8d
 def expired_user_headers(seeded_users: dict[str, dict[str, Any]]) -> dict[str, str]:
     """Authorization header with an expired JWT for auth failure tests."""
     return auth_headers(make_expired_token(seeded_users["user"]["id"]))

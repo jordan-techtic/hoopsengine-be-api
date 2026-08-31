@@ -300,3 +300,59 @@ def construct_webhook_event(payload: bytes, signature: str) -> stripe.Event:
         signature,
         settings.STRIPE_WEBHOOK_SECRET,
     )
+
+
+def create_card_payment_method(
+    *,
+    card_number: str,
+    exp_month: int,
+    exp_year: int,
+    cvc: str,
+) -> dict[str, str | int]:
+    """Create a Stripe PaymentMethod from card details and return PCI-safe metadata."""
+    client = get_stripe_client()
+    payment_method = client.payment_methods.create(
+        params={
+            "type": "card",
+            "card": {
+                "number": card_number,
+                "exp_month": exp_month,
+                "exp_year": exp_year,
+                "cvc": cvc,
+            },
+        }
+    )
+    card = _stripe_value(payment_method, "card") or {}
+    return {
+        "id": str(_stripe_value(payment_method, "id")),
+        "brand": str(_stripe_value(card, "brand") or "card"),
+        "last4": str(_stripe_value(card, "last4") or card_number[-4:]),
+        "exp_month": int(_stripe_value(card, "exp_month") or exp_month),
+        "exp_year": int(_stripe_value(card, "exp_year") or exp_year),
+    }
+
+
+def create_stripe_customer(*, email: str, name: str, metadata: dict[str, str] | None = None) -> str:
+    """Create a Stripe customer and return the customer id."""
+    client = get_stripe_client()
+    customer = client.customers.create(
+        params={
+            "email": email,
+            "name": name,
+            "metadata": metadata or {},
+        }
+    )
+    return str(_stripe_value(customer, "id"))
+
+
+def attach_payment_method_to_customer(*, customer_id: str, payment_method_id: str) -> None:
+    """Attach a payment method to a customer and set it as the default."""
+    client = get_stripe_client()
+    client.payment_methods.attach(
+        payment_method_id,
+        params={"customer": customer_id},
+    )
+    client.customers.update(
+        customer_id,
+        params={"invoice_settings": {"default_payment_method": payment_method_id}},
+    )
