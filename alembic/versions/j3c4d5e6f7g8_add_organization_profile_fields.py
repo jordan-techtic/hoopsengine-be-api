@@ -8,7 +8,7 @@ from sqlalchemy import inspect
 from alembic import op
 
 revision: str = "j3c4d5e6f7g8"
-down_revision: str | Sequence[str] | None = "i2b3c4d5e6f7_add_org_reports_staging"
+down_revision: str | Sequence[str] | None = "i2b3c4d5e6f7"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

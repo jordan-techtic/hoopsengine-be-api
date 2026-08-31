@@ -9,7 +9,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 from app.core.tables import ORG_REPORTS_TABLE
 
-revision: str = "i2b3c4d5e6f7_add_org_reports_staging"
+revision: str = "i2b3c4d5e6f7"
 down_revision: str | Sequence[str] | None = "807d5c5056ea"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
