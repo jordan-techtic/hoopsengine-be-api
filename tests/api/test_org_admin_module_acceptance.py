@@ -288,11 +288,28 @@ def test_he402_practice_plans_missing_token_401(client: TestClient) -> None:
 
 
 def test_he380_teams_missing_token_401(client: TestClient) -> None:
-    assert client.get(ORG_ADMIN_TEAMS_BASE).status_code == 401
+    response = client.post(
+        ORG_ADMIN_TEAMS_BASE,
+        json={
+            "team_name": "Unauthorized Team",
+            "team_code": "UNAUTH01",
+        },
+    )
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "MISSING_TOKEN"
 
 
 def test_he383_assignments_list_missing_token_401(client: TestClient) -> None:
-    assert client.get(PRACTICE_PLANS_BASE).status_code == 401
+    response = client.post(
+        f"{PRACTICE_PLANS_BASE}/assign",
+        json={
+            "coach_id": "00000000-0000-4000-8000-000000000072",
+            "plan_id": "00000000-0000-4000-8000-000000000083",
+            "start_date": "2026-09-01",
+        },
+    )
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "MISSING_TOKEN"
 
 
 def test_he426_players_missing_token_401(client: TestClient) -> None:

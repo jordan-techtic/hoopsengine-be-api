@@ -407,5 +407,13 @@ def test_acceptance_coverage_count_matches_tickets() -> None:
         "HE-445",
         "HE-453",
         "HE-448",
+        "HE-402",
+        "HE-380",
+        "HE-383",
+        "HE-408",
+        "HE-426",
+        "HE-260",
+        "HE-398",
+        "HE-406",
     }
-    assert len(AC_COVERAGE) == 282
+    assert len(AC_COVERAGE) == 338
