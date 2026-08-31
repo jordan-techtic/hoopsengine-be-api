@@ -87,18 +87,15 @@ async def test_login_player_duplicate_session_raises_409() -> None:
     with patch(
         "app.services.player_auth.get_player_by_identifier",
         new=AsyncMock(return_value=player),
-    ):
-        with patch("app.services.player_auth.verify_password", return_value=True):
-            with patch(
-                "app.services.player_auth._has_active_session",
-                new=AsyncMock(return_value=True),
-            ):
-                with pytest.raises(AppException) as exc_info:
-                    await player_auth_service.login_player(
-                        db,
-                        "player@example.com",
-                        TEST_VALID_PASSWORD,
-                    )
+    ), patch("app.services.player_auth.verify_password", return_value=True), patch(
+        "app.services.player_auth._has_active_session",
+        new=AsyncMock(return_value=True),
+    ), pytest.raises(AppException) as exc_info:
+        await player_auth_service.login_player(
+            db,
+            "player@example.com",
+            TEST_VALID_PASSWORD,
+        )
 
     assert exc_info.value.status_code == 409
     assert exc_info.value.code == "DUPLICATE_SESSION"
@@ -114,17 +111,15 @@ async def test_login_player_remember_me_expiry() -> None:
     with patch(
         "app.services.player_auth.get_player_by_identifier",
         new=AsyncMock(return_value=player),
+    ), patch("app.services.player_auth.verify_password", return_value=True), patch(
+        "app.services.player_auth._has_active_session",
+        new=AsyncMock(return_value=False),
     ):
-        with patch("app.services.player_auth.verify_password", return_value=True):
-            with patch(
-                "app.services.player_auth._has_active_session",
-                new=AsyncMock(return_value=False),
-            ):
-                result = await player_auth_service.login_player(
-                    db,
-                    "player@example.com",
-                    TEST_VALID_PASSWORD,
-                    remember_me=True,
-                )
+        result = await player_auth_service.login_player(
+            db,
+            "player@example.com",
+            TEST_VALID_PASSWORD,
+            remember_me=True,
+        )
 
     assert result.expires_in_hours == settings.REMEMBER_ME_TOKEN_EXPIRE_HOURS

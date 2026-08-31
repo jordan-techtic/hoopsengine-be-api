@@ -112,17 +112,16 @@ async def test_reset_player_password_with_token_success() -> None:
     with patch(
         "app.services.player_recovery._get_player_by_reset_token",
         new=AsyncMock(return_value=user),
-    ):
-        with patch("app.services.player_recovery.reset_tokens_match", return_value=True):
-            db.commit = AsyncMock()
-            db.refresh = AsyncMock()
+    ), patch("app.services.player_recovery.reset_tokens_match", return_value=True):
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
 
-            result = await player_recovery_service.reset_player_password_with_token(
-                db,
-                reset_token=reset_token,
-                new_password="NewSecure456!",
-                confirm_password="NewSecure456!",
-            )
+        result = await player_recovery_service.reset_player_password_with_token(
+            db,
+            reset_token=reset_token,
+            new_password="NewSecure456!",
+            confirm_password="NewSecure456!",
+        )
 
     assert result.email == "player@test.com"
     db.commit.assert_awaited_once()
@@ -134,19 +133,18 @@ async def test_reset_player_password_with_token_invalid_raises_400() -> None:
     with patch(
         "app.services.player_recovery._get_player_by_reset_token",
         new=AsyncMock(return_value=None),
+    ), patch(
+        "app.services.player_recovery.hash_reset_token",
+        return_value="hash",
     ):
-        with patch(
-            "app.services.player_recovery.hash_reset_token",
-            return_value="hash",
-        ):
-            db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: None))
-            with pytest.raises(AppException) as exc_info:
-                await player_recovery_service.reset_player_password_with_token(
-                    db,
-                    reset_token="bad-token",
-                    new_password="NewSecure456!",
-                    confirm_password="NewSecure456!",
-                )
+        db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: None))
+        with pytest.raises(AppException) as exc_info:
+            await player_recovery_service.reset_player_password_with_token(
+                db,
+                reset_token="bad-token",
+                new_password="NewSecure456!",
+                confirm_password="NewSecure456!",
+            )
     assert exc_info.value.status_code == 400
     assert exc_info.value.code == "INVALID_RESET_TOKEN"
 
