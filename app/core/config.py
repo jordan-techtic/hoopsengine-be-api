@@ -59,12 +59,21 @@ class Settings(BaseSettings):
     ]
     SUPPORT_MESSAGE_MAX_LENGTH: int = 500
     SUPPORT_DUPLICATE_WINDOW_SECONDS: int = 300
+    SUPPORT_OPERATING_HOURS: str = "Mon-Fri, 9am - 6pm EST"
+    SUPPORT_LIVE_CHAT_LABEL: str = "Start instant chat"
+    SUPPORT_CONTACT_ADDRESS: str = ""
     HELP_SUPPORT_ARTICLES: list[dict[str, str]] = []
     FAQ_INTRO_TITLE: str = "How can we help you?"
     FAQ_INTRO_DESCRIPTION: str = (
         "Find quick answers to common questions about managing drills, "
         "subscriptions, and team sessions."
     )
+    PLAYER_FAQ_INTRO_TITLE: str = "How can we help you?"
+    PLAYER_FAQ_INTRO_DESCRIPTION: str = (
+        "Find quick answers to common questions about joining sessions, "
+        "viewing drills, and tracking your progress."
+    )
+    PLAYER_FAQ_ARTICLES: list[dict[str, str]] = []
 
 
 settings = Settings()

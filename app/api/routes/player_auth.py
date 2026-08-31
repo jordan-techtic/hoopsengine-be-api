@@ -21,6 +21,11 @@ from app.schemas.player_auth import (
     PlayerVerifyCodeRequest,
     PlayerVerifyCodeResponse,
 )
+from app.schemas.player_change_password import (
+    PlayerChangePasswordRequest,
+    PlayerChangePasswordResponse,
+)
+from app.services import player_change_password as player_change_password_service
 from app.services import player_invitation as player_invitation_service
 from app.services import player_recovery as player_recovery_service
 from app.services import player_reset_password as player_reset_password_service
@@ -200,6 +205,82 @@ RESET_PASSWORD_CONFLICT_RESPONSE = {
 
 RESET_SUCCESS_MESSAGE = "Password has been reset successfully."
 RESET_DESCRIPTION = "Your new password is now active. Use it the next time you sign in."
+CHANGE_PASSWORD_SUCCESS_MESSAGE = "Password changed successfully"
+CHANGE_PASSWORD_DESCRIPTION = "Your new password is now active"
+
+CHANGE_PASSWORD_AUTH_RESPONSES = {
+    401: openapi_error(
+        "Missing, invalid, expired, or revoked JWT",
+        code="MISSING_TOKEN",
+        message="Could not validate credentials",
+    ),
+    403: openapi_error(
+        "Authenticated user is not a player",
+        code="FORBIDDEN",
+        message="You do not have permission to access this resource",
+    ),
+}
+
+CHANGE_PASSWORD_VALIDATION_RESPONSES = {
+    400: openapi_error_examples(
+        "Empty fields, incorrect current password, or weak new password",
+        examples={
+            "empty_current_password": {
+                "code": "VALIDATION_ERROR",
+                "message": "Current password is required",
+                "details": [{"field": "current_password", "message": "Current password is required"}],
+            },
+            "incorrect_current_password": {
+                "code": "VALIDATION_ERROR",
+                "message": "Current password is incorrect",
+                "details": [{"field": "current_password", "message": "Current password is incorrect"}],
+            },
+            "empty_new_password": {
+                "code": "VALIDATION_ERROR",
+                "message": "New password is required",
+                "details": [{"field": "new_password", "message": "New password is required"}],
+            },
+            "weak_password": {
+                "code": "VALIDATION_ERROR",
+                "message": "Password must be at least 8 characters",
+                "details": [{"field": "password", "message": "Password must be at least 8 characters"}],
+            },
+        },
+    ),
+    422: openapi_error(
+        "Request validation failed (invalid field types)",
+        code="VALIDATION_ERROR",
+        message="Request validation failed",
+    ),
+}
+
+CHANGE_PASSWORD_CONFLICT_RESPONSES = {
+    409: openapi_error_examples(
+        "Password confirmation mismatch or unchanged password",
+        examples={
+            "password_mismatch": {
+                "code": "PASSWORD_MISMATCH",
+                "message": "New password and confirmation do not match",
+                "details": [
+                    {
+                        "field": "confirm_new_password",
+                        "message": "New password and confirmation do not match",
+                    }
+                ],
+            },
+            "password_unchanged": {
+                "code": "PASSWORD_UNCHANGED",
+                "message": "New password must be different from your current password",
+                "details": [
+                    {
+                        "field": "new_password",
+                        "message": "New password must be different from your current password",
+                    }
+                ],
+            },
+        },
+    ),
+}
 
 
 def _player_login_link() -> str:
@@ -407,6 +488,58 @@ async def player_reset_password(
         link=_player_login_link(),
         id=user.id,
     )
+
+
+@router.post(
+    "/change-password",
+    response_model=PlayerChangePasswordResponse,
+    operation_id="playerChangePassword",
+    summary="Change authenticated player password",
+    description=(
+        "Change the authenticated player's password using the current password, a new password, "
+        "and confirmation.\n\n"
+        "**Requires authenticated player JWT** (`Authorization: Bearer <access_token>`).\n\n"
+        "Required fields: `current_password`, `new_password`, and `confirm_new_password`. "
+        "Optional Figma field `password` is accepted as a write-only alias for "
+        "`confirm_new_password`. Optional client `phone` metadata is accepted but not persisted.\n\n"
+        "Returns **200** on success with `status=password_changed`. Returns **400** when any "
+        "password field is empty, the current password is incorrect, or the new password fails "
+        "strength requirements (minimum 8 characters with uppercase, lowercase, number, and "
+        "special character). Returns **401** when unauthenticated. Returns **403** when the "
+        "caller is not a player. Returns **409** when the new password and confirmation do not "
+        "match or the new password matches the current password."
+    ),
+    responses={
+        **CHANGE_PASSWORD_AUTH_RESPONSES,
+        **CHANGE_PASSWORD_VALIDATION_RESPONSES,
+        **CHANGE_PASSWORD_CONFLICT_RESPONSES,
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+    },
+)
+async def player_change_password(
+    payload: PlayerChangePasswordRequest,
+    current_user: User = Depends(get_current_player),
+    db: AsyncSession = Depends(get_db),
+) -> PlayerChangePasswordResponse:
+    """Change the authenticated player's password after verifying the current password."""
+    user = await player_change_password_service.change_player_password(
+        db,
+        current_user,
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+        confirm_new_password=payload.confirm_new_password,
+    )
+    return PlayerChangePasswordResponse(
+        message=CHANGE_PASSWORD_SUCCESS_MESSAGE,
+        description=CHANGE_PASSWORD_DESCRIPTION,
+        id=user.id,
+        phone=payload.phone,
+    )
+
 
 RESET_PASSWORD_WITH_TOKEN_ERROR_RESPONSES = {
     400: openapi_error_examples(

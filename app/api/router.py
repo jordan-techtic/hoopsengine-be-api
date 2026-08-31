@@ -25,6 +25,11 @@ from app.api.routes import (
     player_auth,
     player_login,
     player_profile,
+    player_drill_submissions,
+    player_home,
+    player_progress,
+    player_support,
+    player_verification,
     players,
     practice_plans,
     profile,
@@ -53,6 +58,7 @@ api_router.include_router(reset_password.router)
 api_router.include_router(auth.router)
 api_router.include_router(support.router)
 api_router.include_router(support_contact.router)
+api_router.include_router(player_support.router)
 api_router.include_router(faqs.router)
 api_router.include_router(subscription_plans.router)
 api_router.include_router(subscription_management.router)
@@ -72,6 +78,10 @@ api_router.include_router(organizations.router)
 api_router.include_router(player_auth.router)
 api_router.include_router(player_login.router)
 api_router.include_router(player_profile.router)
+api_router.include_router(player_drill_submissions.router)
+api_router.include_router(player_home.router)
+api_router.include_router(player_progress.router)
+api_router.include_router(player_verification.router)
 api_router.include_router(players.router)
 api_router.include_router(users.router)
 api_router.include_router(dashboard.router)

@@ -28,7 +28,7 @@ def _clean_support_requests() -> None:
 
 
 def test_get_faqs_200(client: TestClient) -> None:
-    response = client.get(FAQS_BASE)
+    response = client.get(FAQS_BASE, params={"profile": "coach"})
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
@@ -52,7 +52,7 @@ def test_get_faqs_200(client: TestClient) -> None:
 
 def test_get_faqs_empty_state_200(client: TestClient) -> None:
     with patch("app.services.faq.get_help_articles", return_value=[]):
-        response = client.get(FAQS_BASE)
+        response = client.get(FAQS_BASE, params={"profile": "coach"})
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
@@ -63,7 +63,7 @@ def test_get_faqs_empty_state_200(client: TestClient) -> None:
 
 
 def test_get_faqs_invalid_phone_query_400(client: TestClient) -> None:
-    response = client.get(FAQS_BASE, params={"phone": "not-a-phone"})
+    response = client.get(FAQS_BASE, params={"phone": "not-a-phone", "profile": "coach"})
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 

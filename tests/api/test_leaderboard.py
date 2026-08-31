@@ -16,11 +16,12 @@ def _leaderboard_tables(seed_leaderboard_data: dict) -> None:
     """Ensure leaderboard seed data is loaded for each test."""
 
 
-def test_get_leaderboard_200_public(
+def test_get_leaderboard_200_authenticated(
     client: TestClient,
+    coach_headers: dict[str, str],
     seed_leaderboard_data: dict,
 ) -> None:
-    response = client.get(LEADERBOARD_BASE)
+    response = client.get(LEADERBOARD_BASE, headers=coach_headers)
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
@@ -135,8 +136,9 @@ def test_get_filter_leaderboard_200_attempts(
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["items"][0]["full_name"] == "Bob Smith"
-    assert body["items"][0]["attempts"] == 30
+    bob = next(item for item in body["items"] if item["full_name"] == "Bob Smith")
+    assert bob["attempts"] == 30
+    assert bob["rank"] >= 1
 
 
 def test_search_leaderboard_401_without_auth(

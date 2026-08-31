@@ -139,3 +139,15 @@ def get_contact_info() -> dict[str, object]:
         "email": contact["email"],
         "phone": contact["phone"],
     }
+
+
+def get_player_contact_info() -> dict[str, object]:
+    """Return player Contact Support directory details including hours and live chat."""
+    base = get_contact_info()
+    address = settings.SUPPORT_CONTACT_ADDRESS.strip() or None
+    return {
+        **base,
+        "address": address,
+        "operating_hours": settings.SUPPORT_OPERATING_HOURS,
+        "live_chat_label": settings.SUPPORT_LIVE_CHAT_LABEL,
+    }

@@ -204,10 +204,12 @@ def test_he305_get_summary_403_other_coach(
 # --- HE-314 Leaderboard ---
 
 
-def test_he314_get_leaderboard_200_public(
-    client: TestClient, seed_leaderboard_data: dict
+def test_he314_get_leaderboard_200_authenticated(
+    client: TestClient,
+    coach_headers: dict[str, str],
+    seed_leaderboard_data: dict,
 ) -> None:
-    response = client.get(LEADERBOARD_BASE)
+    response = client.get(LEADERBOARD_BASE, headers=coach_headers)
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
