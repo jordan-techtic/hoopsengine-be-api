@@ -160,3 +160,14 @@ def get_current_coach(current_user: User = Depends(get_current_user)) -> User:
             status_code=403,
         )
     return current_user
+
+
+def get_current_player(current_user: User = Depends(get_current_user)) -> User:
+    """Require an authenticated player account."""
+    if current_user.role != UserRole.PLAYER.value:
+        raise AppException(
+            code="FORBIDDEN",
+            message="You do not have permission to access this resource",
+            status_code=403,
+        )
+    return current_user

@@ -121,6 +121,12 @@ DRILLS_SEARCH_BASE = "/api/v1/drills/search"
 SUBSCRIPTION_BASE = "/api/v1/subscription"
 WEBHOOKS_BASE = "/api/v1/webhooks"
 PROFILE_BASE = "/api/v1/profile"
+PLAYER_FORGOT_PASSWORD_BASE = "/api/v1/player/forgot-password"
+PLAYER_VERIFY_CODE_BASE = "/api/v1/player/verify-code"
+PLAYER_LOGIN_BASE = "/api/v1/login"
+PLAYER_LOGIN_VALIDATE_BASE = "/api/v1/login/validate"
+PLAYER_PROFILE_BASE = "/api/v1/player/profile"
+PLAYER_RESET_PASSWORD_BASE = "/api/v1/player/reset-password"
 
 UNVERIFIED_COACH_ID = UUID("00000000-0000-4000-8000-000000000020")
 OTHER_COACH_ID = UUID("00000000-0000-4000-8000-000000000021")
@@ -129,6 +135,10 @@ SEEDED_FIELD_DRILL_ID = UUID("00000000-0000-4000-8000-000000000031")
 SEEDED_FT_DRILL_ID = UUID("00000000-0000-4000-8000-000000000032")
 SEEDED_PLAYER_JANE_ID = UUID("00000000-0000-4000-8000-000000000033")
 SEEDED_PLAYER_BOB_ID = UUID("00000000-0000-4000-8000-000000000034")
+SEEDED_INVITATION_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000037")
+SEEDED_REDEEMED_INVITATION_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000038")
+PLAYER_INVITATION_CODE = "PC-A1B2C3D4"
+REDEEMED_PLAYER_INVITATION_CODE = "PC-B2C3D4E5"
 UNVERIFIED_COACH_EMAIL = os.environ.get("TEST_UNVERIFIED_COACH_EMAIL", "unverified.coach@test.com")
 UNVERIFIED_COACH_PASSWORD = TEST_UNVERIFIED_COACH_PASSWORD
 
@@ -277,6 +287,7 @@ def mock_third_party_services() -> Generator[dict[str, Any], None, None]:
         patch("app.core.email.send_email", return_value=None) as send_email,
         patch("app.core.email.send_password_reset_email", return_value=None),
         patch("app.core.email.send_verification_email", return_value=None),
+        patch("app.core.email.send_password_recovery_email", return_value=None),
         patch("app.services.email_verification.send_verification_email", return_value=None),
         patch("app.services.registration.send_verification_email", return_value=None),
         patch("app.services.stripe_client.stripe") as stripe_mod,
@@ -330,6 +341,7 @@ def seeded_users(password_hashes: dict[str, str]) -> dict[str, dict[str, Any]]:
     viewer = User(
         id=VIEWER_ID,
         email=VIEWER_EMAIL,
+        username="viewerplayer",
         encrypted_password=password_hashes[VIEWER_PASSWORD],
         role=UserRole.PLAYER.value,
         first_name="Viewer",
@@ -337,6 +349,7 @@ def seeded_users(password_hashes: dict[str, str]) -> dict[str, dict[str, Any]]:
         is_super_admin=False,
         is_active=True,
         org_id=SEEDED_ORG_ID,
+        email_confirmed_at=datetime.now(timezone.utc),
     )
     inactive = User(
         id=INACTIVE_ID,
@@ -865,6 +878,58 @@ def ensure_practice_plans_table(seeded_users: dict[str, dict[str, Any]]) -> Gene
             {"field_id": SEEDED_FIELD_DRILL_ID, "ft_id": SEEDED_FT_DRILL_ID},
         )
     yield
+
+
+@pytest.fixture
+def seed_player_invitation_players(
+    ensure_practice_plans_table: None,
+    seeded_users: dict[str, dict[str, Any]],
+) -> None:
+    """Seed players rows for invitation code verification tests."""
+    with sync_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.players (
+                    id uuid PRIMARY KEY,
+                    org_id uuid,
+                    first_name text NOT NULL,
+                    last_name text NOT NULL,
+                    player_code text UNIQUE,
+                    user_id uuid,
+                    active boolean DEFAULT true,
+                    created_at timestamptz DEFAULT now()
+                )
+                """
+            )
+        )
+        connection.execute(
+            text("ALTER TABLE public.players ADD COLUMN IF NOT EXISTS user_id uuid")
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO players (id, org_id, first_name, last_name, player_code, user_id)
+                VALUES
+                    (:invitation_id, :org_id, 'Invite', 'Player', :invitation_code, NULL),
+                    (:redeemed_id, :org_id, 'Redeemed', 'Player', :redeemed_code, :viewer_id)
+                ON CONFLICT (id) DO UPDATE SET
+                    org_id = EXCLUDED.org_id,
+                    first_name = EXCLUDED.first_name,
+                    last_name = EXCLUDED.last_name,
+                    player_code = EXCLUDED.player_code,
+                    user_id = EXCLUDED.user_id
+                """
+            ),
+            {
+                "invitation_id": SEEDED_INVITATION_PLAYER_ID,
+                "redeemed_id": SEEDED_REDEEMED_INVITATION_PLAYER_ID,
+                "org_id": SEEDED_ORG_ID,
+                "invitation_code": PLAYER_INVITATION_CODE,
+                "redeemed_code": REDEEMED_PLAYER_INVITATION_CODE,
+                "viewer_id": VIEWER_ID,
+            },
+        )
 
 
 @pytest.fixture
