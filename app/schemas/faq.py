@@ -14,8 +14,8 @@ FAQ_LIST_EXAMPLE = {
     "status": "ready",
     "title": "How can we help you?",
     "description": (
-        "Find quick answers to common questions about managing drills, "
-        "subscriptions, and team sessions."
+        "Find quick answers to common questions about joining sessions, "
+        "viewing drills, and tracking your progress."
     ),
     "link": "/api/v1/support/contact",
     "error": None,
@@ -107,6 +107,7 @@ class FaqContactSupportRequest(BaseModel):
     )
     message_description: str = Field(
         ...,
+        max_length=500,
         description="Support message body (max 500 characters)",
         examples=["Need help from the FAQs screen."],
     )

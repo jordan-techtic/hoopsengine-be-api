@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.exceptions import AppException
 from app.models.enums import LeaderboardFilterMetric
 from app.models.user import User
-from app.schemas.errors import openapi_error
+from app.schemas.errors import openapi_error, openapi_error_examples
 from app.schemas.leaderboard import (
     LeaderboardListResponse,
     LeaderboardSearchRequest,
@@ -40,16 +40,30 @@ COACH_AUTH_ERROR_RESPONSES = {
 }
 
 VALIDATION_ERROR_RESPONSE = {
-    400: openapi_error(
-        "Empty or missing search query",
-        code="VALIDATION_ERROR",
-        message="Search query is required",
-        details=[
-            {
-                "field": "search_query",
-                "message": "Provide search_query or full_name to search players",
-            }
-        ],
+    400: openapi_error_examples(
+        "Empty search query or invalid optional phone metadata",
+        examples={
+            "empty_search": {
+                "code": "VALIDATION_ERROR",
+                "message": "Search query is required",
+                "details": [
+                    {
+                        "field": "search_query",
+                        "message": "Provide search_query or full_name to search players",
+                    }
+                ],
+            },
+            "invalid_phone": {
+                "code": "VALIDATION_ERROR",
+                "message": "Phone number must contain at least one digit",
+                "details": [
+                    {
+                        "field": "phone",
+                        "message": "Phone number must contain at least one digit",
+                    }
+                ],
+            },
+        },
     ),
     422: openapi_error(
         "Request validation failed",

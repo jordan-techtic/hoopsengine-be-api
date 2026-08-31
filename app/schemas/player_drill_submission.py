@@ -92,6 +92,7 @@ class PlayerDrillSubmissionCreateResponse(BaseModel):
                 "name": "3-on-2 Fast Break Transition",
                 "category": "Shooting",
                 "difficulty_level": "Intermediate",
+                "instructions": "Outline the setup, rotation rules, and primary coaching cues.",
             }
         }
     )
@@ -99,13 +100,20 @@ class PlayerDrillSubmissionCreateResponse(BaseModel):
     success: bool = Field(default=True)
     message: str
     status: str
-    description: str | None = None
+    description: str | None = Field(
+        default=None,
+        description="UI instructional copy for the drill submission detail screen",
+    )
     link: str | None = None
     error: None = None
     id: UUID
     name: str
     category: str
     difficulty_level: str
+    instructions: str = Field(
+        description="Submitted drill description and coaching instructions",
+        examples=["Outline the setup, rotation rules, and primary coaching cues."],
+    )
 
 
 class PlayerDrillSubmissionListResponse(BaseModel):
@@ -155,6 +163,7 @@ class PlayerDrillSubmissionDetailResponse(BaseModel):
                 "name": "3-on-2 Fast Break Transition",
                 "category": "Shooting",
                 "difficulty_level": "Intermediate",
+                "instructions": "Outline the setup, rotation rules, and primary coaching cues.",
             }
         }
     )
@@ -162,10 +171,17 @@ class PlayerDrillSubmissionDetailResponse(BaseModel):
     success: bool = Field(default=True)
     message: str
     status: str
-    description: str | None = None
+    description: str | None = Field(
+        default=None,
+        description="UI instructional copy for the drill submission detail screen",
+    )
     link: str | None = None
     error: None = None
     id: UUID
     name: str
     category: str
     difficulty_level: str
+    instructions: str = Field(
+        description="Submitted drill description and coaching instructions",
+        examples=["Outline the setup, rotation rules, and primary coaching cues."],
+    )
