@@ -19,6 +19,7 @@ from tests.conftest import (
     TEST_DIFFERENT_PASSWORD,
     TEST_INVALID_PASSWORD,
     TEST_NEW_SECURE_PASSWORD,
+    TEST_VALID_PASSWORD,
     TEST_WEAK_PASSWORD,
     auth_headers,
     create_access_token,
@@ -26,7 +27,7 @@ from tests.conftest import (
 )
 
 ORG_ADMIN_ID = UUID("00000000-0000-4000-8000-000000000051")
-ORG_ADMIN_PASSWORD = "OrgAdmin123!"
+ORG_ADMIN_PASSWORD = TEST_VALID_PASSWORD
 
 
 @pytest.fixture
