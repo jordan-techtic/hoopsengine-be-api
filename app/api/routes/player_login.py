@@ -171,7 +171,13 @@ async def player_login_validate(
         description="Account password to validate for presence",
         examples=["StrongPassword123!"],
     ),
+    db: AsyncSession = Depends(get_db),
 ) -> PlayerLoginValidateResponse:
     """Validate login field presence and email format for the Player Login screen."""
     result = player_auth_service.validate_login_fields(email=email, password=password)
+    result = await player_auth_service.enrich_login_validate_response(
+        db,
+        email=email,
+        result=result,
+    )
     return PlayerLoginValidateResponse(**result)

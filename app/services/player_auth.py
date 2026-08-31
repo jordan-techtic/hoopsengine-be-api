@@ -81,13 +81,33 @@ def _validate_identifier_format(identifier: str) -> list[dict[str, str]]:
     return []
 
 
+def _login_validate_profile_defaults(email: str | None = None) -> dict[str, Any]:
+    """Frontend form-state fields always present on login validate responses."""
+    cleaned = (email or "").strip() or None
+    return {
+        "error": None,
+        "email": cleaned,
+        "id": None,
+        "address": None,
+        "username": None,
+        "name": None,
+        "first_name": None,
+        "last_name": None,
+        "phone": None,
+        "phone_number": None,
+        "avatar": None,
+    }
+
+
 def validate_login_fields(*, email: str | None, password: str | None) -> dict[str, Any]:
     """
     Validate player login input for presence and email format.
 
-    Returns a dict with ``valid``, ``message``, ``status``, ``title``, and optional
-    ``errors`` suitable for PlayerLoginValidateResponse.
+    Returns a dict with ``valid``, ``message``, ``status``, ``title``, optional
+    ``errors``, and frontend profile envelope fields suitable for
+    PlayerLoginValidateResponse.
     """
+    profile_fields = _login_validate_profile_defaults(email)
     errors: list[dict[str, str]] = []
 
     if email is None or not email.strip():
@@ -106,6 +126,7 @@ def validate_login_fields(*, email: str | None, password: str | None) -> dict[st
             "title": "LOGIN",
             "description": "Review the email/username and password fields",
             "errors": errors,
+            **profile_fields,
         }
 
     return {
@@ -115,7 +136,42 @@ def validate_login_fields(*, email: str | None, password: str | None) -> dict[st
         "title": "LOGIN",
         "description": "You can submit the login form",
         "errors": None,
+        **profile_fields,
     }
+
+
+async def enrich_login_validate_response(
+    db: AsyncSession,
+    *,
+    email: str | None,
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    """Populate profile envelope fields when the identifier matches a player account."""
+    if email is None or not email.strip():
+        return result
+
+    user = await get_player_by_identifier(db, email.strip())
+    if user is None:
+        return result
+
+    from app.services.profile import build_coach_avatar, build_coach_display_name
+
+    phone = user.phone
+    enriched = dict(result)
+    enriched.update(
+        {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "name": build_coach_display_name(user),
+            "phone": phone,
+            "phone_number": phone,
+            "avatar": build_coach_avatar(user),
+        }
+    )
+    return enriched
 
 
 async def _has_active_session(db: AsyncSession, user: User) -> bool:

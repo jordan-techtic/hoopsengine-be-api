@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models.enums import UserRole
+from app.schemas.profile import ProfileImageResponse
 
 PLAYER_FORGOT_PASSWORD_REQUEST_EXAMPLE = {
     "email": "player@example.com",
@@ -366,6 +367,17 @@ class PlayerLoginValidateResponse(BaseModel):
                 "status": "valid",
                 "description": "You can submit the login form",
                 "errors": None,
+                "error": None,
+                "email": "player@example.com",
+                "id": "00000000-0000-4000-8000-000000000003",
+                "username": "playeruser",
+                "name": "Player User",
+                "first_name": "Player",
+                "last_name": "User",
+                "phone": "+1 (555) 382-9102",
+                "phone_number": "+1 (555) 382-9102",
+                "address": None,
+                "avatar": None,
             }
         }
     )
@@ -382,6 +394,35 @@ class PlayerLoginValidateResponse(BaseModel):
     errors: list[dict[str, str]] | None = Field(
         default=None,
         description="Field-level validation errors when valid is false",
+    )
+    error: None = Field(default=None, description="Always null on validate responses")
+    email: str | None = Field(
+        default=None,
+        description="Submitted email/username or matched player email for form state",
+    )
+    id: UUID | None = Field(
+        default=None,
+        description="Matched player user identifier when the identifier resolves to an account",
+    )
+    username: str | None = Field(default=None, description="Matched player username")
+    name: str | None = Field(default=None, description="Matched player display name")
+    first_name: str | None = Field(default=None, description="Matched player first name")
+    last_name: str | None = Field(default=None, description="Matched player last name")
+    phone: str | None = Field(
+        default=None,
+        description="Matched player phone for mobile form echo",
+    )
+    phone_number: str | None = Field(
+        default=None,
+        description="Matched player phone number for mobile form echo",
+    )
+    address: str | None = Field(
+        default=None,
+        description="Optional address placeholder for frontend form state",
+    )
+    avatar: ProfileImageResponse | None = Field(
+        default=None,
+        description="Matched player avatar metadata when available",
     )
 
 
