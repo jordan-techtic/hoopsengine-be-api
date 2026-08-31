@@ -24,7 +24,9 @@ from app.api.routes import (
     organizations,
     player_auth,
     player_login,
+    player_drills,
     player_profile,
+    player_start,
     players,
     practice_plans,
     profile,
@@ -72,6 +74,8 @@ api_router.include_router(organizations.router)
 api_router.include_router(player_auth.router)
 api_router.include_router(player_login.router)
 api_router.include_router(player_profile.router)
+api_router.include_router(player_drills.router)
+api_router.include_router(player_start.router)
 api_router.include_router(players.router)
 api_router.include_router(users.router)
 api_router.include_router(dashboard.router)

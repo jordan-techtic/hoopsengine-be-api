@@ -165,6 +165,25 @@ AC_COVERAGE = [
     ("HE-212", "player invitation verify unknown 404", "tests.api.test_player_verify_code::test_verify_unknown_code_404"),
     ("HE-212", "player invitation verify case sensitive 400", "tests.api.test_player_verify_code::test_verify_case_sensitive_400"),
     ("HE-212", "player invitation verify redeemed 409", "tests.api.test_player_verify_code::test_verify_already_redeemed_code_409"),
+    ("HE-455", "player drills list 200", "tests.api.test_player_drills::test_list_player_drills_200_authorized"),
+    ("HE-455", "player drill timer start 200", "tests.api.test_player_drills::test_start_player_drill_timer_200"),
+    ("HE-455", "player drills unauthorized 403", "tests.api.test_player_drills::test_player_drills_403_coach_forbidden"),
+    ("HE-455", "player drill invalid id 404", "tests.api.test_player_drills::test_get_player_drill_detail_404_invalid_id"),
+    ("HE-455", "player drill timer reset 200", "tests.api.test_player_drills::test_reset_player_drill_timer_200"),
+    ("HE-455", "player drill detail 200", "tests.api.test_player_drills::test_get_player_drill_detail_200"),
+    ("HE-455", "player drill timer start stop reset", "tests.api.test_player_drills::test_start_stop_reset_timer_flow"),
+    ("HE-455", "player drills active only", "tests.api.test_player_drills::test_list_player_drills_only_active_subteam_drills"),
+    ("HE-455", "player drill validation 400", "tests.api.test_player_drills::test_reset_player_drill_400_without_workout"),
+    ("HE-213", "player drill detail timer progress", "tests.api.test_player_drills::test_get_player_drill_detail_200"),
+    ("HE-213", "player drill play 201", "tests.api.test_player_drills::test_play_player_drill_201"),
+    ("HE-213", "player drill timer update 200", "tests.api.test_player_drills::test_update_player_drill_timer_200"),
+    ("HE-213", "player drill invalid id 404", "tests.api.test_player_drills::test_get_player_drill_detail_404_invalid_id"),
+    ("HE-213", "player drill play forbidden 403", "tests.api.test_player_drills::test_play_player_drill_403_unauthorized"),
+    ("HE-229", "player start get 200", "tests.api.test_player_start::test_get_player_start_200"),
+    ("HE-229", "player start post 201", "tests.api.test_player_start::test_start_player_workout_201"),
+    ("HE-229", "player start missing drills", "tests.api.test_player_start::test_start_player_workout_400_missing_drills"),
+    ("HE-229", "player start invalid format", "tests.api.test_player_start::test_start_player_workout_400_invalid_format"),
+    ("HE-229", "player start duplicate 409", "tests.api.test_player_start::test_start_player_workout_409_duplicate"),
 ]
 
 
@@ -204,5 +223,8 @@ def test_acceptance_coverage_count_matches_tickets() -> None:
         "HE-223",
         "HE-220",
         "HE-212",
+        "HE-455",
+        "HE-213",
+        "HE-229",
     }
-    assert len(AC_COVERAGE) == 149
+    assert len(AC_COVERAGE) == 173
