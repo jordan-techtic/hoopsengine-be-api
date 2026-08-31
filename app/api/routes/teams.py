@@ -136,11 +136,20 @@ CONFLICT_ERROR_RESPONSES = {
 }
 
 NOT_FOUND_ERROR_RESPONSE = {
-    404: openapi_error(
-        "Team or organization profile not found",
-        code="TEAM_NOT_FOUND",
-        message="Team not found",
-        details=[{"field": "team_id", "message": "Team not found"}],
+    404: openapi_error_examples(
+        "Team not found or caller organization profile missing",
+        examples={
+            "team_not_found": {
+                "code": "TEAM_NOT_FOUND",
+                "message": "Team not found",
+                "details": [{"field": "team_id", "message": "Team not found"}],
+            },
+            "organization_not_found": {
+                "code": "ORGANIZATION_NOT_FOUND",
+                "message": "Organization profile not found",
+                "details": [],
+            },
+        },
     ),
 }
 

@@ -27,6 +27,8 @@ TEAM_DETAILS_UPDATE_EXAMPLE = {
     "training_schedule": "Tue/Thu 5:00 PM",
     "phone": "+1-555-0100",
     "role": "head_coach",
+    "coaches": ["Coach Taylor", "Coach James"],
+    "players": ["Sarah Jenkins"],
 }
 
 TEAM_DETAILS_RESPONSE_EXAMPLE = {

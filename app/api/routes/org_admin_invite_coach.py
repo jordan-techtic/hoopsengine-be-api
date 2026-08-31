@@ -45,6 +45,11 @@ INVITE_VALIDATION_ERROR_RESPONSES = {
                 "message": "Enter a valid email address",
                 "details": [{"field": "email", "message": "Enter a valid email address"}],
             },
+            "invite_failed": {
+                "code": "COACH_INVITE_FAILED",
+                "message": "Unable to invite coach",
+                "details": [],
+            },
         },
     ),
     422: openapi_error(
