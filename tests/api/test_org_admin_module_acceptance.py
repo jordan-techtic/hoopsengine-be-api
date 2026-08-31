@@ -82,6 +82,8 @@ def test_he406_get_organization_profile_200(
     assert body["error"] is None
     assert body["id"] == str(SEEDED_ORG_ID)
     assert body["organization_name"]
+    assert body["full_name"]
+    assert body["role"] == "org_admin"
     assert body["profile"]["email"]
 
 

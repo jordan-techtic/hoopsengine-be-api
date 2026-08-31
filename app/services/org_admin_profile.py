@@ -153,6 +153,8 @@ def build_organization_profile_payload(
     phone_number = organization.phone_number
     organization_description = organization.profile_description
     contact_info = _resolve_contact_info(organization)
+    full_name = profile_service.build_coach_display_name(user)
+    role = user.role
     nested = {
         "organization_name": organization.name,
         "address": organization.address,
@@ -160,6 +162,8 @@ def build_organization_profile_payload(
         "phone_number": phone_number,
         "first_name": user.first_name,
         "last_name": user.last_name,
+        "full_name": full_name,
+        "role": role,
         "organization_description": organization_description,
         "contact_info": contact_info,
     }
@@ -181,6 +185,8 @@ def build_organization_profile_payload(
         "phone": phone_number,
         "first_name": user.first_name,
         "last_name": user.last_name,
+        "full_name": full_name,
+        "role": role,
         "organization_description": organization_description,
         "contact_info": contact_info,
         "avatar": _build_avatar(organization, user),

@@ -43,6 +43,8 @@ ORG_PROFILE_RESPONSE_EXAMPLE = {
     "phone": "+1 (555) 382-9102",
     "first_name": "Jane",
     "last_name": "Doe",
+    "full_name": "Jane Doe",
+    "role": "org_admin",
     "organization_description": "Premier youth basketball development organization",
     "contact_info": "contact@courtside.com",
     "avatar": None,
@@ -53,6 +55,8 @@ ORG_PROFILE_RESPONSE_EXAMPLE = {
         "phone_number": "+1 (555) 382-9102",
         "first_name": "Jane",
         "last_name": "Doe",
+        "full_name": "Jane Doe",
+        "role": "org_admin",
         "organization_description": "Premier youth basketball development organization",
         "contact_info": "contact@courtside.com",
     },
@@ -68,6 +72,14 @@ class OrganizationProfileNested(BaseModel):
     phone_number: str | None = Field(default=None, description="Organization phone number")
     first_name: str | None = Field(default=None, description="Organization admin first name")
     last_name: str | None = Field(default=None, description="Organization admin last name")
+    full_name: str | None = Field(
+        default=None,
+        description="Organization admin full display name for Account Settings header",
+    )
+    role: str | None = Field(
+        default=None,
+        description="Organization admin role label for Account Settings header",
+    )
     organization_description: str | None = Field(
         default=None,
         description="Organization description text",
@@ -163,6 +175,8 @@ class OrganizationProfileResponse(MobileWriteOnlyPasswordMixin):
     )
     first_name: str | None = Field(default=None, description="Organization admin first name")
     last_name: str | None = Field(default=None, description="Organization admin last name")
+    full_name: str = Field(description="Organization admin full display name for Account Settings")
+    role: str = Field(description="Organization admin role label for Account Settings")
     organization_description: str | None = Field(
         default=None,
         description="Organization description text",
