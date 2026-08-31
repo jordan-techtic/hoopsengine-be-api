@@ -471,7 +471,7 @@ RESET_PASSWORD_WITH_TOKEN_ERROR_RESPONSES = {
         "Required fields: ``reset_token``, ``new_password``, ``confirm_password``. Optional "
         "client ``phone`` and ``password`` metadata are accepted but not persisted.\n\n"
         "Returns **201** on success. Returns **400** for invalid token or password validation "
-        "failures. Returns **403** when the reset token has expired. Returns **422** for schema/type errors.",
+        "failures. Returns **403** when the reset token has expired. Returns **422** for schema/type errors."
     ),
     responses={
         **RESET_PASSWORD_WITH_TOKEN_ERROR_RESPONSES,
