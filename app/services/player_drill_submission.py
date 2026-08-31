@@ -203,6 +203,7 @@ async def submit_player_drill_submission(
         "name": drill_name,
         "category": category,
         "difficulty_level": difficulty_level,
+        "instructions": description,
     }
 
 
@@ -282,11 +283,12 @@ async def get_player_drill_submission(
         "success": True,
         "message": "Drill submission loaded successfully",
         "status": "ready",
-        "description": item["description"],
+        "description": "Submitted custom drill idea",
         "link": None,
         "error": None,
         "id": item["id"],
         "name": item["name"],
         "category": item["category"],
         "difficulty_level": item["difficulty_level"],
+        "instructions": item["description"],
     }

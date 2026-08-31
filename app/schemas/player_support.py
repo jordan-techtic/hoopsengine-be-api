@@ -34,7 +34,6 @@ class PlayerSupportInquiryRequest(BaseModel):
         examples=["Technical Issue"],
     )
     message_description: str = Field(
-        max_length=500,
         description="Support message body (max 500 characters)",
         examples=["Explain your problem or inquiry in detail here."],
     )
