@@ -84,11 +84,12 @@ async def test_verify_recovery_otp_matches() -> None:
         db.commit = AsyncMock()
         db.refresh = AsyncMock()
 
-        result = await player_recovery_service.verify_player_recovery_code(
+        verified_user, reset_token = await player_recovery_service.verify_player_recovery_code(
             db,
             email="player@test.com",
             verification_code="123456",
         )
 
-    assert result.email == "player@test.com"
+    assert verified_user.email == "player@test.com"
+    assert reset_token is not None
     db.commit.assert_awaited_once()

@@ -433,16 +433,10 @@ INVALID_RESET_TOKEN_RESPONSES = {
     summary="Reset player password with recovery token",
     description=(
         "Complete password reset after OTP verification using the short-lived ``reset_token`` "
-        "returned from ``POST /player/verify-code`` (verify-only step).
-
-"
-        "**Public endpoint** — no JWT required.
-
-"
+        "returned from ``POST /player/verify-code`` (verify-only step).\n\n"
+        "**Public endpoint** — no JWT required.\n\n"
         "Required fields: ``reset_token``, ``new_password``, ``confirm_password``. Optional "
-        "client ``phone`` and ``password`` metadata are accepted but not persisted.
-
-"
+        "client ``phone`` and ``password`` metadata are accepted but not persisted.\n\n"
         "Returns **201** on success. Returns **400** for invalid token or password validation "
         "failures. Returns **403** when the reset token has expired."
     ),
