@@ -226,6 +226,21 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "player-auth",
+        "description": (
+            "Player module authentication: forgot-password OTP, verify-code (invitation or recovery), "
+            "reset-password (JWT or recovery token), and player login/validate. Public except "
+            "authenticated reset-password."
+        ),
+    },
+    {
+        "name": "player-profile",
+        "description": (
+            "Authenticated player Edit Profile screen: GET and PUT /player/profile for personal "
+            "details, contact info, and avatar metadata. Requires player JWT."
+        ),
+    },
+    {
         "name": "coach-profile",
         "description": (
             "Authenticated user profile retrieval and update for the Edit Profile screen."
@@ -246,7 +261,7 @@ def _apply_bearer_auth(openapi_schema: dict) -> None:
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "JWT access token returned by `POST /api/v1/coach/login` or `POST /api/v1/register`.",
+        "description": "JWT access token from `POST /api/v1/coach/login`, `POST /api/v1/login` (player), or `POST /api/v1/register`. Paste access_token only (no Bearer prefix).",
     }
 
     http_bearer_keys = [
@@ -292,7 +307,7 @@ def setup_openapi(app: FastAPI) -> None:
             description=(
                 "Hoops Engine backend API.\n\n"
                 "Use **Swagger UI** at `/docs` to explore and test endpoints.\n"
-                "After coach login or registration, click **Authorize** and paste the JWT access token.\n\n"
+                "After coach or player login (or registration), click **Authorize** and paste the JWT access token.\n\n"
                 "Super Admin Manage Organizations, Manage Users, and Dashboard endpoints "
                 "require a super-admin JWT (`is_super_admin=true`)."
             ),

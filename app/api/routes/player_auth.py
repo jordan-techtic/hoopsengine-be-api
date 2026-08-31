@@ -270,9 +270,9 @@ def _is_recovery_verify_payload(payload: PlayerVerifyCodeRequest) -> bool:
         "**Public endpoint** — no authentication required.\n\n"
         "**Invitation verification:** submit `invitation_code` in `PC-XXXXXXXX` format "
         "(case sensitive). Returns **201** on success with player and organization metadata.\n\n"
-        "**Password recovery:** submit `email` and `verification_code` (6-digit OTP). Optionally "
-        "include `password` and `confirm_password` to reset the password in the same step. "
-        "Returns **200** when the recovery code is valid.\n\n"
+        "**Password recovery:** submit `email` and `verification_code` (6-digit OTP). On verify-only "
+        "success returns **200** with a short-lived `reset_token` for `POST /player/reset-password-with-token`. "
+        "Optionally include `password` and `confirm_password` to reset in the same step.\n\n"
         "Optional client `phone` metadata is accepted but not persisted.\n\n"
         "Returns **400** for empty or invalid invitation codes, or recovery validation failures. "
         "Returns **404** when the invitation or email is not found. Returns **409** when an "
@@ -283,6 +283,10 @@ def _is_recovery_verify_payload(payload: PlayerVerifyCodeRequest) -> bool:
         **NOT_FOUND_RESPONSE,
         **INVITATION_CONFLICT_RESPONSE,
         **EXPIRED_CODE_RESPONSE,
+        200: {
+            "description": "Password recovery OTP verified; returns reset_token for follow-up reset",
+            "model": PlayerVerifyCodeResponse,
+        },
         201: {
             "description": "Invitation code verified successfully",
             "model": PlayerInvitationVerifyResponse,
@@ -404,12 +408,41 @@ async def player_reset_password(
         id=user.id,
     )
 
-INVALID_RESET_TOKEN_RESPONSES = {
-    400: openapi_error(
-        "Missing or invalid reset token, or password validation failed",
-        code="INVALID_RESET_TOKEN",
-        message="The password reset token is invalid",
-        details=[{"field": "reset_token", "message": "The password reset token is invalid"}],
+RESET_PASSWORD_WITH_TOKEN_ERROR_RESPONSES = {
+    400: openapi_error_examples(
+        "Missing/invalid reset token or password validation failures",
+        examples={
+            "invalid_reset_token": {
+                "code": "INVALID_RESET_TOKEN",
+                "message": "The password reset token is invalid",
+                "details": [
+                    {
+                        "field": "reset_token",
+                        "message": "The password reset token is invalid",
+                    }
+                ],
+            },
+            "empty_new_password": {
+                "code": "VALIDATION_ERROR",
+                "message": "New password is required",
+                "details": [{"field": "new_password", "message": "New password is required"}],
+            },
+            "weak_password": {
+                "code": "VALIDATION_ERROR",
+                "message": "Password must be at least 8 characters",
+                "details": [{"field": "password", "message": "Password must be at least 8 characters"}],
+            },
+            "password_mismatch": {
+                "code": "VALIDATION_ERROR",
+                "message": "Passwords do not match",
+                "details": [{"field": "confirm_password", "message": "Passwords do not match"}],
+            },
+        },
+    ),
+    422: openapi_error(
+        "Request validation failed (invalid field types)",
+        code="VALIDATION_ERROR",
+        message="Request validation failed",
     ),
     403: openapi_error(
         "Reset token has expired",
@@ -438,11 +471,10 @@ INVALID_RESET_TOKEN_RESPONSES = {
         "Required fields: ``reset_token``, ``new_password``, ``confirm_password``. Optional "
         "client ``phone`` and ``password`` metadata are accepted but not persisted.\n\n"
         "Returns **201** on success. Returns **400** for invalid token or password validation "
-        "failures. Returns **403** when the reset token has expired."
+        "failures. Returns **403** when the reset token has expired. Returns **422** for schema/type errors.",
     ),
     responses={
-        **RESET_PASSWORD_VALIDATION_RESPONSES,
-        **INVALID_RESET_TOKEN_RESPONSES,
+        **RESET_PASSWORD_WITH_TOKEN_ERROR_RESPONSES,
         500: openapi_error(
             "Unexpected server error",
             code="INTERNAL_SERVER_ERROR",

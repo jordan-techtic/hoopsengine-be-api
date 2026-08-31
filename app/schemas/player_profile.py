@@ -129,15 +129,15 @@ class PlayerProfileResponse(MobileWriteOnlyPasswordMixin):
         }
     )
 
-    success: bool = Field(default=True)
-    message: str
-    status: str = Field(default="ready")
-    description: str | None = None
-    link: str | None = None
-    error: None = None
-    title: str = Field(default="Edit Profile")
-    id: UUID
-    name: str
+    success: bool = Field(default=True, description="Always true on successful profile load or update")
+    message: str = Field(description="Human-readable status message for the Edit Profile screen")
+    status: str = Field(default="ready", description="Profile state (ready, saved, etc.)")
+    description: str | None = Field(default=None, description="Optional subtitle or helper text")
+    link: str | None = Field(default=None, description="Optional navigation link")
+    error: None = Field(default=None, description="Always null on success")
+    title: str = Field(default="Edit Profile", description="Screen title shown in the mobile header")
+    id: UUID = Field(description="Authenticated player user identifier")
+    name: str = Field(description="Display name (typically first_name + last_name)")
     first_name: str | None = None
     last_name: str | None = None
     email: EmailStr

@@ -149,6 +149,10 @@ async def player_login(
         "with field-level `errors` when validation fails."
     ),
     responses={
+        200: {
+            "description": "Validation result (valid=true or valid=false with field errors)",
+            "model": PlayerLoginValidateResponse,
+        },
         500: openapi_error(
             "Unexpected server error",
             code="INTERNAL_SERVER_ERROR",
