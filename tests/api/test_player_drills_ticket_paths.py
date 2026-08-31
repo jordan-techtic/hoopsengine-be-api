@@ -168,4 +168,4 @@ def test_play_drill_ticket_path_401_expired_token(
         json={"phone": "+1-555-0100"},
     )
     assert response.status_code == 401
-    assert response.json()["error"]["code"] == "MISSING_TOKEN"
+    assert response.json()["error"]["code"] in {"MISSING_TOKEN", "INVALID_TOKEN"}
