@@ -13,9 +13,7 @@ BILLING_HISTORY_ITEM_EXAMPLE = {
 }
 
 PAYMENT_METHOD_REQUEST_EXAMPLE = {
-    "card_number": "4242424242424242",
-    "expiry_date": "12/28",
-    "cvv": "123",
+    "stripe_payment_method_id": "pm_1ExampleTokenFromStripeJs",
 }
 
 PAYMENT_METHOD_RESPONSE_EXAMPLE = {
@@ -32,17 +30,12 @@ class PaymentMethodUpdateRequest(BaseModel):
 
     model_config = ConfigDict(json_schema_extra={"example": PAYMENT_METHOD_REQUEST_EXAMPLE})
 
-    card_number: str = Field(
-        description="Card number (digits only, 13–19 characters)",
-        examples=["4242424242424242"],
-    )
-    expiry_date: str = Field(
-        description="Card expiry date in MM/YY format",
-        examples=["12/28"],
-    )
-    cvv: str = Field(
-        description="Card security code (3 or 4 digits)",
-        examples=["123"],
+    stripe_payment_method_id: str = Field(
+        description=(
+            "Stripe PaymentMethod id created client-side via Stripe.js or Payment Element "
+            "(never send raw card numbers to this API)"
+        ),
+        examples=["pm_1ExampleTokenFromStripeJs"],
     )
 
 

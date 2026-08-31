@@ -34,27 +34,25 @@ AUTH_ERROR_RESPONSES = {
 
 VALIDATION_ERROR_RESPONSES = {
     400: openapi_error_examples(
-        "Missing or invalid payment method fields",
+        "Missing or invalid Stripe payment method token",
         examples={
-            "missing_card_number": {
+            "missing_payment_method": {
                 "code": "VALIDATION_ERROR",
-                "message": "Card number is required",
-                "details": [{"field": "card_number", "message": "Card number is required"}],
-            },
-            "invalid_expiry": {
-                "code": "VALIDATION_ERROR",
-                "message": "Enter a valid expiry date",
-                "details": [
-                    {"field": "expiry_date", "message": "Expiry date must use MM/YY format"}
-                ],
-            },
-            "invalid_card": {
-                "code": "PAYMENT_METHOD_INVALID",
-                "message": "Enter a valid card number, expiry date, and security code.",
+                "message": "Payment method is required",
                 "details": [
                     {
-                        "field": "card_number",
-                        "message": "Enter a valid card number, expiry date, and security code.",
+                        "field": "stripe_payment_method_id",
+                        "message": "Payment method is required",
+                    }
+                ],
+            },
+            "invalid_payment_method": {
+                "code": "PAYMENT_METHOD_INVALID",
+                "message": "Enter a valid payment method",
+                "details": [
+                    {
+                        "field": "stripe_payment_method_id",
+                        "message": "Enter a valid payment method",
                     }
                 ],
             },

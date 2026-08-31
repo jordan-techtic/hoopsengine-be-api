@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-import re
 from datetime import date, datetime, timezone
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,19 +20,16 @@ from app.services.org_admin_profile import require_admin_organization
 
 logger = logging.getLogger(__name__)
 
-EXPIRY_PATTERN = re.compile(r"^(0[1-9]|1[0-2])/(\d{2})$")
 ALLOWED_BILLING_STATUSES = frozenset({"paid", "pending", "failed"})
 HISTORY_SUCCESS_MESSAGE = "Billing history loaded successfully."
 UPDATE_SUCCESS_MESSAGE = "Payment method updated successfully."
 NO_HISTORY_MESSAGE = "No billing history is available."
-STRIPE_CARD_ERROR_MESSAGE = "Enter a valid card number, expiry date, and security code."
-
-MIN_CARD_LENGTH = 13
-MAX_CARD_LENGTH = 19
+PAYMENT_METHOD_INVALID_MESSAGE = "Enter a valid payment method."
+STRIPE_INVOICE_PREFIX = "stripe_invoice:"
 
 
 def _require_stripe_configured() -> None:
-    """Ensure Stripe billing is available before updating payment methods."""
+    """Ensure Stripe billing is available before Stripe-backed operations."""
     if not stripe_client.stripe_configured():
         raise AppException(
             code="STRIPE_NOT_CONFIGURED",
@@ -41,100 +38,34 @@ def _require_stripe_configured() -> None:
         )
 
 
-def _luhn_valid(card_number: str) -> bool:
-    """Return True when the card number passes the Luhn checksum."""
-    digits = [int(digit) for digit in card_number]
-    checksum = 0
-    parity = len(digits) % 2
-    for index, digit in enumerate(digits):
-        if index % 2 == parity:
-            doubled = digit * 2
-            checksum += doubled - 9 if doubled > 9 else doubled
-        else:
-            checksum += digit
-    return checksum % 10 == 0
-
-
-def _parse_expiry(expiry_date: str) -> tuple[int, int]:
-    """Parse MM/YY expiry and return (exp_month, exp_year)."""
-    match = EXPIRY_PATTERN.match(expiry_date.strip())
-    if match is None:
+def validate_stripe_payment_method_id(payment_method_id: str | None) -> str:
+    """Validate a client-tokenized Stripe PaymentMethod id."""
+    cleaned = (payment_method_id or "").strip()
+    if not cleaned:
         raise AppException(
             code="VALIDATION_ERROR",
-            message="Enter a valid expiry date",
+            message="Payment method is required",
             status_code=400,
             details=[
                 {
-                    "field": "expiry_date",
-                    "message": "Expiry date must use MM/YY format",
+                    "field": "stripe_payment_method_id",
+                    "message": "Payment method is required",
                 }
             ],
         )
-    exp_month = int(match.group(1))
-    exp_year = 2000 + int(match.group(2))
-    today = datetime.now(timezone.utc).date()
-    if exp_year < today.year or (exp_year == today.year and exp_month < today.month):
+    if not cleaned.startswith("pm_"):
         raise AppException(
             code="VALIDATION_ERROR",
-            message="Card has expired",
+            message="Enter a valid payment method",
             status_code=400,
-            details=[{"field": "expiry_date", "message": "Card has expired"}],
+            details=[
+                {
+                    "field": "stripe_payment_method_id",
+                    "message": "Payment method id must start with pm_",
+                }
+            ],
         )
-    return exp_month, exp_year
-
-
-def validate_payment_method_payload(payload: PaymentMethodUpdateRequest) -> tuple[str, int, int, str]:
-    """Validate card fields and return normalized values for Stripe tokenization."""
-    card_number = re.sub(r"\D", "", payload.card_number or "")
-    if not card_number:
-        raise AppException(
-            code="VALIDATION_ERROR",
-            message="Card number is required",
-            status_code=400,
-            details=[{"field": "card_number", "message": "Card number is required"}],
-        )
-    if not MIN_CARD_LENGTH <= len(card_number) <= MAX_CARD_LENGTH:
-        raise AppException(
-            code="VALIDATION_ERROR",
-            message="Enter a valid card number",
-            status_code=400,
-            details=[{"field": "card_number", "message": "Enter a valid card number"}],
-        )
-    if not _luhn_valid(card_number):
-        raise AppException(
-            code="VALIDATION_ERROR",
-            message="Enter a valid card number",
-            status_code=400,
-            details=[{"field": "card_number", "message": "Enter a valid card number"}],
-        )
-
-    expiry_raw = (payload.expiry_date or "").strip()
-    if not expiry_raw:
-        raise AppException(
-            code="VALIDATION_ERROR",
-            message="Expiry date is required",
-            status_code=400,
-            details=[{"field": "expiry_date", "message": "Expiry date is required"}],
-        )
-    exp_month, exp_year = _parse_expiry(expiry_raw)
-
-    cvv = re.sub(r"\D", "", payload.cvv or "")
-    if not cvv:
-        raise AppException(
-            code="VALIDATION_ERROR",
-            message="Security code is required",
-            status_code=400,
-            details=[{"field": "cvv", "message": "Security code is required"}],
-        )
-    if len(cvv) not in {3, 4}:
-        raise AppException(
-            code="VALIDATION_ERROR",
-            message="Enter a valid security code",
-            status_code=400,
-            details=[{"field": "cvv", "message": "Security code must be 3 or 4 digits"}],
-        )
-
-    return card_number, exp_month, exp_year, cvv
+    return cleaned
 
 
 def _format_expiry(exp_month: int, exp_year: int) -> str:
@@ -145,6 +76,18 @@ def _format_expiry(exp_month: int, exp_year: int) -> str:
 def _amount_to_float(amount_cents: int) -> float:
     """Convert stored cents to a major currency float."""
     return round(amount_cents / 100.0, 2)
+
+
+def _map_stripe_invoice_status(stripe_status: str) -> str:
+    """Map Stripe invoice status to API billing status."""
+    normalized = stripe_status.strip().lower()
+    if normalized == "paid":
+        return "paid"
+    if normalized in {"open", "draft"}:
+        return "pending"
+    if normalized in {"uncollectible", "void"}:
+        return "failed"
+    return "pending"
 
 
 def _history_item(row: OrgBillingHistory) -> dict[str, Any]:
@@ -182,9 +125,69 @@ def _build_notifications(upcoming: list[dict[str, Any]]) -> list[dict[str, str]]
     return notifications
 
 
+async def _sync_billing_history_from_stripe(
+    db: AsyncSession,
+    *,
+    org_id: UUID,
+    customer_id: str,
+) -> None:
+    """Sync billing history rows from Stripe invoices for the organization customer."""
+    if not stripe_client.stripe_configured():
+        return
+    try:
+        invoices = stripe_client.list_customer_invoices(customer_id=customer_id)
+    except Exception:
+        logger.exception("Failed to sync Stripe invoices for org %s", org_id)
+        return
+
+    for invoice in invoices:
+        invoice_id = str(invoice["id"])
+        marker = f"{STRIPE_INVOICE_PREFIX}{invoice_id}"
+        existing = await db.execute(
+            select(OrgBillingHistory.id).where(
+                OrgBillingHistory.org_id == org_id,
+                OrgBillingHistory.description == marker,
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            continue
+
+        status = _map_stripe_invoice_status(str(invoice["status"]))
+        amount_cents = (
+            int(invoice["amount_paid"])
+            if status == "paid"
+            else int(invoice["amount_due"])
+        )
+        created_ts = int(invoice["created"])
+        billing_date = datetime.fromtimestamp(created_ts, tz=timezone.utc).date()
+        db.add(
+            OrgBillingHistory(
+                org_id=org_id,
+                billing_date=billing_date,
+                amount_cents=amount_cents,
+                currency=str(invoice.get("currency") or "USD"),
+                status=status,
+                description=marker,
+            )
+        )
+
+    await db.commit()
+
+
 async def get_billing_history(db: AsyncSession, user: User) -> dict[str, Any]:
     """Return billing history, upcoming payments, and notifications for the org admin."""
     organization = await require_admin_organization(db, user)
+
+    payment_method_result = await db.execute(
+        select(OrgPaymentMethod).where(OrgPaymentMethod.org_id == organization.id)
+    )
+    payment_method = payment_method_result.scalar_one_or_none()
+    if payment_method is not None:
+        await _sync_billing_history_from_stripe(
+            db,
+            org_id=organization.id,
+            customer_id=payment_method.stripe_customer_id,
+        )
 
     result = await db.execute(
         select(OrgBillingHistory)
@@ -202,11 +205,6 @@ async def get_billing_history(db: AsyncSession, user: User) -> dict[str, Any]:
     history_items = [_history_item(row) for row in rows if row.status != "pending"]
     upcoming_items = [_history_item(row) for row in rows if row.status == "pending"]
 
-    payment_method_result = await db.execute(
-        select(OrgPaymentMethod).where(OrgPaymentMethod.org_id == organization.id)
-    )
-    payment_method = payment_method_result.scalar_one_or_none()
-
     return {
         "success": True,
         "message": HISTORY_SUCCESS_MESSAGE,
@@ -223,7 +221,6 @@ async def get_billing_history(db: AsyncSession, user: User) -> dict[str, Any]:
 
 
 async def _get_or_create_stripe_customer(
-    db: AsyncSession,
     *,
     organization: Organization,
     user: User,
@@ -233,12 +230,11 @@ async def _get_or_create_stripe_customer(
     if existing is not None:
         return existing.stripe_customer_id
 
-    customer_id = stripe_client.create_stripe_customer(
+    return stripe_client.create_stripe_customer(
         email=user.email,
         name=organization.name,
         metadata={"org_id": str(organization.id)},
     )
-    return customer_id
 
 
 async def update_payment_method(
@@ -246,10 +242,10 @@ async def update_payment_method(
     user: User,
     payload: PaymentMethodUpdateRequest,
 ) -> dict[str, Any]:
-    """Tokenize card details with Stripe and persist PCI-safe payment method metadata."""
+    """Attach a client-tokenized Stripe PaymentMethod and persist masked metadata."""
     _require_stripe_configured()
     organization = await require_admin_organization(db, user)
-    card_number, exp_month, exp_year, cvv = validate_payment_method_payload(payload)
+    stripe_payment_method_id = validate_stripe_payment_method_id(payload.stripe_payment_method_id)
 
     existing_result = await db.execute(
         select(OrgPaymentMethod).where(OrgPaymentMethod.org_id == organization.id)
@@ -258,17 +254,11 @@ async def update_payment_method(
 
     try:
         stripe_customer_id = await _get_or_create_stripe_customer(
-            db,
             organization=organization,
             user=user,
             existing=existing,
         )
-        payment_method = stripe_client.create_card_payment_method(
-            card_number=card_number,
-            exp_month=exp_month,
-            exp_year=exp_year,
-            cvc=cvv,
-        )
+        payment_method = stripe_client.retrieve_payment_method_metadata(stripe_payment_method_id)
         stripe_client.attach_payment_method_to_customer(
             customer_id=stripe_customer_id,
             payment_method_id=str(payment_method["id"]),
@@ -279,9 +269,14 @@ async def update_payment_method(
         logger.exception("Stripe payment method update failed for org %s", organization.id)
         raise AppException(
             code="PAYMENT_METHOD_INVALID",
-            message=STRIPE_CARD_ERROR_MESSAGE,
+            message=PAYMENT_METHOD_INVALID_MESSAGE,
             status_code=400,
-            details=[{"field": "card_number", "message": STRIPE_CARD_ERROR_MESSAGE}],
+            details=[
+                {
+                    "field": "stripe_payment_method_id",
+                    "message": PAYMENT_METHOD_INVALID_MESSAGE,
+                }
+            ],
         ) from exc
 
     summary = {
@@ -311,6 +306,11 @@ async def update_payment_method(
         existing.brand = summary["brand"]
 
     await db.commit()
+    await _sync_billing_history_from_stripe(
+        db,
+        org_id=organization.id,
+        customer_id=stripe_customer_id,
+    )
 
     logger.info("Org admin %s updated payment method for organization %s", user.id, organization.id)
 

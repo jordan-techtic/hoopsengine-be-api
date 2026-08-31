@@ -18,12 +18,14 @@ from tests.conftest import (
     REGULAR_EMAIL,
     REGULAR_PASSWORD,
     SEEDED_ORG_ID,
+    TEST_INVALID_PASSWORD,
+    TEST_VALID_PASSWORD,
     sync_engine,
 )
 
 ORG_ADMIN_ID = UUID("00000000-0000-4000-8000-000000000055")
 ORG_ADMIN_EMAIL = "orgadmin.login@test.com"
-ORG_ADMIN_PASSWORD = "OrgAdmin123!"
+ORG_ADMIN_PASSWORD = TEST_VALID_PASSWORD
 ORG_ADMIN_USERNAME = "orgadminlogin"
 
 
@@ -104,7 +106,7 @@ def test_org_admin_login_invalid_credentials_401(
 ) -> None:
     response = client.post(
         ORG_ADMIN_LOGIN_BASE,
-        json=_login_payload(password="WrongPassword123!"),
+        json=_login_payload(password=TEST_INVALID_PASSWORD),
     )
     assert response.status_code == 401
     body = response.json()

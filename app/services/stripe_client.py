@@ -302,34 +302,39 @@ def construct_webhook_event(payload: bytes, signature: str) -> stripe.Event:
     )
 
 
-def create_card_payment_method(
-    *,
-    card_number: str,
-    exp_month: int,
-    exp_year: int,
-    cvc: str,
-) -> dict[str, str | int]:
-    """Create a Stripe PaymentMethod from card details and return PCI-safe metadata."""
+def retrieve_payment_method_metadata(payment_method_id: str) -> dict[str, str | int]:
+    """Retrieve PCI-safe card metadata for a client-tokenized Stripe PaymentMethod."""
     client = get_stripe_client()
-    payment_method = client.payment_methods.create(
-        params={
-            "type": "card",
-            "card": {
-                "number": card_number,
-                "exp_month": exp_month,
-                "exp_year": exp_year,
-                "cvc": cvc,
-            },
-        }
-    )
+    payment_method = client.payment_methods.retrieve(payment_method_id)
+    if _stripe_value(payment_method, "type") != "card":
+        raise ValueError("Payment method must be a card")
     card = _stripe_value(payment_method, "card") or {}
     return {
         "id": str(_stripe_value(payment_method, "id")),
         "brand": str(_stripe_value(card, "brand") or "card"),
-        "last4": str(_stripe_value(card, "last4") or card_number[-4:]),
-        "exp_month": int(_stripe_value(card, "exp_month") or exp_month),
-        "exp_year": int(_stripe_value(card, "exp_year") or exp_year),
+        "last4": str(_stripe_value(card, "last4") or ""),
+        "exp_month": int(_stripe_value(card, "exp_month") or 0),
+        "exp_year": int(_stripe_value(card, "exp_year") or 0),
     }
+
+
+def list_customer_invoices(*, customer_id: str, limit: int = 24) -> list[dict[str, str | int]]:
+    """List recent Stripe invoices for a customer."""
+    client = get_stripe_client()
+    page = client.invoices.list(params={"customer": customer_id, "limit": limit})
+    invoices: list[dict[str, str | int]] = []
+    for invoice in page.data:
+        invoices.append(
+            {
+                "id": str(_stripe_value(invoice, "id")),
+                "amount_due": int(_stripe_value(invoice, "amount_due") or 0),
+                "amount_paid": int(_stripe_value(invoice, "amount_paid") or 0),
+                "currency": str(_stripe_value(invoice, "currency") or "usd").upper(),
+                "status": str(_stripe_value(invoice, "status") or "draft"),
+                "created": int(_stripe_value(invoice, "created") or 0),
+            }
+        )
+    return invoices
 
 
 def create_stripe_customer(*, email: str, name: str, metadata: dict[str, str] | None = None) -> str:
