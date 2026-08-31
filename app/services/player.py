@@ -212,6 +212,8 @@ def _build_detail_payload(
         "id": player_id,
         "player_id": player_id,
         "name": name,
+        "first_name": first_name,
+        "last_name": last_name,
         "email": row.get("email"),
         "phone_number": phone_value,
         "phone": phone_value,

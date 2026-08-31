@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_org_admin
 from app.core.database import get_db
 from app.models.user import User
 from app.schemas.errors import openapi_error, openapi_error_examples
+from app.schemas.org_admin_change_password import (
+    OrgAdminChangePasswordRequest,
+    OrgAdminChangePasswordResponse,
+)
 from app.schemas.org_admin_profile import (
     OrganizationProfileResponse,
     OrganizationProfileUpdateRequest,
@@ -126,6 +130,53 @@ NOT_FOUND_RESPONSES = {
     ),
 }
 
+CHANGE_PASSWORD_VALIDATION_RESPONSES = {
+    400: openapi_error_examples(
+        "Empty password, incorrect current password, weak password, or confirmation mismatch",
+        examples={
+            "empty_current_password": {
+                "code": "VALIDATION_ERROR",
+                "message": "Current password is required",
+                "details": [{"field": "current_password", "message": "Current password is required"}],
+            },
+            "incorrect_current_password": {
+                "code": "VALIDATION_ERROR",
+                "message": "Current password is incorrect",
+                "details": [{"field": "current_password", "message": "Current password is incorrect"}],
+            },
+            "weak_password": {
+                "code": "VALIDATION_ERROR",
+                "message": "Password must be at least 8 characters",
+                "details": [{"field": "password", "message": "Password must be at least 8 characters"}],
+            },
+            "password_mismatch": {
+                "code": "VALIDATION_ERROR",
+                "message": "Passwords do not match",
+                "details": [{"field": "confirm_password", "message": "Passwords do not match"}],
+            },
+        },
+    ),
+    422: openapi_error(
+        "Request body failed schema validation",
+        code="VALIDATION_ERROR",
+        message="Request validation failed",
+    ),
+}
+
+CHANGE_PASSWORD_CONFLICT_RESPONSES = {
+    409: openapi_error(
+        "New password matches the current password",
+        code="PASSWORD_UNCHANGED",
+        message="New password must be different from your current password",
+        details=[
+            {
+                "field": "new_password",
+                "message": "New password must be different from your current password",
+            }
+        ],
+    ),
+}
+
 
 @router.get(
     "/profile",
@@ -203,3 +254,47 @@ async def update_organization_profile(
         body,
     )
     return OrganizationProfileResponse(**payload)
+
+
+@router.post(
+    "/change-password",
+    response_model=OrgAdminChangePasswordResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="changeOrgAdminPassword",
+    summary="Change organization admin password",
+    description=(
+        "Change the authenticated organization admin's password using the current password, "
+        "new password, and confirmation.\n\n"
+        "Accepts Figma fields `new_password`, `confirm_password`, and optional client "
+        "metadata `phone` (not persisted). Optional `password` is a write-only alias for "
+        "`confirm_password`.\n\n"
+        "Returns **200** on success. Returns **400** when passwords are empty, the current "
+        "password is incorrect, confirmation does not match, or the new password fails "
+        "strength requirements. Returns **403** when the caller is not an organization admin. "
+        "Returns **409** when the new password matches the current password.\n\n"
+        "**Requires organization admin JWT** (`Authorization: Bearer <access_token>`)."
+    ),
+    responses={
+        **AUTH_ERROR_RESPONSES,
+        **CHANGE_PASSWORD_VALIDATION_RESPONSES,
+        **CHANGE_PASSWORD_CONFLICT_RESPONSES,
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+    },
+)
+async def change_org_admin_password(
+    body: OrgAdminChangePasswordRequest,
+    current_user: User = Depends(get_current_org_admin),
+    db: AsyncSession = Depends(get_db),
+) -> OrgAdminChangePasswordResponse:
+    """Change password from the Organization Admin Account Settings screen."""
+    user = await org_admin_profile_service.change_org_admin_password(db, current_user, body)
+    return OrgAdminChangePasswordResponse(
+        message="Password changed successfully",
+        description="Your new password is now active",
+        id=user.id,
+        phone=body.phone,
+    )

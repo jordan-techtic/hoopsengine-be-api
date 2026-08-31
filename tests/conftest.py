@@ -135,6 +135,14 @@ REPORTS_BASE = "/api/v1/reports"
 ANALYTICS_BASE = "/api/v1/analytics"
 PLAYER_ROLE_SELECTION_BASE = "/api/v1/player/role-selection"
 ORGANIZATION_PROFILE_BASE = "/api/v1/organization/profile"
+ORG_CHANGE_PASSWORD_BASE = "/api/v1/organization/change-password"
+ORG_ADMIN_PRACTICE_PLANS_BASE = "/api/v1/admin/practice-plans"
+ORG_ADMIN_TEAMS_BASE = "/api/v1/admin/teams"
+ORG_ADMIN_SUBSCRIPTION_BASE = "/api/v1/admin/subscription"
+ORG_ADMIN_PLAYERS_BASE = "/api/v1/players"
+ORG_ADMIN_REMOVE_PLAYERS_BASE = "/api/v1/admin/players"
+ORG_ADMIN_RESET_PASSWORD_BASE = "/api/v1/admin/reset-password"
+ORG_ADMIN_RESET_PASSWORD_VALIDATE_BASE = "/api/v1/admin/reset-password/validate"
 ORG_ADMIN_LOGIN_BASE = "/api/v1/organization/login"
 BILLING_HISTORY_BASE = "/api/v1/admin/billing/history"
 BILLING_PAYMENT_METHOD_BASE = "/api/v1/admin/billing/payment-method"
@@ -830,6 +838,7 @@ def ensure_practice_plans_table(seeded_users: dict[str, dict[str, Any]]) -> Gene
                     created_by_user uuid,
                     created_by_name text,
                     drill_count integer DEFAULT 0,
+                    description text,
                     created_at timestamptz DEFAULT now(),
                     active boolean DEFAULT true
                 )
@@ -844,6 +853,7 @@ def ensure_practice_plans_table(seeded_users: dict[str, dict[str, Any]]) -> Gene
                     plan_id uuid REFERENCES public.practice_plans(id),
                     drill_id uuid,
                     drill_name text,
+                    drill_description text,
                     reps integer DEFAULT 1,
                     order_num integer DEFAULT 0
                 )
@@ -866,6 +876,42 @@ def ensure_practice_plans_table(seeded_users: dict[str, dict[str, Any]]) -> Gene
         if not active_exists:
             connection.execute(
                 text("ALTER TABLE practice_plans ADD COLUMN active boolean DEFAULT true")
+            )
+
+        description_exists = connection.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'practice_plans'
+                      AND column_name = 'description'
+                )
+                """
+            )
+        ).scalar()
+        if not description_exists:
+            connection.execute(
+                text("ALTER TABLE practice_plans ADD COLUMN description text")
+            )
+
+        drill_description_exists = connection.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'practice_plan_drills'
+                      AND column_name = 'drill_description'
+                )
+                """
+            )
+        ).scalar()
+        if not drill_description_exists:
+            connection.execute(
+                text("ALTER TABLE practice_plan_drills ADD COLUMN drill_description text")
             )
 
         approved_exists = connection.execute(
@@ -970,6 +1016,101 @@ def ensure_practice_plans_table(seeded_users: dict[str, dict[str, Any]]) -> Gene
             ),
             {"field_id": SEEDED_FIELD_DRILL_ID, "ft_id": SEEDED_FT_DRILL_ID},
         )
+    yield
+
+
+@pytest.fixture
+def ensure_teams_table(seeded_users: dict[str, dict[str, Any]]) -> Generator[None, None, None]:
+    """Ensure team and coach client tables exist for org-admin team API tests."""
+    with sync_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.teams (
+                    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                    org_id uuid NOT NULL,
+                    name text NOT NULL,
+                    season text,
+                    level text,
+                    description text,
+                    team_view_code text UNIQUE,
+                    created_at timestamptz DEFAULT now()
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.coaches (
+                    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                    org_id uuid NOT NULL,
+                    team_id uuid,
+                    subteam_id uuid,
+                    first_name text NOT NULL,
+                    last_name text NOT NULL,
+                    email text,
+                    role text DEFAULT 'subteam_coach',
+                    created_at timestamptz DEFAULT now()
+                )
+                """
+            )
+        )
+        for column, ddl in (
+            ("description", "ALTER TABLE teams ADD COLUMN description text"),
+            ("team_view_code", "ALTER TABLE teams ADD COLUMN team_view_code text UNIQUE"),
+            ("level", "ALTER TABLE teams ADD COLUMN level text"),
+        ):
+            exists = connection.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'teams'
+                          AND column_name = :column_name
+                    )
+                    """
+                ),
+                {"column_name": column},
+            ).scalar()
+            if not exists:
+                connection.execute(text(ddl))
+
+        connection.execute(text("ALTER TABLE players ADD COLUMN IF NOT EXISTS team_id uuid"))
+        connection.execute(text("DELETE FROM coaches"))
+        connection.execute(text("DELETE FROM teams"))
+    yield
+
+
+@pytest.fixture
+def ensure_practice_plan_assignments_table(
+    ensure_teams_table: None,
+    ensure_practice_plans_table: None,
+) -> Generator[None, None, None]:
+    """Ensure practice plan assignment client table exists for org-admin assignment tests."""
+    with sync_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS public.practice_plan_assignments (
+                    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                    org_id uuid NOT NULL,
+                    plan_id uuid NOT NULL,
+                    coach_id uuid NOT NULL,
+                    team_id uuid,
+                    start_date date NOT NULL,
+                    frequency text,
+                    active boolean DEFAULT true,
+                    created_at timestamptz DEFAULT now(),
+                    updated_at timestamptz DEFAULT now(),
+                    UNIQUE (plan_id, coach_id)
+                )
+                """
+            )
+        )
+        connection.execute(text("DELETE FROM practice_plan_assignments"))
     yield
 
 

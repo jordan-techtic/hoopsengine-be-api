@@ -157,8 +157,8 @@ OPENAPI_TAGS = [
     {
         "name": "practice-plans",
         "description": (
-            "Practice plan list/create/update/delete and team roster search for the "
-            "Practice Plans screen."
+            "Practice plan list/create/update/delete, org-admin assignment (POST /assign), "
+            "and team roster search for the Practice Plans and Assign Practice Plan screens."
         ),
     },
     {
@@ -231,8 +231,10 @@ OPENAPI_TAGS = [
     {
         "name": "players",
         "description": (
-            "Authenticated coach player management for Add Player, My Players, and Player Details "
-            "screens: create, list, search, retrieve, update, and soft-delete roster players."
+            "Authenticated coach and organization admin player management for Add Player, "
+            "My Players, Player Management, and Player Details screens: create, list, search, "
+            "retrieve, update, and soft-delete roster players. Organization admins may list, "
+            "retrieve, and update players at GET/PUT /players; coaches retain full roster CRUD."
         ),
     },
     {
@@ -317,8 +319,9 @@ OPENAPI_TAGS = [
     {
         "name": "org-admin-profile",
         "description": (
-            "Authenticated organization admin profile management (GET/PUT /organization/profile). "
-            "Supports detailed Edit Profile and management name/description/contact_info forms."
+            "Authenticated organization admin profile management (GET/PUT /organization/profile) "
+            "and change-password (POST /organization/change-password). Supports detailed Edit "
+            "Profile and management name/description/contact_info forms."
         ),
     },
     {
@@ -344,6 +347,45 @@ OPENAPI_TAGS = [
         "name": "org-admin-billing-alias",
         "description": (
             "Ticket-path billing aliases under /billing (history GET, payment-method PUT)."
+        ),
+    },
+    {
+        "name": "org-admin-practice-plans",
+        "description": (
+            "Authenticated organization admin practice plan CRUD under /admin/practice-plans. "
+            "Supports plan name, description, drills with drill_name/drill_description, and "
+            "org-scoped duplicate name validation."
+        ),
+    },
+    {
+        "name": "org-admin-teams",
+        "description": (
+            "Authenticated organization admin team CRUD under /admin/teams. "
+            "Supports team_name, team_code, team_description, age_group, coach assignments, "
+            "and org-scoped duplicate team code validation."
+        ),
+    },
+    {
+        "name": "org-admin-subscription",
+        "description": (
+            "Authenticated organization admin subscription management under /admin/subscription. "
+            "View current plan details and upgrade organization subscription plans."
+        ),
+    },
+    {
+        "name": "org-admin-players",
+        "description": (
+            "Authenticated organization admin player removal under /admin/players. "
+            "Retrieve player details for the Remove Player confirmation modal and remove "
+            "players after validating full_name, email, and phone."
+        ),
+    },
+    {
+        "name": "org-admin-reset-password",
+        "description": (
+            "Authenticated organization admin password reset under /admin/reset-password. "
+            "Reset password with confirmation and validate password strength for the "
+            "Reset Password screen."
         ),
     },
     {
