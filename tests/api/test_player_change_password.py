@@ -9,6 +9,8 @@ from app.core.security import hash_password
 from app.models.user import User
 from tests.conftest import (
     PLAYER_CHANGE_PASSWORD_BASE,
+    TEST_DIFFERENT_PASSWORD,
+    TEST_INVALID_PASSWORD,
     TEST_NEW_SECURE_PASSWORD,
     TEST_WEAK_PASSWORD,
     VIEWER_ID,
@@ -87,7 +89,7 @@ def test_change_password_wrong_current_400(
     response = client.post(
         PLAYER_CHANGE_PASSWORD_BASE,
         headers=viewer_headers,
-        json=_change_password_payload(current_password="WrongPass123!"),
+        json=_change_password_payload(current_password=TEST_INVALID_PASSWORD),
     )
     assert response.status_code == 400
     body = response.json()
@@ -102,7 +104,10 @@ def test_change_password_mismatch_409(
     response = client.post(
         PLAYER_CHANGE_PASSWORD_BASE,
         headers=viewer_headers,
-        json=_change_password_payload(confirm_new_password="Mismatch456!", password="Mismatch456!"),
+        json=_change_password_payload(
+            confirm_new_password=TEST_DIFFERENT_PASSWORD,
+            password=TEST_DIFFERENT_PASSWORD,
+        ),
     )
     assert response.status_code == 409
     body = response.json()

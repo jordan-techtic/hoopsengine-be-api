@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -103,6 +102,7 @@ def _validate_optional_phone(phone: str | None) -> None:
         "Optional `phone` is client metadata echoed in the response and not persisted.\n\n"
         "An empty `items` array is a valid success response when listing all players "
         "without a search filter.\n\n"
+        "Results are always scoped to the authenticated user's organization.\n\n"
         "**Requires authenticated user JWT (player or coach).**"
     ),
     responses={
@@ -132,11 +132,6 @@ async def get_leaderboard(
         description="Optional client metadata from the status bar (not persisted)",
         examples=["+1-555-0100"],
     ),
-    org_id: UUID | None = Query(
-        default=None,
-        description="Optional organization UUID override to scope leaderboard results",
-        examples=["00000000-0000-4000-8000-000000000010"],
-    ),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> LeaderboardListResponse:
@@ -147,7 +142,6 @@ async def get_leaderboard(
         search_query=search_query,
         full_name=full_name,
         phone=phone,
-        org_id=org_id,
     )
     return LeaderboardListResponse(**result)
 
@@ -162,7 +156,7 @@ async def get_leaderboard(
         "Accepts `search_query` and/or Figma `full_name`. Optional `phone` is client "
         "metadata and is not persisted.\n\n"
         "Returns **400** when both search fields are empty.\n\n"
-        "**Requires authenticated verified coach JWT**."
+        "**Requires authenticated verified coach JWT.**"
     ),
     responses={
         **COACH_AUTH_ERROR_RESPONSES,
@@ -252,7 +246,7 @@ async def search_leaderboard_get(
         "- `attempts`\n"
         "- `makes`\n\n"
         "Results are scoped to the authenticated coach's organization.\n\n"
-        "**Requires authenticated verified coach JWT**."
+        "**Requires authenticated verified coach JWT.**"
     ),
     responses={
         **COACH_AUTH_ERROR_RESPONSES,
