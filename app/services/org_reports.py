@@ -32,7 +32,7 @@ from app.services.session_summary import FREE_THROW_CATEGORY_PATTERN, compute_sh
 logger = logging.getLogger(__name__)
 
 DATE_RANGE_PATTERN = re.compile(
-    r"^(?P<start>\d{4}-\d{2}-\d{2})\s+to\s+(?P<end>\d{4}-\d{2}-\d{2})$"
+    r"^(?P<start>\d{4}-\d{2}-\d{2}) +to +(?P<end>\d{4}-\d{2}-\d{2})$"
 )
 EMPTY_REPORT_MESSAGE = "No reports are available for the selected criteria."
 GENERATED_REPORT_MESSAGE = "Report generated successfully."

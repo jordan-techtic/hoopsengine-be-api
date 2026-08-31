@@ -222,7 +222,7 @@ def _expired_token(user_id) -> dict[str, str]:
             "exp": datetime.now(timezone.utc) - timedelta(hours=1),
         },
         settings.SECRET_KEY,
-        algorithm=settings.ALGORITHM,
+        algorithm=settings.JWT_ALGORITHM,
     )
     return {"Authorization": f"Bearer {expired}"}
 
