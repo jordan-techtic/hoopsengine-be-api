@@ -14,10 +14,10 @@ from app.models.user import User
 __all__ = [
     "OrgBillingHistory",
     "OrgPaymentMethod",
-    "Organization",
     "OrgReport",
     "OrgUiDesign",
     "OrgUiDesignFeedback",
+    "Organization",
     "RevokedToken",
     "RoleSelection",
     "StripeSubscription",

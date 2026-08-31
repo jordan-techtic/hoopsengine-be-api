@@ -7,7 +7,7 @@ import csv
 import io
 import logging
 import re
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -27,7 +27,10 @@ from app.schemas.org_reports import (
     ReportMetrics,
 )
 from app.services import client_db
-from app.services.session_summary import FREE_THROW_CATEGORY_PATTERN, compute_shooting_percent
+from app.services.session_summary import (
+    FREE_THROW_CATEGORY_PATTERN,
+    compute_shooting_percent,
+)
 
 logger = logging.getLogger(__name__)
 

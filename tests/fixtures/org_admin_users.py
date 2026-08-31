@@ -10,7 +10,13 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User
-from tests.conftest import SEEDED_ORG_ID, TEST_VALID_PASSWORD, auth_headers, create_access_token, sync_engine
+from tests.conftest import (
+    SEEDED_ORG_ID,
+    TEST_VALID_PASSWORD,
+    auth_headers,
+    create_access_token,
+    sync_engine,
+)
 
 
 def seed_org_admin(*, user_id: UUID, email: str, username: str, org_id: UUID = SEEDED_ORG_ID) -> dict[str, str]:

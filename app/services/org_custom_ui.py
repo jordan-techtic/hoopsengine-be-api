@@ -14,9 +14,9 @@ from app.core.exceptions import AppException
 from app.models.org_ui_design import OrgUiDesign, OrgUiDesignFeedback
 from app.models.user import User
 from app.schemas.org_custom_ui import (
+    SUPPORTED_ELEMENT_TYPES,
     CustomDesignSaveRequest,
     DesignElement,
-    SUPPORTED_ELEMENT_TYPES,
     UiDesignFeedbackRequest,
 )
 from app.services.org_admin_profile import require_admin_organization

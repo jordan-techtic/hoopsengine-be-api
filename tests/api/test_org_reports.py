@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
-import pytest
-from unittest.mock import patch
-
 import jwt
-from datetime import timedelta
-
-from app.core.config import settings
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User

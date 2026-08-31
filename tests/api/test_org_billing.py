@@ -21,9 +21,9 @@ from tests.conftest import (
     BILLING_PAYMENT_METHOD_BASE,
     REGULAR_USER_ID,
     SEEDED_ORG_ID,
+    TEST_VALID_PASSWORD,
     auth_headers,
     create_access_token,
-    TEST_VALID_PASSWORD,
     sync_engine,
 )
 
