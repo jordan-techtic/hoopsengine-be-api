@@ -86,3 +86,7 @@ def test_get_support_contact_200(client: TestClient) -> None:
     assert body["description"]
     assert body["operating_hours"] == "Mon-Fri, 9am - 6pm EST"
     assert body["live_chat_label"] == "Start instant chat"
+    assert body["name"] == "Support Team"
+    assert body["profile"]["email"] == body["email"]
+    assert body["profile"]["phone"] == body["phone"]
+    assert body["avatar"] is None

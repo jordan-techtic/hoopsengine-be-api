@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
+from app.schemas.profile import ProfileImageResponse
 
 PLAYER_SUPPORT_INQUIRY_EXAMPLE = {
     "email": "user@example.com",
@@ -77,6 +78,14 @@ class PlayerSupportInquiryResponse(MobileWriteOnlyPasswordMixin):
     )
 
 
+class PlayerSupportProfileData(BaseModel):
+    """Support directory profile context for the Contact Support screen header."""
+
+    name: str = Field(description="Support team display name")
+    email: str = Field(description="Support team email address")
+    phone: str = Field(description="Support team phone number")
+
+
 class PlayerSupportContactResponse(MobileWriteOnlyPasswordMixin):
     """Player support directory contact details."""
 
@@ -90,9 +99,16 @@ class PlayerSupportContactResponse(MobileWriteOnlyPasswordMixin):
                 "link": None,
                 "error": None,
                 "id": None,
+                "name": "Support Team",
                 "email": "support@hoopsengine.com",
                 "phone": "+15558392001",
                 "address": None,
+                "profile": {
+                    "name": "Support Team",
+                    "email": "support@hoopsengine.com",
+                    "phone": "+15558392001",
+                },
+                "avatar": None,
                 "operating_hours": "Mon-Fri, 9am - 6pm EST",
                 "live_chat_label": "Start instant chat",
             }
@@ -106,11 +122,19 @@ class PlayerSupportContactResponse(MobileWriteOnlyPasswordMixin):
     link: str | None = None
     error: None = None
     id: UUID | None = Field(default=None, description="Not applicable for contact info")
+    name: str = Field(description="Support team display name for the screen header")
     email: str = Field(description="Support team email address")
     phone: str = Field(description="Support team phone number")
     address: str | None = Field(
         default=None,
         description="Optional support mailing or office address",
+    )
+    profile: PlayerSupportProfileData = Field(
+        description="Nested support directory profile for the mobile header",
+    )
+    avatar: ProfileImageResponse | None = Field(
+        default=None,
+        description="Optional support team avatar metadata",
     )
     operating_hours: str = Field(
         description="Support team operating hours for the Support Directory section",

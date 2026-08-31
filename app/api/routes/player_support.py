@@ -113,8 +113,8 @@ async def submit_player_support_inquiry(
     summary="Get player support contact information",
     description=(
         "Return public support directory details for the player **Contact Support** "
-        "screen, including support `email`, `phone`, `operating_hours`, and "
-        "`live_chat_label`.\n\n"
+        "screen, including support `email`, `phone`, `operating_hours`, "
+        "`live_chat_label`, and mobile envelope fields (`name`, `profile`, `avatar`).\n\n"
         "**Public endpoint — no authentication required.**"
     ),
     responses={
