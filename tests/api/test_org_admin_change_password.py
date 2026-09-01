@@ -1,4 +1,4 @@
-"""Integration tests for organization admin change password API (HE-406)."""
+"""Integration tests for organization admin change password API (HE-406, HE-410)."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User
 from tests.conftest import (
+    ORG_ADMIN_CHANGE_PASSWORD_BASE,
     ORG_CHANGE_PASSWORD_BASE,
     REGULAR_USER_ID,
     SEEDED_ORG_ID,
@@ -182,3 +183,89 @@ def test_change_password_forbidden_coach_403(
 def coach_headers(seeded_users: dict) -> dict[str, str]:
     """Bearer token for a coach user (non org-admin)."""
     return auth_headers(create_access_token(REGULAR_USER_ID))
+
+
+def test_admin_alias_change_password_success_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+) -> None:
+    try:
+        response = client.post(
+            ORG_ADMIN_CHANGE_PASSWORD_BASE,
+            headers=org_admin_headers,
+            json=_change_password_payload(),
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["success"] is True
+        assert body["status"] == "password_changed"
+        assert body["message"] == "Password changed successfully"
+        assert body["description"]
+        assert body["error"] is None
+        assert body["password"] is None
+        assert body["phone"] == "+1-555-0100"
+        assert body["id"] == str(ORG_ADMIN_ID)
+    finally:
+        _restore_org_admin_password()
+
+
+def test_admin_alias_change_password_wrong_current_400(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+) -> None:
+    response = client.post(
+        ORG_ADMIN_CHANGE_PASSWORD_BASE,
+        headers=org_admin_headers,
+        json=_change_password_payload(current_password=TEST_INVALID_PASSWORD),
+    )
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["details"][0]["field"] == "current_password"
+
+
+def test_admin_alias_change_password_weak_400(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+) -> None:
+    response = client.post(
+        ORG_ADMIN_CHANGE_PASSWORD_BASE,
+        headers=org_admin_headers,
+        json=_change_password_payload(
+            new_password=TEST_WEAK_PASSWORD,
+            confirm_password=TEST_WEAK_PASSWORD,
+            password=TEST_WEAK_PASSWORD,
+        ),
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_admin_alias_change_password_mismatch_400(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+) -> None:
+    response = client.post(
+        ORG_ADMIN_CHANGE_PASSWORD_BASE,
+        headers=org_admin_headers,
+        json=_change_password_payload(
+            confirm_password=TEST_DIFFERENT_PASSWORD,
+            password=TEST_DIFFERENT_PASSWORD,
+        ),
+    )
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["details"][0]["field"] == "confirm_password"
+
+
+def test_admin_alias_change_password_forbidden_coach_403(
+    client: TestClient,
+    coach_headers: dict[str, str],
+) -> None:
+    response = client.post(
+        ORG_ADMIN_CHANGE_PASSWORD_BASE,
+        headers=coach_headers,
+        json=_change_password_payload(),
+    )
+    assert response.status_code == 403

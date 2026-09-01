@@ -135,6 +135,40 @@ def _normalize_age_group(age_group: str | None) -> str | None:
     return cleaned or None
 
 
+async def _duplicate_team_name_exists(
+    db: AsyncSession,
+    *,
+    org_id: UUID,
+    team_name: str,
+    exclude_team_id: UUID | None = None,
+) -> bool:
+    """Return True when another team in the org already uses the display name."""
+    params: dict[str, Any] = {
+        "org_id": org_id,
+        "team_name": team_name.strip().lower(),
+    }
+    exclude_sql = ""
+    if exclude_team_id is not None:
+        exclude_sql = "AND id <> :exclude_team_id"
+        params["exclude_team_id"] = exclude_team_id
+
+    exists = await db.scalar(
+        text(
+            f"""
+            SELECT EXISTS (
+                SELECT 1
+                FROM {TEAMS_TABLE}
+                WHERE org_id = :org_id
+                  AND LOWER(TRIM(name)) = :team_name
+                  {exclude_sql}
+            )
+            """
+        ),
+        params,
+    )
+    return bool(exists)
+
+
 async def _duplicate_team_code_exists(
     db: AsyncSession,
     *,
@@ -366,6 +400,7 @@ def _team_to_response(
         "error": None,
         "id": row["id"],
         "name": team_name,
+        "full_name": team_name,
         "code": team_code_text,
         "organization": organization_name,
         "team_name": team_name,
@@ -390,6 +425,14 @@ async def create_org_team(
     team_code = _validate_team_code(payload.team_code)
     team_description = _normalize_team_description(payload.team_description)
     age_group = _normalize_age_group(payload.age_group)
+
+    if await _duplicate_team_name_exists(db, org_id=organization.id, team_name=team_name):
+        raise AppException(
+            code="TEAM_NAME_EXISTS",
+            message="A team with this name already exists",
+            status_code=409,
+            details=[{"field": "team_name", "message": "A team with this name already exists"}],
+        )
 
     if await _duplicate_team_code_exists(db, org_id=organization.id, team_code=team_code):
         raise AppException(
@@ -506,8 +549,11 @@ async def update_org_team(
 
     if (
         payload.team_name is None
+        and payload.full_name is None
+        and payload.name is None
         and payload.team_code is None
         and payload.team_description is None
+        and payload.description is None
         and payload.age_group is None
         and payload.coaches is None
     ):
@@ -517,8 +563,11 @@ async def update_org_team(
             status_code=400,
             details=[
                 {
-                    "field": "team_name",
-                    "message": "Provide team_name, team_code, team_description, age_group, and/or coaches",
+                    "field": "full_name",
+                    "message": (
+                        "Provide full_name, description, team_name, team_code, "
+                        "team_description, age_group, and/or coaches"
+                    ),
                 }
             ],
         )
@@ -558,6 +607,22 @@ async def update_org_team(
         else current_age_group_text
     )
 
+    name_is_changing = (
+        payload.team_name is not None or payload.full_name is not None or payload.name is not None
+    )
+    if name_is_changing and await _duplicate_team_name_exists(
+        db,
+        org_id=organization.id,
+        team_name=new_name,
+        exclude_team_id=team_id,
+    ):
+        raise AppException(
+            code="TEAM_NAME_EXISTS",
+            message="A team with this name already exists",
+            status_code=409,
+            details=[{"field": "team_name", "message": "A team with this name already exists"}],
+        )
+
     if payload.team_code is not None and await _duplicate_team_code_exists(
         db,
         org_id=organization.id,
@@ -579,13 +644,15 @@ async def update_org_team(
     level_exists = await _level_column_exists(db)
 
     try:
-        if payload.team_name is not None:
+        if payload.team_name is not None or payload.full_name is not None or payload.name is not None:
             await db.execute(
                 text(f"UPDATE {TEAMS_TABLE} SET name = :name WHERE id = :team_id"),
                 {"team_id": team_id, "name": new_name},
             )
 
-        if payload.team_description is not None and description_exists:
+        if (
+            payload.team_description is not None or payload.description is not None
+        ) and description_exists:
             await db.execute(
                 text(f"UPDATE {TEAMS_TABLE} SET description = :description WHERE id = :team_id"),
                 {"team_id": team_id, "description": new_description},
@@ -639,12 +706,16 @@ async def update_org_team(
         else await _fetch_team_coaches(db, team_id=team_id, org_id=organization.id)
     )
     logger.info("Org admin %s updated team %s", user.id, team_id)
+    saved_description = updated.get("description")
+    saved_description_text = (
+        str(saved_description).strip() if saved_description is not None else None
+    )
     return _team_to_response(
         updated,
         coaches,
         organization_name=organization.name,
         message="Team updated successfully",
-        ui_description="Your team changes have been saved",
+        ui_description=saved_description_text or DEFAULT_TEAM_DESCRIPTION,
     )
 
 

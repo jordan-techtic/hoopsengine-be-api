@@ -6,6 +6,7 @@ from sendgrid.helpers.mail import Content, Email, Mail, To
 from app.core.config import settings
 from app.core.email_templates import (
     EmailContent,
+    build_coach_invite_email,
     build_email_verification_email,
     build_password_recovery_email,
     build_password_reset_email,
@@ -70,6 +71,25 @@ def send_verification_email(to_email: str, otp_code: str) -> None:
         return
 
     content = build_email_verification_email(to_email=to_email, otp_code=otp_code)
+    send_email(content, to_email)
+
+
+def send_coach_invite_email(
+    *,
+    to_email: str,
+    organization_name: str,
+    invite_url: str,
+) -> None:
+    """Send a coach invitation email for organization admin invites."""
+    if not email_configured():
+        logger.warning("SendGrid is not configured; coach invite email was not sent")
+        return
+
+    content = build_coach_invite_email(
+        to_email=to_email,
+        organization_name=organization_name,
+        invite_url=invite_url,
+    )
     send_email(content, to_email)
 
 

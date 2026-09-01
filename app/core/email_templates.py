@@ -408,3 +408,60 @@ def build_subscription_plan_archived_email(
     )
 
     return EmailContent(subject=subject, plain_text=plain_text, html=html)
+
+
+def build_coach_invite_email(
+    *,
+    to_email: str,
+    organization_name: str,
+    invite_url: str,
+) -> EmailContent:
+    """Build the HTML/plain coach invitation email for organization admins."""
+    app_name = _display_app_name()
+    subject = f"You've been invited to join {organization_name} on {app_name}"
+
+    plain_text = (
+        f"Hello,\n\n"
+        f"You have been invited to join {organization_name} as a coach on {app_name}.\n\n"
+        f"Open this link to accept your invitation:\n{invite_url}\n\n"
+        f"If you were not expecting this invitation, you can ignore this email.\n\n"
+        f"Thanks,\n"
+        f"The {app_name} Team"
+    )
+
+    body_html = f"""
+    <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.7; color: #111827;">
+      Hello,
+    </p>
+    <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.7; color: #374151;">
+      You have been invited to join
+      <strong style="color: #111827;">{organization_name}</strong> as a coach on
+      <strong style="color: #111827;">{app_name}</strong>.
+    </p>
+    <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.7; color: #374151;">
+      <a
+        href="{invite_url}"
+        style="
+          color: #2563eb;
+          font-weight: 700;
+          text-decoration: underline;
+          background-color: #eff6ff;
+          padding: 2px 4px;
+          border-radius: 4px;
+        "
+      >
+        Accept invitation
+      </a>
+    </p>
+    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #6b7280;">
+      If you were not expecting this invitation, you can safely ignore this email.
+    </p>
+    """
+
+    html = render_email(
+        title=subject,
+        body_html=body_html,
+        preview_text=f"Accept your coach invitation to join {organization_name}.",
+    )
+
+    return EmailContent(subject=subject, plain_text=plain_text, html=html)

@@ -136,11 +136,17 @@ ANALYTICS_BASE = "/api/v1/analytics"
 PLAYER_ROLE_SELECTION_BASE = "/api/v1/player/role-selection"
 ORGANIZATION_PROFILE_BASE = "/api/v1/organization/profile"
 ORG_CHANGE_PASSWORD_BASE = "/api/v1/organization/change-password"
+ORG_ADMIN_CHANGE_PASSWORD_BASE = "/api/v1/admin/change-password"
 ORG_ADMIN_PRACTICE_PLANS_BASE = "/api/v1/admin/practice-plans"
 ORG_ADMIN_TEAMS_BASE = "/api/v1/admin/teams"
+TEAMS_BASE = "/api/v1/teams"
 ORG_ADMIN_SUBSCRIPTION_BASE = "/api/v1/admin/subscription"
 ORG_ADMIN_PLAYERS_BASE = "/api/v1/players"
 ORG_ADMIN_REMOVE_PLAYERS_BASE = "/api/v1/admin/players"
+ORG_ADMIN_EDIT_PLAYERS_BASE = "/api/v1/admin/players"
+ORG_ADMIN_COACHES_BASE = "/api/v1/admin/coaches"
+ORG_ADMIN_INVITE_COACH_BASE = "/api/v1/admin/invite-coach"
+ORG_ADMIN_SEARCH_COACHES_BASE = "/api/v1/admin/search-coaches"
 ORG_ADMIN_RESET_PASSWORD_BASE = "/api/v1/admin/reset-password"
 ORG_ADMIN_RESET_PASSWORD_VALIDATE_BASE = "/api/v1/admin/reset-password/validate"
 ORG_ADMIN_LOGIN_BASE = "/api/v1/organization/login"
@@ -1060,6 +1066,7 @@ def ensure_teams_table(seeded_users: dict[str, dict[str, Any]]) -> Generator[Non
             ("description", "ALTER TABLE teams ADD COLUMN description text"),
             ("team_view_code", "ALTER TABLE teams ADD COLUMN team_view_code text UNIQUE"),
             ("level", "ALTER TABLE teams ADD COLUMN level text"),
+            ("season", "ALTER TABLE teams ADD COLUMN season text"),
         ):
             exists = connection.execute(
                 text(

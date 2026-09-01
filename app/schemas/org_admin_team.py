@@ -3,9 +3,17 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
 
@@ -26,38 +34,58 @@ ORG_ADMIN_TEAM_CREATE_EXAMPLE = {
 
 ORG_ADMIN_TEAM_RESPONSE_EXAMPLE = {
     "success": True,
-    "message": "Team created successfully",
+    "message": "Team loaded successfully",
     "status": "active",
-    "description": "Competitive varsity roster for the 2026 season",
+    "description": "Premier elite development squad preparing for state level championship.",
     "link": None,
     "error": None,
     "id": "11111111-2222-3333-4444-555555555555",
-    "name": "Varsity Boys",
+    "name": "Varsity Squad",
+    "full_name": "Varsity Squad",
     "code": "VB-2026",
     "organization": "Courtside Elite Academy",
-    "team_name": "Varsity Boys",
+    "team_name": "Varsity Squad",
     "team_code": "VB-2026",
-    "team_description": "Competitive varsity roster for the 2026 season",
+    "team_description": "Premier elite development squad preparing for state level championship.",
     "age_group": "16-18",
     "coaches": [
         {
             "id": "22222222-3333-4444-5555-666666666666",
-            "name": "Coach Taylor",
+            "coach_id": "22222222-3333-4444-5555-666666666666",
+            "name": "Coach Dave Miller",
         }
     ],
+}
+
+ORG_ADMIN_TEAM_EDIT_UPDATE_EXAMPLE = {
+    "full_name": "Varsity Squad",
+    "description": "Premier elite development squad preparing for state level championship.",
+    "coaches": [
+        {
+            "coach_id": "22222222-3333-4444-5555-666666666666",
+            "name": "Coach Dave Miller",
+        }
+    ],
+    "phone": "+1-555-0100",
 }
 
 
 class OrgAdminTeamCoachInput(BaseModel):
     """Coach assignment entry within an org-admin team write request."""
 
-    id: UUID = Field(
+    id: UUID | None = Field(
+        default=None,
         description="Coach UUID from the organization roster",
         examples=["22222222-3333-4444-5555-666666666666"],
     )
+    coach_id: UUID | None = Field(
+        default=None,
+        description="Edit Team Figma alias for coach UUID",
+        examples=["22222222-3333-4444-5555-666666666666"],
+    )
     name: str = Field(
-        description="Coach display name shown in the Create Team form",
-        examples=["Coach Taylor"],
+        description="Coach display name shown in the team form",
+        examples=["Coach Dave Miller"],
     )
 
     @field_validator("name")
@@ -66,12 +94,27 @@ class OrgAdminTeamCoachInput(BaseModel):
         """Normalize coach display name text."""
         return value.strip()
 
+    @model_validator(mode="after")
+    def resolve_coach_id(self) -> Self:
+        """Accept either `id` or `coach_id` from Create/Edit Team payloads."""
+        resolved = self.id or self.coach_id
+        if resolved is None:
+            raise ValueError("Coach id is required")
+        object.__setattr__(self, "id", resolved)
+        return self
+
 
 class OrgAdminTeamCoachItem(BaseModel):
     """Coach assignment returned with an org-admin team."""
 
     id: UUID = Field(description="Coach UUID")
-    name: str = Field(description="Coach display name", examples=["Coach Taylor"])
+    name: str = Field(description="Coach display name", examples=["Coach Dave Miller"])
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def coach_id(self) -> UUID:
+        """Edit Team Figma alias mirroring `id`."""
+        return self.id
 
 
 class OrgAdminTeamCreateRequest(BaseModel):
@@ -118,31 +161,29 @@ class OrgAdminTeamCreateRequest(BaseModel):
         """Normalize required text fields."""
         return value.strip()
 
+    @model_validator(mode="after")
+    def map_figma_create_fields(self) -> Self:
+        """Map Create Team Figma aliases onto persisted team fields."""
+        if self.full_name is not None and not self.team_name.strip():
+            object.__setattr__(self, "team_name", self.full_name.strip())
+        return self
+
 
 class OrgAdminTeamUpdateRequest(BaseModel):
-    """Payload for PUT /admin/teams/{id}."""
+    """Payload for PUT /admin/teams/{team_id} (Edit Team screen)."""
 
     model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "team_name": "Updated Varsity Boys",
-                "team_code": "VB-2026-A",
-                "team_description": "Updated roster description",
-                "age_group": "17-18",
-                "coaches": [
-                    {
-                        "id": "22222222-3333-4444-5555-666666666666",
-                        "name": "Coach Taylor",
-                    }
-                ],
-                "phone": "+1-555-0100",
-            }
-        }
+        json_schema_extra={"example": ORG_ADMIN_TEAM_EDIT_UPDATE_EXAMPLE}
     )
 
     team_name: str | None = Field(
         default=None,
         description="Updated team display name",
+    )
+    name: str | None = Field(
+        default=None,
+        description="Alias for team display name from legacy ticket examples",
+        examples=["Varsity Squad"],
     )
     team_code: str | None = Field(
         default=None,
@@ -151,6 +192,11 @@ class OrgAdminTeamUpdateRequest(BaseModel):
     team_description: str | None = Field(
         default=None,
         description="Updated team description",
+    )
+    description: str | None = Field(
+        default=None,
+        description="Figma Description field; maps to team_description when provided",
+        examples=["Premier elite development squad preparing for state level championship."],
     )
     age_group: str | None = Field(
         default=None,
@@ -162,20 +208,33 @@ class OrgAdminTeamUpdateRequest(BaseModel):
     )
     full_name: str | None = Field(
         default=None,
-        description="Optional client metadata from the team name field (not persisted)",
+        description="Figma Team Name field; maps to team_name when provided",
+        examples=["Varsity Squad"],
     )
     phone: str | None = Field(
         default=None,
         description="Optional client metadata from the status bar (not persisted)",
+        examples=["+1-555-0100"],
     )
 
-    @field_validator("team_name", "team_code")
+    @field_validator("team_name", "team_code", "name", "full_name", "description")
     @classmethod
     def strip_optional_text(cls, value: str | None) -> str | None:
         """Normalize optional text fields."""
         if value is None:
             return None
         return value.strip()
+
+    @model_validator(mode="after")
+    def map_figma_edit_fields(self) -> Self:
+        """Map Edit Team Figma aliases onto persisted team fields."""
+        if self.full_name is not None and self.team_name is None:
+            object.__setattr__(self, "team_name", self.full_name.strip())
+        elif self.name is not None and self.team_name is None:
+            object.__setattr__(self, "team_name", self.name.strip())
+        if self.description is not None and self.team_description is None:
+            object.__setattr__(self, "team_description", self.description)
+        return self
 
 
 class OrgAdminTeamResponse(MobileWriteOnlyPasswordMixin):
@@ -191,6 +250,7 @@ class OrgAdminTeamResponse(MobileWriteOnlyPasswordMixin):
     error: None = None
     id: UUID
     name: str = Field(description="Team display name")
+    full_name: str = Field(description="Figma Team Name field (`full_name`)")
     code: str = Field(description="Unique team code")
     organization: str = Field(description="Organization display name")
     team_name: str

@@ -1,4 +1,4 @@
-"""Integration tests for organization admin team CRUD API (HE-380)."""
+"""Integration tests for organization admin team CRUD API (HE-380, HE-372)."""
 
 from __future__ import annotations
 
@@ -269,3 +269,156 @@ def test_org_teams_forbidden_coach_403(
     body = response.json()
     assert body["success"] is False
     assert body["error"]["code"] == "FORBIDDEN"
+
+
+# --- HE-372: Edit Team (/api/v1/admin/teams/{team_id}) ---
+
+
+def test_edit_team_get_with_figma_fields_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seeded_org_coach: UUID,
+) -> None:
+    create = client.post(
+        ORG_ADMIN_TEAMS_BASE,
+        headers=org_admin_headers,
+        json=VALID_CREATE_PAYLOAD,
+    )
+    assert create.status_code == 201
+    team_id = create.json()["id"]
+
+    response = client.get(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["error"] is None
+    assert body["id"] == team_id
+    assert body["full_name"] == "Varsity Boys"
+    assert body["name"] == "Varsity Boys"
+    assert body["description"]
+    assert body["organization"] == "Seeded Hoops Club"
+    assert len(body["coaches"]) == 1
+    assert body["coaches"][0]["coach_id"] == str(SEEDED_COACH_ID)
+
+
+def test_edit_team_update_with_figma_fields_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seeded_org_coach: UUID,
+) -> None:
+    create = client.post(
+        ORG_ADMIN_TEAMS_BASE,
+        headers=org_admin_headers,
+        json=VALID_CREATE_PAYLOAD,
+    )
+    assert create.status_code == 201
+    team_id = create.json()["id"]
+
+    response = client.put(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+        json={
+            "full_name": "Varsity Squad",
+            "description": "Premier elite development squad preparing for state level championship.",
+            "coaches": [
+                {
+                    "coach_id": str(SEEDED_COACH_ID),
+                    "name": "Coach Dave Miller",
+                }
+            ],
+            "phone": "+1-555-0100",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["message"] == "Team updated successfully"
+    assert body["full_name"] == "Varsity Squad"
+    assert body["name"] == "Varsity Squad"
+    assert (
+        body["description"]
+        == "Premier elite development squad preparing for state level championship."
+    )
+    assert body["team_description"] == (
+        "Premier elite development squad preparing for state level championship."
+    )
+    assert len(body["coaches"]) == 1
+    assert body["coaches"][0]["name"] == "Coach Dave Miller"
+    assert body["coaches"][0]["coach_id"] == str(SEEDED_COACH_ID)
+
+
+def test_edit_team_400_empty_name(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seeded_org_coach: UUID,
+) -> None:
+    create = client.post(
+        ORG_ADMIN_TEAMS_BASE,
+        headers=org_admin_headers,
+        json=VALID_CREATE_PAYLOAD,
+    )
+    assert create.status_code == 201
+    team_id = create.json()["id"]
+
+    response = client.put(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+        json={"full_name": "   ", "description": "Still valid description"},
+    )
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["details"][0]["field"] == "team_name"
+
+
+def test_edit_team_409_duplicate_name(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seeded_org_coach: UUID,
+) -> None:
+    first = client.post(
+        ORG_ADMIN_TEAMS_BASE,
+        headers=org_admin_headers,
+        json=VALID_CREATE_PAYLOAD,
+    )
+    assert first.status_code == 201
+
+    second = client.post(
+        ORG_ADMIN_TEAMS_BASE,
+        headers=org_admin_headers,
+        json={
+            **VALID_CREATE_PAYLOAD,
+            "team_name": "Junior Boys",
+            "team_code": "JB-2026",
+            "full_name": "Junior Boys",
+            "coaches": [],
+        },
+    )
+    assert second.status_code == 201
+    team_id = second.json()["id"]
+
+    response = client.put(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+        json={"full_name": "Varsity Boys"},
+    )
+    assert response.status_code == 409
+    body = response.json()
+    assert body["error"]["code"] == "TEAM_NAME_EXISTS"
+    assert body["error"]["details"][0]["field"] == "team_name"
+
+
+def test_edit_team_403_coach_put(
+    client: TestClient,
+    coach_headers: dict[str, str],
+    seeded_org_coach: UUID,
+) -> None:
+    response = client.put(
+        f"{ORG_ADMIN_TEAMS_BASE}/{UUID('00000000-0000-4000-8000-000000000099')}",
+        headers=coach_headers,
+        json={"full_name": "Varsity Squad", "description": "Updated"},
+    )
+    assert response.status_code == 403
