@@ -7,6 +7,7 @@ from app.core.tables import (
     STRIPE_SUBSCRIPTIONS_TABLE,
     SUBSCRIPTION_PLANS_TABLE,
     SUPPORT_REQUESTS_TABLE,
+    USERS_TABLE,
 )
 
 logger = logging.getLogger(__name__)
@@ -378,6 +379,74 @@ async def migrate_organization_contact_columns(connection: AsyncConnection) -> N
         logger.info("Added address to organizations")
 
 
+async def _index_exists(
+    connection: AsyncConnection,
+    *,
+    table_name: str,
+    index_name: str,
+) -> bool:
+    return bool(
+        await connection.scalar(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM pg_indexes
+                    WHERE schemaname = 'public'
+                      AND tablename = :table_name
+                      AND indexname = :index_name
+                )
+                """
+            ),
+            {"table_name": table_name, "index_name": index_name},
+        )
+    )
+
+
+async def migrate_user_registration_and_profile_columns(
+    connection: AsyncConnection,
+) -> None:
+    """Add coach registration and profile columns to users when the table predates them."""
+    if not await _table_exists(connection, USERS_TABLE):
+        return
+
+    column_defs = {
+        "username": "VARCHAR(30) NULL",
+        "confirmation_token": "VARCHAR(255) NULL",
+        "confirmation_sent_at": "TIMESTAMP WITH TIME ZONE NULL",
+        "terms_accepted_at": "TIMESTAMP WITH TIME ZONE NULL",
+        "date_of_birth": "DATE NULL",
+        "gender": "TEXT NULL",
+        "grade": "TEXT NULL",
+        "parent_guardian": "TEXT NULL",
+    }
+
+    for column_name, column_type in column_defs.items():
+        if not await _column_exists(
+            connection,
+            table_name=USERS_TABLE,
+            column_name=column_name,
+        ):
+            await connection.execute(
+                text(
+                    f"ALTER TABLE {USERS_TABLE} "
+                    f"ADD COLUMN {column_name} {column_type}"
+                )
+            )
+            logger.info("Added %s to %s", column_name, USERS_TABLE)
+
+    index_name = "ix_users_username"
+    if not await _index_exists(
+        connection,
+        table_name=USERS_TABLE,
+        index_name=index_name,
+    ):
+        await connection.execute(
+            text(f"CREATE UNIQUE INDEX {index_name} ON {USERS_TABLE} (username)")
+        )
+        logger.info("Created unique index %s on %s", index_name, USERS_TABLE)
+
+
 async def migrate_drill_submissions_player_submitter_column(
     connection: AsyncConnection,
 ) -> None:
@@ -402,6 +471,7 @@ async def migrate_drill_submissions_player_submitter_column(
 
 async def run_subscription_schema_migrations(connection: AsyncConnection) -> None:
     await migrate_users_staging_to_users(connection)
+    await migrate_user_registration_and_profile_columns(connection)
     await migrate_subscription_plans_role_column(connection)
     await migrate_legacy_subscriptions_table(connection)
     await migrate_plan_archive_columns(connection)
