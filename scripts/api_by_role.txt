@@ -1,0 +1,445 @@
+﻿
+================================================================================
+  STRIPE / SYSTEM ù 3 APIs
+================================================================================
+  1. [GET   ] /
+     Tag:  | Root
+  2. [GET   ] /api/v1/health
+     Tag: health | Health Check
+  3. [POST  ] /api/v1/webhooks/stripe
+     Tag: webhooks | Stripe webhook handler
+
+================================================================================
+  SUPER ADMIN ù 18 APIs
+================================================================================
+  1. [GET   ] /api/v1/super-admin/dashboard
+     Tag: super-admin-dashboard | Get Super Admin dashboard analytics
+  2. [GET   ] /api/v1/super-admin/organizations
+     Tag: super-admin-organizations | List organizations
+  3. [POST  ] /api/v1/super-admin/organizations
+     Tag: super-admin-organizations | Add a new organization
+  4. [DELETE] /api/v1/super-admin/organizations/{organization_id}
+     Tag: super-admin-organizations | Remove an organization
+  5. [PUT   ] /api/v1/super-admin/organizations/{organization_id}
+     Tag: super-admin-organizations | Edit an existing organization
+  6. [GET   ] /api/v1/super-admin/users
+     Tag: super-admin-users | List users
+  7. [POST  ] /api/v1/super-admin/users
+     Tag: super-admin-users | Add a new user
+  8. [DELETE] /api/v1/super-admin/users/{user_id}
+     Tag: super-admin-users | Remove a user
+  9. [PUT   ] /api/v1/super-admin/users/{user_id}
+     Tag: super-admin-users | Edit an existing user
+ 10. [GET   ] /api/v1/super-admin/subscription-plans
+     Tag: super-admin-subscription-plans | List subscription plans by role
+ 11. [POST  ] /api/v1/super-admin/subscription-plans
+     Tag: super-admin-subscription-plans | Create subscription plan
+ 12. [GET   ] /api/v1/super-admin/subscription-plans/currencies
+     Tag: super-admin-subscription-plans | List Stripe-supported currencies
+ 13. [DELETE] /api/v1/super-admin/subscription-plans/{plan_id}
+     Tag: super-admin-subscription-plans | Archive subscription plan
+ 14. [GET   ] /api/v1/super-admin/subscription-plans/{plan_id}
+     Tag: super-admin-subscription-plans | Get subscription plan by role
+ 15. [PUT   ] /api/v1/super-admin/subscription-plans/{plan_id}
+     Tag: super-admin-subscription-plans | Update subscription plan
+ 16. [GET   ] /api/v1/super-admin/profile
+     Tag: super-admin-profile | Get super admin profile
+ 17. [PUT   ] /api/v1/super-admin/profile
+     Tag: super-admin-profile | Update super admin profile
+ 18. [GET   ] /api/v1/super-admin/profile/avatar
+     Tag: super-admin-profile | Get super admin profile avatar
+
+================================================================================
+  ORGANIZATION ADMIN ù 41 APIs
+================================================================================
+  1. [POST  ] /api/v1/admin/change-password
+     Tag: org-admin-change-password | Change organization admin password (admin path)
+  2. [POST  ] /api/v1/admin/reset-password
+     Tag: org-admin-reset-password | Reset organization admin password
+  3. [GET   ] /api/v1/admin/reset-password/validate
+     Tag: org-admin-reset-password | Validate organization admin new password strength
+  4. [POST  ] /api/v1/organization/change-password
+     Tag: org-admin-profile | Change organization admin password
+  5. [POST  ] /api/v1/organization/login
+     Tag: org-admin-auth | Organization admin login
+  6. [GET   ] /api/v1/organization/profile
+     Tag: org-admin-profile | Get organization profile
+  7. [PUT   ] /api/v1/organization/profile
+     Tag: org-admin-profile | Update organization profile
+  8. [POST  ] /api/v1/admin/teams
+     Tag: org-admin-teams | Create an organization team
+  9. [DELETE] /api/v1/admin/teams/{team_id}
+     Tag: org-admin-teams | Delete an organization team
+ 10. [GET   ] /api/v1/admin/teams/{team_id}
+     Tag: org-admin-teams | Retrieve team details for editing
+ 11. [PUT   ] /api/v1/admin/teams/{team_id}
+     Tag: org-admin-teams | Update team details
+ 12. [DELETE] /api/v1/admin/coaches/{coach_id}
+     Tag: org-admin-coaches | Remove a coach from the organization
+ 13. [GET   ] /api/v1/admin/coaches/{coach_id}
+     Tag: org-admin-coaches | Retrieve coach details
+ 14. [PUT   ] /api/v1/admin/coaches/{coach_id}
+     Tag: org-admin-coaches | Update coach details
+ 15. [POST  ] /api/v1/admin/invite-coach
+     Tag: org-admin-invite-coach | Invite a coach by email
+ 16. [GET   ] /api/v1/admin/search-coaches
+     Tag: org-admin-invite-coach | Search organization coaches
+ 17. [DELETE] /api/v1/admin/players/{player_id}
+     Tag: org-admin-players | Remove player from organization
+ 18. [GET   ] /api/v1/admin/players/{player_id}
+     Tag: org-admin-players | Retrieve player details for editing
+ 19. [PUT   ] /api/v1/admin/players/{player_id}
+     Tag: org-admin-players | Update player details
+ 20. [GET   ] /api/v1/admin/players/{player_id}/removal
+     Tag: org-admin-players | Get player details for removal confirmation
+ 21. [GET   ] /api/v1/admin/practice-plans
+     Tag: org-admin-practice-plans | List organization practice plans
+ 22. [POST  ] /api/v1/admin/practice-plans
+     Tag: org-admin-practice-plans | Create an organization practice plan
+ 23. [DELETE] /api/v1/admin/practice-plans/{plan_id}
+     Tag: org-admin-practice-plans | Delete an organization practice plan
+ 24. [PUT   ] /api/v1/admin/practice-plans/{plan_id}
+     Tag: org-admin-practice-plans | Update an organization practice plan
+ 25. [GET   ] /api/v1/analytics
+     Tag: org-admin-analytics | Get analytics dashboard
+ 26. [POST  ] /api/v1/analytics/export
+     Tag: org-admin-analytics | Export analytics insights
+ 27. [POST  ] /api/v1/analytics/filter
+     Tag: org-admin-analytics | Apply analytics filters
+ 28. [POST  ] /api/v1/reports/export
+     Tag: org-admin-reports | Export generated report
+ 29. [POST  ] /api/v1/reports/generate
+     Tag: org-admin-reports | Generate organization report
+ 30. [GET   ] /api/v1/reports/{report_id}
+     Tag: org-admin-reports | Get generated report details
+ 31. [GET   ] /api/v1/admin/billing/history
+     Tag: org-admin-billing | Get organization billing history
+ 32. [POST  ] /api/v1/admin/billing/payment-method
+     Tag: org-admin-billing | Update organization payment method
+ 33. [GET   ] /api/v1/admin/subscription
+     Tag: org-admin-subscription | Get organization subscription details
+ 34. [POST  ] /api/v1/admin/subscription/upgrade
+     Tag: org-admin-subscription | Upgrade organization subscription plan
+ 35. [GET   ] /api/v1/billing/history
+     Tag: org-admin-billing-alias | Get billing history (alias path)
+ 36. [PUT   ] /api/v1/billing/payment-method
+     Tag: org-admin-billing-alias | Update payment method (alias path)
+ 37. [POST  ] /api/v1/custom-ui/design
+     Tag: org-admin-custom-ui | Save custom UI design template
+ 38. [GET   ] /api/v1/custom-ui/designs
+     Tag: org-admin-custom-ui | List custom UI design templates
+ 39. [POST  ] /api/v1/ui-design/feedback
+     Tag: org-admin-ui-design | Submit UI design feedback
+ 40. [POST  ] /api/v1/ui-design/save
+     Tag: org-admin-ui-design | Save customized UI design template (alias path)
+ 41. [GET   ] /api/v1/ui-design/templates
+     Tag: org-admin-ui-design | List UI design templates (alias path)
+
+================================================================================
+  COACH ù 91 APIs
+================================================================================
+  1. [POST  ] /api/v1/auth/forgot-password
+     Tag: auth | Forgot password
+  2. [POST  ] /api/v1/auth/login
+     Tag: auth | Login
+  3. [POST  ] /api/v1/auth/logout
+     Tag: auth | Logout
+  4. [POST  ] /api/v1/auth/reset-password
+     Tag: auth | Reset password
+  5. [POST  ] /api/v1/auth/validate-reset-token
+     Tag: auth | Validate reset token
+  6. [POST  ] /api/v1/coach/cancel-verification
+     Tag: coach-auth | Cancel pending email verification
+  7. [GET   ] /api/v1/coach/continue-verification
+     Tag: coach-auth | Continue pending email verification
+  8. [POST  ] /api/v1/coach/forgot-password
+     Tag: coach-auth | Coach forgot password
+  9. [POST  ] /api/v1/coach/login
+     Tag: coach-auth | Coach login
+ 10. [POST  ] /api/v1/register
+     Tag: auth | Register a new coach
+ 11. [POST  ] /api/v1/resend-verification-code
+     Tag: auth | Resend email verification code
+ 12. [POST  ] /api/v1/verify-email
+     Tag: auth | Verify email with OTP code
+ 13. [GET   ] /api/v1/role-selection
+     Tag: role-selection | Get current role selection
+ 14. [POST  ] /api/v1/role-selection
+     Tag: role-selection | Submit selected role
+ 15. [GET   ] /api/v1/role-selection/roles
+     Tag: role-selection | List selectable roles
+ 16. [GET   ] /api/v1/coach/home
+     Tag: coach-home | Get coach home screen data
+ 17. [GET   ] /api/v1/home/activities
+     Tag: home | Get home activities
+ 18. [GET   ] /api/v1/home/notifications
+     Tag: home | Get home notifications
+ 19. [GET   ] /api/v1/home/user-info
+     Tag: home | Get home user info
+ 20. [GET   ] /api/v1/profile
+     Tag: coach-profile | Get current user profile
+ 21. [PUT   ] /api/v1/profile
+     Tag: coach-profile | Update current user profile
+ 22. [POST  ] /api/v1/reset-password
+     Tag: reset-password | Reset authenticated user password
+ 23. [GET   ] /api/v1/reset-password/validate
+     Tag: reset-password | Validate new password strength
+ 24. [POST  ] /api/v1/coach/drills/continue
+     Tag: coach-one-drill | Continue from One Drill Step-1 to Step-2
+ 25. [POST  ] /api/v1/coach/drills/search
+     Tag: coach-one-drill | Search players for One Drill Step-1
+ 26. [POST  ] /api/v1/coach/drills/select_player
+     Tag: coach-one-drill | Select a player for One Drill Step-1
+ 27. [GET   ] /api/v1/drills
+     Tag: drills | List drills for One Drill Step-2
+ 28. [POST  ] /api/v1/drills
+     Tag: drills | Create a catalog drill
+ 29. [POST  ] /api/v1/drills/continue
+     Tag: drills | Continue One Drill flow after drill selection
+ 30. [GET   ] /api/v1/drills/search
+     Tag: drills | Search drills by name (practice plan picker)
+ 31. [DELETE] /api/v1/drills/{drill_id}
+     Tag: drills | Delete a catalog drill
+ 32. [GET   ] /api/v1/drills/{drill_id}
+     Tag: drills | Get drill details
+ 33. [PUT   ] /api/v1/drills/{drill_id}
+     Tag: drills | Update a catalog drill
+ 34. [POST  ] /api/v1/drills/{drill_id}/play
+     Tag: player-active-drill | Start drill playback (HE-213 ticket path alias)
+ 35. [PUT   ] /api/v1/drills/{drill_id}/timer
+     Tag: player-active-drill | Update active drill timer (HE-213 ticket path alias)
+ 36. [POST  ] /api/v1/sessions
+     Tag: coach-sessions | Create a One Drill Step-3 session
+ 37. [GET   ] /api/v1/sessions/modes
+     Tag: coach-sessions | List available session recording modes
+ 38. [GET   ] /api/v1/sessions/modes/{mode}
+     Tag: coach-sessions | Get a session mode by identifier
+ 39. [POST  ] /api/v1/sessions/record
+     Tag: coach-sessions | Record a session for a selected drill or mode
+ 40. [PUT   ] /api/v1/sessions/record/{session_id}
+     Tag: coach-sessions | Update an existing session record
+ 41. [GET   ] /api/v1/sessions/summary
+     Tag: coach-sessions | List One Drill session summaries
+ 42. [GET   ] /api/v1/sessions/{session_id}
+     Tag: coach-sessions | Get One Drill session details
+ 43. [PUT   ] /api/v1/sessions/{session_id}
+     Tag: coach-sessions | Update One Drill session metrics
+ 44. [POST  ] /api/v1/sessions/{session_id}/end-practice
+     Tag: coach-sessions | End the current practice session
+ 45. [POST  ] /api/v1/sessions/{session_id}/next-drill
+     Tag: coach-sessions | Navigate to the next drill in the session
+ 46. [GET   ] /api/v1/attendance/players/search
+     Tag: attendance | Search attendance players
+ 47. [POST  ] /api/v1/attendance/start-practice
+     Tag: attendance | Start practice from attendance
+ 48. [GET   ] /api/v1/attendance/summary
+     Tag: attendance | Get attendance summary
+ 49. [GET   ] /api/v1/live_practice/drills
+     Tag: live-practice | List live practice drills
+ 50. [POST  ] /api/v1/live_practice/drills
+     Tag: live-practice | Create live practice drill
+ 51. [DELETE] /api/v1/live_practice/drills/{drill_id}
+     Tag: live-practice | Delete live practice drill
+ 52. [PUT   ] /api/v1/live_practice/drills/{drill_id}
+     Tag: live-practice | Update live practice drill
+ 53. [POST  ] /api/v1/live_practice/players/{player_id}/shots
+     Tag: live-practice | Record player shots
+ 54. [GET   ] /api/v1/live_practice/players/{player_id}/statistics
+     Tag: live-practice | Get player live practice statistics
+ 55. [POST  ] /api/v1/live_practice/timer/start
+     Tag: live-practice | Start live practice timer
+ 56. [GET   ] /api/v1/live_practice/timer/status
+     Tag: live-practice | Get live practice timer status
+ 57. [POST  ] /api/v1/live_practice/timer/stop
+     Tag: live-practice | Stop live practice timer
+ 58. [POST  ] /api/v1/coach/practice-plans
+     Tag: coach-edit-practice-plan | Create a practice plan
+ 59. [DELETE] /api/v1/coach/practice-plans/{plan_id}
+     Tag: coach-edit-practice-plan | Delete a practice plan
+ 60. [GET   ] /api/v1/coach/practice-plans/{plan_id}
+     Tag: coach-edit-practice-plan | Get a practice plan by ID
+ 61. [PUT   ] /api/v1/coach/practice-plans/{plan_id}
+     Tag: coach-edit-practice-plan | Update a practice plan
+ 62. [GET   ] /api/v1/practice-plans
+     Tag: practice-plans | List active practice plans
+ 63. [POST  ] /api/v1/practice-plans
+     Tag: practice-plans | Create a practice plan
+ 64. [POST  ] /api/v1/practice-plans/assign
+     Tag: practice-plans | Assign a practice plan to a coach or team
+ 65. [GET   ] /api/v1/practice-plans/search
+     Tag: practice-plans | Search team roster
+ 66. [DELETE] /api/v1/practice-plans/{plan_id}
+     Tag: practice-plans | Delete a practice plan or assignment
+ 67. [PUT   ] /api/v1/practice-plans/{plan_id}
+     Tag: practice-plans | Update a practice plan or assignment
+ 68. [GET   ] /api/v1/coach/confirm_removal
+     Tag: coach-remove-player | Get player removal confirmation copy
+ 69. [POST  ] /api/v1/coach/remove_player
+     Tag: coach-remove-player | Remove player by email and phone
+ 70. [GET   ] /api/v1/players
+     Tag: players | List organization players
+ 71. [POST  ] /api/v1/players
+     Tag: players | Add a new player
+ 72. [GET   ] /api/v1/players/search
+     Tag: players | Search coach players
+ 73. [DELETE] /api/v1/players/{player_id}
+     Tag: players | Remove player from roster
+ 74. [GET   ] /api/v1/players/{player_id}
+     Tag: players | Get player details
+ 75. [PUT   ] /api/v1/players/{player_id}
+     Tag: players | Update player details
+ 76. [GET   ] /api/v1/teams
+     Tag: teams | List organization teams
+ 77. [POST  ] /api/v1/teams
+     Tag: teams | Create a team
+ 78. [GET   ] /api/v1/teams/search
+     Tag: teams | Search teams by name
+ 79. [DELETE] /api/v1/teams/{team_id}
+     Tag: teams | Delete a team
+ 80. [GET   ] /api/v1/teams/{team_id}
+     Tag: teams | Retrieve team details
+ 81. [PUT   ] /api/v1/teams/{team_id}
+     Tag: teams | Update team details
+ 82. [POST  ] /api/v1/coach/clear-cache
+     Tag: coach-sync | Clear coach local cache metadata
+ 83. [GET   ] /api/v1/coach/queue
+     Tag: coach-queue | List coach queue items pending sync
+ 84. [POST  ] /api/v1/coach/queue
+     Tag: coach-queue | Update a coach queue item sync status
+ 85. [POST  ] /api/v1/coach/sync
+     Tag: coach-sync | Trigger coach data sync
+ 86. [GET   ] /api/v1/coach/sync-activity
+     Tag: coach-sync-activity | Get coach sync activity
+ 87. [POST  ] /api/v1/coach/sync-activity/save
+     Tag: coach-sync-activity | Save coach sync activity updates
+ 88. [GET   ] /api/v1/coach/sync/preferences
+     Tag: coach-sync | Get coach sync preferences
+ 89. [PUT   ] /api/v1/coach/sync/preferences
+     Tag: coach-sync | Update coach sync preferences
+ 90. [GET   ] /api/v1/drill-ideas
+     Tag: coach-drill-ideas | List submitted drill ideas
+ 91. [POST  ] /api/v1/drill-ideas
+     Tag: coach-drill-ideas | Submit a custom drill idea
+
+================================================================================
+  PLAYER ù 31 APIs
+================================================================================
+  1. [POST  ] /api/v1/login
+     Tag: player-auth | Player login
+  2. [GET   ] /api/v1/login/validate
+     Tag: player-auth | Validate player login fields
+  3. [GET   ] /api/v1/player/cancel-verification
+     Tag: player-auth | Get cancel verification instructions
+  4. [POST  ] /api/v1/player/cancel-verification
+     Tag: player-auth | Cancel pending player email verification
+  5. [POST  ] /api/v1/player/change-password
+     Tag: player-auth | Change authenticated player password
+  6. [POST  ] /api/v1/player/forgot-password
+     Tag: player-auth | Player forgot password
+  7. [POST  ] /api/v1/player/reset-password
+     Tag: player-auth | Reset authenticated player password
+  8. [POST  ] /api/v1/player/reset-password-with-token
+     Tag: player-auth | Reset player password with recovery token
+  9. [POST  ] /api/v1/player/verify-code
+     Tag: player-auth | Verify player invitation or recovery code
+ 10. [GET   ] /api/v1/player/role-selection
+     Tag: player-role-selection | Get current role selection (player path)
+ 11. [POST  ] /api/v1/player/role-selection
+     Tag: player-role-selection | Submit selected role (player path)
+ 12. [GET   ] /api/v1/player/home
+     Tag: player-home | Get authenticated player home screen data
+ 13. [GET   ] /api/v1/player/profile
+     Tag: player-profile | Get current player profile
+ 14. [PUT   ] /api/v1/player/profile
+     Tag: player-profile | Update current player profile
+ 15. [GET   ] /api/v1/player/drills
+     Tag: player-drills | List active drills for the authenticated player
+ 16. [POST  ] /api/v1/player/drills/reset
+     Tag: player-drills | Reset the timer for the current player drill
+ 17. [POST  ] /api/v1/player/drills/start
+     Tag: player-drills | Start the timer for the current player drill
+ 18. [GET   ] /api/v1/player/drills/{drill_id}
+     Tag: player-drills | Get details for a specific player drill
+ 19. [POST  ] /api/v1/player/drills/{drill_id}/play
+     Tag: player-drills | Start drill playback for Active Drill 2
+ 20. [POST  ] /api/v1/player/drills/{drill_id}/stop
+     Tag: player-drills | Stop the timer for a specific player drill
+ 21. [PUT   ] /api/v1/player/drills/{drill_id}/timer
+     Tag: player-drills | Update the timer for an active player drill
+ 22. [GET   ] /api/v1/player/start
+     Tag: player-start | Get workout statistics and today's drill list
+ 23. [POST  ] /api/v1/player/start
+     Tag: player-start | Start a player workout session
+ 24. [GET   ] /api/v1/player/drill-performance
+     Tag: player-progress | Get authenticated player drill performance
+ 25. [GET   ] /api/v1/player/my-progress
+     Tag: player-progress | Get authenticated player progress summary
+ 26. [GET   ] /api/v1/player/session-history
+     Tag: player-progress | Get authenticated player session history
+ 27. [GET   ] /api/v1/player/drill-submissions
+     Tag: player-drill-submissions | List player drill submissions
+ 28. [POST  ] /api/v1/player/drill-submissions
+     Tag: player-drill-submissions | Submit a player drill idea
+ 29. [GET   ] /api/v1/player/drill-submissions/{submission_id}
+     Tag: player-drill-submissions | Get player drill submission by ID
+ 30. [GET   ] /api/v1/support/contact
+     Tag: player-support | Get player support contact information
+ 31. [POST  ] /api/v1/support/inquiries
+     Tag: player-support | Submit a player support inquiry
+
+================================================================================
+  SHARED / MULTI-ROLE ù 23 APIs
+================================================================================
+  1. [PUT   ] /api/v1/account/settings/authentication-keys
+     Tag: account-settings | Update authentication keys
+  2. [POST  ] /api/v1/account/settings/change-password
+     Tag: account-settings | Change authenticated user password
+  3. [GET   ] /api/v1/account/settings/help-support
+     Tag: account-settings | Retrieve help and support information
+  4. [POST  ] /api/v1/account/settings/help-support/contact
+     Tag: account-settings | Submit a support request from Account Settings
+  5. [PUT   ] /api/v1/account/settings/organization
+     Tag: account-settings | Update organization information
+  6. [PUT   ] /api/v1/account/settings/profile
+     Tag: account-settings | Update account profile details
+  7. [PATCH ] /api/v1/account/settings/push-notifications
+     Tag: account-settings | Enable or disable push notifications
+  8. [GET   ] /api/v1/faqs
+     Tag: faqs | Retrieve FAQs
+  9. [POST  ] /api/v1/faqs/contact-support
+     Tag: faqs | Contact support from FAQs
+ 10. [GET   ] /api/v1/faqs/{faq_id}
+     Tag: faqs | Retrieve a single FAQ by ID
+ 11. [GET   ] /api/v1/leaderboard
+     Tag: leaderboard | Get leaderboard rankings
+ 12. [GET   ] /api/v1/leaderboard/filter
+     Tag: leaderboard | Filter leaderboard by performance metric
+ 13. [GET   ] /api/v1/leaderboard/search
+     Tag: leaderboard | Search leaderboard players by name (GET)
+ 14. [POST  ] /api/v1/leaderboard/search
+     Tag: leaderboard | Search leaderboard players by name (POST)
+ 15. [GET   ] /api/v1/statistics/{player_id}
+     Tag: statistics | Get player statistics
+ 16. [GET   ] /api/v1/subscription
+     Tag: subscription-management | Get current subscription details
+ 17. [POST  ] /api/v1/subscription/cancel
+     Tag: subscription-management | Cancel subscription
+ 18. [POST  ] /api/v1/subscription/upgrade
+     Tag: subscription-management | Upgrade subscription plan
+ 19. [GET   ] /api/v1/support-requests
+     Tag: support | Get support requests
+ 20. [POST  ] /api/v1/support-requests
+     Tag: support | Create support request
+ 21. [GET   ] /api/v1/support-requests/{request_id}/attachment
+     Tag: support | Download support request attachment
+ 22. [POST  ] /api/v1/support/contact
+     Tag: support-contact | Submit a support message
+ 23. [GET   ] /api/v1/support/contact/info
+     Tag: support-contact | Get support contact information
+
+================================================================================
+  UNCATEGORIZED ù 0 APIs
+================================================================================
+
+
+GRAND TOTAL: 207 API operations

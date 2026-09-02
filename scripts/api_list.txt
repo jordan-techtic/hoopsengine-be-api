@@ -1,0 +1,210 @@
+﻿Total paths: 161
+Total operations: 207
+---
+GET    /                                                                      |                                | Root
+PUT    /api/v1/account/settings/authentication-keys                           | account-settings               | Update authentication keys
+POST   /api/v1/account/settings/change-password                               | account-settings               | Change authenticated user password
+GET    /api/v1/account/settings/help-support                                  | account-settings               | Retrieve help and support information
+POST   /api/v1/account/settings/help-support/contact                          | account-settings               | Submit a support request from Account Settings
+PUT    /api/v1/account/settings/organization                                  | account-settings               | Update organization information
+PUT    /api/v1/account/settings/profile                                       | account-settings               | Update account profile details
+PATCH  /api/v1/account/settings/push-notifications                            | account-settings               | Enable or disable push notifications
+GET    /api/v1/admin/billing/history                                          | org-admin-billing              | Get organization billing history
+POST   /api/v1/admin/billing/payment-method                                   | org-admin-billing              | Update organization payment method
+POST   /api/v1/admin/change-password                                          | org-admin-change-password      | Change organization admin password (admin path)
+DELETE /api/v1/admin/coaches/{coach_id}                                       | org-admin-coaches              | Remove a coach from the organization
+GET    /api/v1/admin/coaches/{coach_id}                                       | org-admin-coaches              | Retrieve coach details
+PUT    /api/v1/admin/coaches/{coach_id}                                       | org-admin-coaches              | Update coach details
+POST   /api/v1/admin/invite-coach                                             | org-admin-invite-coach         | Invite a coach by email
+DELETE /api/v1/admin/players/{player_id}                                      | org-admin-players              | Remove player from organization
+GET    /api/v1/admin/players/{player_id}                                      | org-admin-players              | Retrieve player details for editing
+PUT    /api/v1/admin/players/{player_id}                                      | org-admin-players              | Update player details
+GET    /api/v1/admin/players/{player_id}/removal                              | org-admin-players              | Get player details for removal confirmation
+GET    /api/v1/admin/practice-plans                                           | org-admin-practice-plans       | List organization practice plans
+POST   /api/v1/admin/practice-plans                                           | org-admin-practice-plans       | Create an organization practice plan
+DELETE /api/v1/admin/practice-plans/{plan_id}                                 | org-admin-practice-plans       | Delete an organization practice plan
+PUT    /api/v1/admin/practice-plans/{plan_id}                                 | org-admin-practice-plans       | Update an organization practice plan
+POST   /api/v1/admin/reset-password                                           | org-admin-reset-password       | Reset organization admin password
+GET    /api/v1/admin/reset-password/validate                                  | org-admin-reset-password       | Validate organization admin new password strength
+GET    /api/v1/admin/search-coaches                                           | org-admin-invite-coach         | Search organization coaches
+GET    /api/v1/admin/subscription                                             | org-admin-subscription         | Get organization subscription details
+POST   /api/v1/admin/subscription/upgrade                                     | org-admin-subscription         | Upgrade organization subscription plan
+POST   /api/v1/admin/teams                                                    | org-admin-teams                | Create an organization team
+DELETE /api/v1/admin/teams/{team_id}                                          | org-admin-teams                | Delete an organization team
+GET    /api/v1/admin/teams/{team_id}                                          | org-admin-teams                | Retrieve team details for editing
+PUT    /api/v1/admin/teams/{team_id}                                          | org-admin-teams                | Update team details
+GET    /api/v1/analytics                                                      | org-admin-analytics            | Get analytics dashboard
+POST   /api/v1/analytics/export                                               | org-admin-analytics            | Export analytics insights
+POST   /api/v1/analytics/filter                                               | org-admin-analytics            | Apply analytics filters
+GET    /api/v1/attendance/players/search                                      | attendance                     | Search attendance players
+POST   /api/v1/attendance/start-practice                                      | attendance                     | Start practice from attendance
+GET    /api/v1/attendance/summary                                             | attendance                     | Get attendance summary
+POST   /api/v1/auth/forgot-password                                           | auth                           | Forgot password
+POST   /api/v1/auth/login                                                     | auth                           | Login
+POST   /api/v1/auth/logout                                                    | auth                           | Logout
+POST   /api/v1/auth/reset-password                                            | auth                           | Reset password
+POST   /api/v1/auth/validate-reset-token                                      | auth                           | Validate reset token
+GET    /api/v1/billing/history                                                | org-admin-billing-alias        | Get billing history (alias path)
+PUT    /api/v1/billing/payment-method                                         | org-admin-billing-alias        | Update payment method (alias path)
+POST   /api/v1/coach/cancel-verification                                      | coach-auth                     | Cancel pending email verification
+POST   /api/v1/coach/clear-cache                                              | coach-sync                     | Clear coach local cache metadata
+GET    /api/v1/coach/confirm_removal                                          | coach-remove-player            | Get player removal confirmation copy
+GET    /api/v1/coach/continue-verification                                    | coach-auth                     | Continue pending email verification
+POST   /api/v1/coach/drills/continue                                          | coach-one-drill                | Continue from One Drill Step-1 to Step-2
+POST   /api/v1/coach/drills/search                                            | coach-one-drill                | Search players for One Drill Step-1
+POST   /api/v1/coach/drills/select_player                                     | coach-one-drill                | Select a player for One Drill Step-1
+POST   /api/v1/coach/forgot-password                                          | coach-auth                     | Coach forgot password
+GET    /api/v1/coach/home                                                     | coach-home                     | Get coach home screen data
+POST   /api/v1/coach/login                                                    | coach-auth                     | Coach login
+POST   /api/v1/coach/practice-plans                                           | coach-edit-practice-plan       | Create a practice plan
+DELETE /api/v1/coach/practice-plans/{plan_id}                                 | coach-edit-practice-plan       | Delete a practice plan
+GET    /api/v1/coach/practice-plans/{plan_id}                                 | coach-edit-practice-plan       | Get a practice plan by ID
+PUT    /api/v1/coach/practice-plans/{plan_id}                                 | coach-edit-practice-plan       | Update a practice plan
+GET    /api/v1/coach/queue                                                    | coach-queue                    | List coach queue items pending sync
+POST   /api/v1/coach/queue                                                    | coach-queue                    | Update a coach queue item sync status
+POST   /api/v1/coach/remove_player                                            | coach-remove-player            | Remove player by email and phone
+POST   /api/v1/coach/sync                                                     | coach-sync                     | Trigger coach data sync
+GET    /api/v1/coach/sync-activity                                            | coach-sync-activity            | Get coach sync activity
+POST   /api/v1/coach/sync-activity/save                                       | coach-sync-activity            | Save coach sync activity updates
+GET    /api/v1/coach/sync/preferences                                         | coach-sync                     | Get coach sync preferences
+PUT    /api/v1/coach/sync/preferences                                         | coach-sync                     | Update coach sync preferences
+POST   /api/v1/custom-ui/design                                               | org-admin-custom-ui            | Save custom UI design template
+GET    /api/v1/custom-ui/designs                                              | org-admin-custom-ui            | List custom UI design templates
+GET    /api/v1/drill-ideas                                                    | coach-drill-ideas              | List submitted drill ideas
+POST   /api/v1/drill-ideas                                                    | coach-drill-ideas              | Submit a custom drill idea
+GET    /api/v1/drills                                                         | drills                         | List drills for One Drill Step-2
+POST   /api/v1/drills                                                         | drills                         | Create a catalog drill
+POST   /api/v1/drills/continue                                                | drills                         | Continue One Drill flow after drill selection
+GET    /api/v1/drills/search                                                  | drills                         | Search drills by name (practice plan picker)
+DELETE /api/v1/drills/{drill_id}                                              | drills                         | Delete a catalog drill
+GET    /api/v1/drills/{drill_id}                                              | drills                         | Get drill details
+PUT    /api/v1/drills/{drill_id}                                              | drills                         | Update a catalog drill
+POST   /api/v1/drills/{drill_id}/play                                         | player-active-drill            | Start drill playback (HE-213 ticket path alias)
+PUT    /api/v1/drills/{drill_id}/timer                                        | player-active-drill            | Update active drill timer (HE-213 ticket path alias)
+GET    /api/v1/faqs                                                           | faqs                           | Retrieve FAQs
+POST   /api/v1/faqs/contact-support                                           | faqs                           | Contact support from FAQs
+GET    /api/v1/faqs/{faq_id}                                                  | faqs                           | Retrieve a single FAQ by ID
+GET    /api/v1/health                                                         | health                         | Health Check
+GET    /api/v1/home/activities                                                | home                           | Get home activities
+GET    /api/v1/home/notifications                                             | home                           | Get home notifications
+GET    /api/v1/home/user-info                                                 | home                           | Get home user info
+GET    /api/v1/leaderboard                                                    | leaderboard                    | Get leaderboard rankings
+GET    /api/v1/leaderboard/filter                                             | leaderboard                    | Filter leaderboard by performance metric
+GET    /api/v1/leaderboard/search                                             | leaderboard                    | Search leaderboard players by name (GET)
+POST   /api/v1/leaderboard/search                                             | leaderboard                    | Search leaderboard players by name (POST)
+GET    /api/v1/live_practice/drills                                           | live-practice                  | List live practice drills
+POST   /api/v1/live_practice/drills                                           | live-practice                  | Create live practice drill
+DELETE /api/v1/live_practice/drills/{drill_id}                                | live-practice                  | Delete live practice drill
+PUT    /api/v1/live_practice/drills/{drill_id}                                | live-practice                  | Update live practice drill
+POST   /api/v1/live_practice/players/{player_id}/shots                        | live-practice                  | Record player shots
+GET    /api/v1/live_practice/players/{player_id}/statistics                   | live-practice                  | Get player live practice statistics
+POST   /api/v1/live_practice/timer/start                                      | live-practice                  | Start live practice timer
+GET    /api/v1/live_practice/timer/status                                     | live-practice                  | Get live practice timer status
+POST   /api/v1/live_practice/timer/stop                                       | live-practice                  | Stop live practice timer
+POST   /api/v1/login                                                          | player-auth                    | Player login
+GET    /api/v1/login/validate                                                 | player-auth                    | Validate player login fields
+POST   /api/v1/organization/change-password                                   | org-admin-profile              | Change organization admin password
+POST   /api/v1/organization/login                                             | org-admin-auth                 | Organization admin login
+GET    /api/v1/organization/profile                                           | org-admin-profile              | Get organization profile
+PUT    /api/v1/organization/profile                                           | org-admin-profile              | Update organization profile
+GET    /api/v1/player/cancel-verification                                     | player-auth                    | Get cancel verification instructions
+POST   /api/v1/player/cancel-verification                                     | player-auth                    | Cancel pending player email verification
+POST   /api/v1/player/change-password                                         | player-auth                    | Change authenticated player password
+GET    /api/v1/player/drill-performance                                       | player-progress                | Get authenticated player drill performance
+GET    /api/v1/player/drill-submissions                                       | player-drill-submissions       | List player drill submissions
+POST   /api/v1/player/drill-submissions                                       | player-drill-submissions       | Submit a player drill idea
+GET    /api/v1/player/drill-submissions/{submission_id}                       | player-drill-submissions       | Get player drill submission by ID
+GET    /api/v1/player/drills                                                  | player-drills                  | List active drills for the authenticated player
+POST   /api/v1/player/drills/reset                                            | player-drills                  | Reset the timer for the current player drill
+POST   /api/v1/player/drills/start                                            | player-drills                  | Start the timer for the current player drill
+GET    /api/v1/player/drills/{drill_id}                                       | player-drills                  | Get details for a specific player drill
+POST   /api/v1/player/drills/{drill_id}/play                                  | player-drills                  | Start drill playback for Active Drill 2
+POST   /api/v1/player/drills/{drill_id}/stop                                  | player-drills                  | Stop the timer for a specific player drill
+PUT    /api/v1/player/drills/{drill_id}/timer                                 | player-drills                  | Update the timer for an active player drill
+POST   /api/v1/player/forgot-password                                         | player-auth                    | Player forgot password
+GET    /api/v1/player/home                                                    | player-home                    | Get authenticated player home screen data
+GET    /api/v1/player/my-progress                                             | player-progress                | Get authenticated player progress summary
+GET    /api/v1/player/profile                                                 | player-profile                 | Get current player profile
+PUT    /api/v1/player/profile                                                 | player-profile                 | Update current player profile
+POST   /api/v1/player/reset-password                                          | player-auth                    | Reset authenticated player password
+POST   /api/v1/player/reset-password-with-token                               | player-auth                    | Reset player password with recovery token
+GET    /api/v1/player/role-selection                                          | player-role-selection          | Get current role selection (player path)
+POST   /api/v1/player/role-selection                                          | player-role-selection          | Submit selected role (player path)
+GET    /api/v1/player/session-history                                         | player-progress                | Get authenticated player session history
+GET    /api/v1/player/start                                                   | player-start                   | Get workout statistics and today's drill list
+POST   /api/v1/player/start                                                   | player-start                   | Start a player workout session
+POST   /api/v1/player/verify-code                                             | player-auth                    | Verify player invitation or recovery code
+GET    /api/v1/players                                                        | players                        | List organization players
+POST   /api/v1/players                                                        | players                        | Add a new player
+GET    /api/v1/players/search                                                 | players                        | Search coach players
+DELETE /api/v1/players/{player_id}                                            | players                        | Remove player from roster
+GET    /api/v1/players/{player_id}                                            | players                        | Get player details
+PUT    /api/v1/players/{player_id}                                            | players                        | Update player details
+GET    /api/v1/practice-plans                                                 | practice-plans                 | List active practice plans
+POST   /api/v1/practice-plans                                                 | practice-plans                 | Create a practice plan
+POST   /api/v1/practice-plans/assign                                          | practice-plans                 | Assign a practice plan to a coach or team
+GET    /api/v1/practice-plans/search                                          | practice-plans                 | Search team roster
+DELETE /api/v1/practice-plans/{plan_id}                                       | practice-plans                 | Delete a practice plan or assignment
+PUT    /api/v1/practice-plans/{plan_id}                                       | practice-plans                 | Update a practice plan or assignment
+GET    /api/v1/profile                                                        | coach-profile                  | Get current user profile
+PUT    /api/v1/profile                                                        | coach-profile                  | Update current user profile
+POST   /api/v1/register                                                       | auth                           | Register a new coach
+POST   /api/v1/reports/export                                                 | org-admin-reports              | Export generated report
+POST   /api/v1/reports/generate                                               | org-admin-reports              | Generate organization report
+GET    /api/v1/reports/{report_id}                                            | org-admin-reports              | Get generated report details
+POST   /api/v1/resend-verification-code                                       | auth                           | Resend email verification code
+POST   /api/v1/reset-password                                                 | reset-password                 | Reset authenticated user password
+GET    /api/v1/reset-password/validate                                        | reset-password                 | Validate new password strength
+GET    /api/v1/role-selection                                                 | role-selection                 | Get current role selection
+POST   /api/v1/role-selection                                                 | role-selection                 | Submit selected role
+GET    /api/v1/role-selection/roles                                           | role-selection                 | List selectable roles
+POST   /api/v1/sessions                                                       | coach-sessions                 | Create a One Drill Step-3 session
+GET    /api/v1/sessions/modes                                                 | coach-sessions                 | List available session recording modes
+GET    /api/v1/sessions/modes/{mode}                                          | coach-sessions                 | Get a session mode by identifier
+POST   /api/v1/sessions/record                                                | coach-sessions                 | Record a session for a selected drill or mode
+PUT    /api/v1/sessions/record/{session_id}                                   | coach-sessions                 | Update an existing session record
+GET    /api/v1/sessions/summary                                               | coach-sessions                 | List One Drill session summaries
+GET    /api/v1/sessions/{session_id}                                          | coach-sessions                 | Get One Drill session details
+PUT    /api/v1/sessions/{session_id}                                          | coach-sessions                 | Update One Drill session metrics
+POST   /api/v1/sessions/{session_id}/end-practice                             | coach-sessions                 | End the current practice session
+POST   /api/v1/sessions/{session_id}/next-drill                               | coach-sessions                 | Navigate to the next drill in the session
+GET    /api/v1/statistics/{player_id}                                         | statistics                     | Get player statistics
+GET    /api/v1/subscription                                                   | subscription-management        | Get current subscription details
+POST   /api/v1/subscription/cancel                                            | subscription-management        | Cancel subscription
+POST   /api/v1/subscription/upgrade                                           | subscription-management        | Upgrade subscription plan
+GET    /api/v1/super-admin/dashboard                                          | super-admin-dashboard          | Get Super Admin dashboard analytics
+GET    /api/v1/super-admin/organizations                                      | super-admin-organizations      | List organizations
+POST   /api/v1/super-admin/organizations                                      | super-admin-organizations      | Add a new organization
+DELETE /api/v1/super-admin/organizations/{organization_id}                    | super-admin-organizations      | Remove an organization
+PUT    /api/v1/super-admin/organizations/{organization_id}                    | super-admin-organizations      | Edit an existing organization
+GET    /api/v1/super-admin/profile                                            | super-admin-profile            | Get super admin profile
+PUT    /api/v1/super-admin/profile                                            | super-admin-profile            | Update super admin profile
+GET    /api/v1/super-admin/profile/avatar                                     | super-admin-profile            | Get super admin profile avatar
+GET    /api/v1/super-admin/subscription-plans                                 | super-admin-subscription-plans | List subscription plans by role
+POST   /api/v1/super-admin/subscription-plans                                 | super-admin-subscription-plans | Create subscription plan
+GET    /api/v1/super-admin/subscription-plans/currencies                      | super-admin-subscription-plans | List Stripe-supported currencies
+DELETE /api/v1/super-admin/subscription-plans/{plan_id}                       | super-admin-subscription-plans | Archive subscription plan
+GET    /api/v1/super-admin/subscription-plans/{plan_id}                       | super-admin-subscription-plans | Get subscription plan by role
+PUT    /api/v1/super-admin/subscription-plans/{plan_id}                       | super-admin-subscription-plans | Update subscription plan
+GET    /api/v1/super-admin/users                                              | super-admin-users              | List users
+POST   /api/v1/super-admin/users                                              | super-admin-users              | Add a new user
+DELETE /api/v1/super-admin/users/{user_id}                                    | super-admin-users              | Remove a user
+PUT    /api/v1/super-admin/users/{user_id}                                    | super-admin-users              | Edit an existing user
+GET    /api/v1/support-requests                                               | support                        | Get support requests
+POST   /api/v1/support-requests                                               | support                        | Create support request
+GET    /api/v1/support-requests/{request_id}/attachment                       | support                        | Download support request attachment
+GET    /api/v1/support/contact                                                | player-support                 | Get player support contact information
+POST   /api/v1/support/contact                                                | support-contact                | Submit a support message
+GET    /api/v1/support/contact/info                                           | support-contact                | Get support contact information
+POST   /api/v1/support/inquiries                                              | player-support                 | Submit a player support inquiry
+GET    /api/v1/teams                                                          | teams                          | List organization teams
+POST   /api/v1/teams                                                          | teams                          | Create a team
+GET    /api/v1/teams/search                                                   | teams                          | Search teams by name
+DELETE /api/v1/teams/{team_id}                                                | teams                          | Delete a team
+GET    /api/v1/teams/{team_id}                                                | teams                          | Retrieve team details
+PUT    /api/v1/teams/{team_id}                                                | teams                          | Update team details
+POST   /api/v1/ui-design/feedback                                             | org-admin-ui-design            | Submit UI design feedback
+POST   /api/v1/ui-design/save                                                 | org-admin-ui-design            | Save customized UI design template (alias path)
+GET    /api/v1/ui-design/templates                                            | org-admin-ui-design            | List UI design templates (alias path)
+POST   /api/v1/verify-email                                                   | auth                           | Verify email with OTP code
+POST   /api/v1/webhooks/stripe                                                | webhooks                       | Stripe webhook handler

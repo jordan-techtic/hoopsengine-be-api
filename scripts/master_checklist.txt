@@ -1,0 +1,136 @@
+﻿Ordered: 207 | Missing from flow: 0
+
+# | Seq | Role | Section | Method | Endpoint | Description
+---
+| 1 | System | A. Infrastructure | `GET` | `/` | Root |
+| 2 | System | A. Infrastructure | `GET` | `/api/v1/health` | Health Check |
+| 3 | Super Admin | B. Super Admin ù Auth | `POST` | `/api/v1/auth/login` | Login |
+| 4 | Super Admin | B. Super Admin ù Auth | `POST` | `/api/v1/auth/forgot-password` | Forgot password |
+| 5 | Super Admin | B. Super Admin ù Auth | `POST` | `/api/v1/auth/validate-reset-token` | Validate reset token |
+| 6 | Super Admin | B. Super Admin ù Auth | `POST` | `/api/v1/auth/reset-password` | Reset password |
+| 7 | Super Admin | C. Super Admin ù Dashboard | `GET` | `/api/v1/super-admin/dashboard` | Get Super Admin dashboard analytics |
+| 8 | Super Admin | D. Super Admin ù Organizations | `GET` | `/api/v1/super-admin/organizations` | List organizations |
+| 9 | Super Admin | D. Super Admin ù Organizations | `POST` | `/api/v1/super-admin/organizations` | Add a new organization |
+| 10 | Super Admin | D. Super Admin ù Organizations | `PUT` | `/api/v1/super-admin/organizations/{organization_id}` | Edit an existing organization |
+| 11 | Super Admin | D. Super Admin ù Organizations | `DELETE` | `/api/v1/super-admin/organizations/{organization_id}` | Remove an organization |
+| 12 | Super Admin | E. Super Admin ù Users | `GET` | `/api/v1/super-admin/users` | List users |
+| 13 | Super Admin | E. Super Admin ù Users | `POST` | `/api/v1/super-admin/users` | Add a new user |
+| 14 | Super Admin | E. Super Admin ù Users | `PUT` | `/api/v1/super-admin/users/{user_id}` | Edit an existing user |
+| 15 | Super Admin | E. Super Admin ù Users | `DELETE` | `/api/v1/super-admin/users/{user_id}` | Remove a user |
+| 16 | Super Admin | F. Super Admin ù Stripe Subscription Plans | `GET` | `/api/v1/super-admin/subscription-plans/currencies` | List Stripe-supported currencies |
+| 17 | Super Admin | F. Super Admin ù Stripe Subscription Plans | `GET` | `/api/v1/super-admin/subscription-plans` | List subscription plans by role |
+| 18 | Super Admin | F. Super Admin ù Stripe Subscription Plans | `POST` | `/api/v1/super-admin/subscription-plans` | Create subscription plan |
+| 19 | Super Admin | F. Super Admin ù Stripe Subscription Plans | `GET` | `/api/v1/super-admin/subscription-plans/{plan_id}` | Get subscription plan by role |
+| 20 | Super Admin | F. Super Admin ù Stripe Subscription Plans | `PUT` | `/api/v1/super-admin/subscription-plans/{plan_id}` | Update subscription plan |
+| 21 | Super Admin | F. Super Admin ù Stripe Subscription Plans | `DELETE` | `/api/v1/super-admin/subscription-plans/{plan_id}` | Archive subscription plan |
+| 22 | Super Admin | G. Super Admin ù Profile | `GET` | `/api/v1/super-admin/profile` | Get super admin profile |
+| 23 | Super Admin | G. Super Admin ù Profile | `PUT` | `/api/v1/super-admin/profile` | Update super admin profile |
+| 24 | Super Admin | G. Super Admin ù Profile | `GET` | `/api/v1/super-admin/profile/avatar` | Get super admin profile avatar |
+| 25 | Super Admin | H. Super Admin ù Support Requests | `GET` | `/api/v1/support-requests` | Get support requests |
+| 26 | Super Admin | H. Super Admin ù Support Requests | `POST` | `/api/v1/support-requests` | Create support request |
+| 27 | Super Admin | H. Super Admin ù Support Requests | `GET` | `/api/v1/support-requests/{request_id}/attachment` | Download support request attachment |
+| 28 | Super Admin | I. Super Admin ù Logout | `POST` | `/api/v1/auth/logout` | Logout |
+| 29 | Org Admin | J. Organization Admin ù Auth | `POST` | `/api/v1/organization/login` | Organization admin login |
+| 30 | Org Admin | J. Organization Admin ù Auth | `POST` | `/api/v1/admin/reset-password` | Reset organization admin password |
+| 31 | Org Admin | J. Organization Admin ù Auth | `GET` | `/api/v1/admin/reset-password/validate` | Validate organization admin new password strength |
+| 32 | Org Admin | J. Organization Admin ù Auth | `POST` | `/api/v1/admin/change-password` | Change organization admin password (admin path) |
+| 33 | Org Admin | J. Organization Admin ù Auth | `POST` | `/api/v1/organization/change-password` | Change organization admin password |
+| 34 | Org Admin | K. Organization Admin ù Profile | `GET` | `/api/v1/organization/profile` | Get organization profile |
+| 35 | Org Admin | K. Organization Admin ù Profile | `PUT` | `/api/v1/organization/profile` | Update organization profile |
+| 36 | Org Admin | L. Organization Admin ù Teams | `POST` | `/api/v1/admin/teams` | Create an organization team |
+| 37 | Org Admin | L. Organization Admin ù Teams | `GET` | `/api/v1/admin/teams/{team_id}` | Retrieve team details for editing |
+| 38 | Org Admin | L. Organization Admin ù Teams | `PUT` | `/api/v1/admin/teams/{team_id}` | Update team details |
+| 39 | Org Admin | L. Organization Admin ù Teams | `DELETE` | `/api/v1/admin/teams/{team_id}` | Delete an organization team |
+| 40 | Org Admin | L. Organization Admin ù Teams | `GET` | `/api/v1/teams` | List organization teams |
+| 41 | Org Admin | L. Organization Admin ù Teams | `POST` | `/api/v1/teams` | Create a team |
+| 42 | Org Admin | L. Organization Admin ù Teams | `GET` | `/api/v1/teams/search` | Search teams by name |
+| 43 | Org Admin | L. Organization Admin ù Teams | `GET` | `/api/v1/teams/{team_id}` | Retrieve team details |
+| 44 | Org Admin | L. Organization Admin ù Teams | `PUT` | `/api/v1/teams/{team_id}` | Update team details |
+| 45 | Org Admin | L. Organization Admin ù Teams | `DELETE` | `/api/v1/teams/{team_id}` | Delete a team |
+| 46 | Org Admin | M. Organization Admin ù Coaches | `POST` | `/api/v1/admin/invite-coach` | Invite a coach by email |
+| 47 | Org Admin | M. Organization Admin ù Coaches | `GET` | `/api/v1/admin/search-coaches` | Search organization coaches |
+| 48 | Org Admin | M. Organization Admin ù Coaches | `GET` | `/api/v1/admin/coaches/{coach_id}` | Retrieve coach details |
+| 49 | Org Admin | M. Organization Admin ù Coaches | `PUT` | `/api/v1/admin/coaches/{coach_id}` | Update coach details |
+| 50 | Org Admin | M. Organization Admin ù Coaches | `DELETE` | `/api/v1/admin/coaches/{coach_id}` | Remove a coach from the organization |
+| 51 | Org Admin | N. Organization Admin ù Players | `GET` | `/api/v1/admin/players/{player_id}` | Retrieve player details for editing |
+| 52 | Org Admin | N. Organization Admin ù Players | `PUT` | `/api/v1/admin/players/{player_id}` | Update player details |
+| 53 | Org Admin | N. Organization Admin ù Players | `GET` | `/api/v1/admin/players/{player_id}/removal` | Get player details for removal confirmation |
+| 54 | Org Admin | N. Organization Admin ù Players | `DELETE` | `/api/v1/admin/players/{player_id}` | Remove player from organization |
+| 55 | Org Admin | O. Organization Admin ù Practice Plans | `GET` | `/api/v1/admin/practice-plans` | List organization practice plans |
+| 56 | Org Admin | O. Organization Admin ù Practice Plans | `POST` | `/api/v1/admin/practice-plans` | Create an organization practice plan |
+| 57 | Org Admin | O. Organization Admin ù Practice Plans | `PUT` | `/api/v1/admin/practice-plans/{plan_id}` | Update an organization practice plan |
+| 58 | Org Admin | O. Organization Admin ù Practice Plans | `DELETE` | `/api/v1/admin/practice-plans/{plan_id}` | Delete an organization practice plan |
+| 59 | Org Admin | O. Organization Admin ù Practice Plans | `GET` | `/api/v1/practice-plans` | List active practice plans |
+| 60 | Org Admin | O. Organization Admin ù Practice Plans | `POST` | `/api/v1/practice-plans` | Create a practice plan |
+| 61 | Org Admin | O. Organization Admin ù Practice Plans | `POST` | `/api/v1/practice-plans/assign` | Assign a practice plan to a coach or team |
+| 62 | Org Admin | O. Organization Admin ù Practice Plans | `GET` | `/api/v1/practice-plans/search` | Search team roster |
+| 63 | Org Admin | O. Organization Admin ù Practice Plans | `PUT` | `/api/v1/practice-plans/{plan_id}` | Update a practice plan or assignment |
+| 64 | Org Admin | O. Organization Admin ù Practice Plans | `DELETE` | `/api/v1/practice-plans/{plan_id}` | Delete a practice plan or assignment |
+| 65 | Org Admin | P. Organization Admin ù Analytics & Reports | `GET` | `/api/v1/analytics` | Get analytics dashboard |
+| 66 | Org Admin | P. Organization Admin ù Analytics & Reports | `POST` | `/api/v1/analytics/filter` | Apply analytics filters |
+| 67 | Org Admin | P. Organization Admin ù Analytics & Reports | `POST` | `/api/v1/analytics/export` | Export analytics insights |
+| 68 | Org Admin | P. Organization Admin ù Analytics & Reports | `POST` | `/api/v1/reports/generate` | Generate organization report |
+| 69 | Org Admin | P. Organization Admin ù Analytics & Reports | `GET` | `/api/v1/reports/{report_id}` | Get generated report details |
+| 70 | Org Admin | P. Organization Admin ù Analytics & Reports | `POST` | `/api/v1/reports/export` | Export generated report |
+| 71 | Org Admin | Q. Organization Admin ù Stripe Billing & Subscription | `GET` | `/api/v1/admin/subscription` | Get organization subscription details |
+| 72 | Org Admin | Q. Organization Admin ù Stripe Billing & Subscription | `POST` | `/api/v1/admin/subscription/upgrade` | Upgrade organization subscription plan |
+| 73 | Org Admin | Q. Organization Admin ù Stripe Billing & Subscription | `GET` | `/api/v1/admin/billing/history` | Get organization billing history |
+| 74 | Org Admin | Q. Organization Admin ù Stripe Billing & Subscription | `POST` | `/api/v1/admin/billing/payment-method` | Update organization payment method |
+| 75 | Org Admin | Q. Organization Admin ù Stripe Billing & Subscription | `GET` | `/api/v1/billing/history` | Get billing history (alias path) |
+| 76 | Org Admin | Q. Organization Admin ù Stripe Billing & Subscription | `PUT` | `/api/v1/billing/payment-method` | Update payment method (alias path) |
+| 77 | Org Admin | Q. Organization Admin ù Stripe Billing & Subscription | `GET` | `/api/v1/subscription` | Get current subscription details |
+| 78 | Org Admin | Q. Organization Admin ù Stripe Billing & Subscription | `POST` | `/api/v1/subscription/upgrade` | Upgrade subscription plan |
+| 79 | Org Admin | Q. Organization Admin ù Stripe Billing & Subscription | `POST` | `/api/v1/subscription/cancel` | Cancel subscription |
+| 80 | Org Admin | R. Organization Admin ù Custom UI | `GET` | `/api/v1/custom-ui/designs` | List custom UI design templates |
+| 81 | Org Admin | R. Organization Admin ù Custom UI | `POST` | `/api/v1/custom-ui/design` | Save custom UI design template |
+| 82 | Org Admin | R. Organization Admin ù Custom UI | `GET` | `/api/v1/ui-design/templates` | List UI design templates (alias path) |
+| 83 | Org Admin | R. Organization Admin ù Custom UI | `POST` | `/api/v1/ui-design/save` | Save customized UI design template (alias path) |
+| 84 | Org Admin | R. Organization Admin ù Custom UI | `POST` | `/api/v1/ui-design/feedback` | Submit UI design feedback |
+| 85 | Org Admin | S. Organization Admin ù Settings & Help | `PUT` | `/api/v1/account/settings/profile` | Update account profile details |
+| 86 | Org Admin | S. Organization Admin ù Settings & Help | `PUT` | `/api/v1/account/settings/organization` | Update organization information |
+| 87 | Org Admin | S. Organization Admin ù Settings & Help | `POST` | `/api/v1/account/settings/change-password` | Change authenticated user password |
+| 88 | Org Admin | S. Organization Admin ù Settings & Help | `PATCH` | `/api/v1/account/settings/push-notifications` | Enable or disable push notifications |
+| 89 | Org Admin | S. Organization Admin ù Settings & Help | `PUT` | `/api/v1/account/settings/authentication-keys` | Update authentication keys |
+| 90 | Org Admin | S. Organization Admin ù Settings & Help | `GET` | `/api/v1/account/settings/help-support` | Retrieve help and support information |
+| 91 | Org Admin | S. Organization Admin ù Settings & Help | `POST` | `/api/v1/account/settings/help-support/contact` | Submit a support request from Account Settings |
+| 92 | Org Admin | S. Organization Admin ù Settings & Help | `GET` | `/api/v1/faqs` | Retrieve FAQs |
+| 93 | Org Admin | S. Organization Admin ù Settings & Help | `GET` | `/api/v1/faqs/{faq_id}` | Retrieve a single FAQ by ID |
+| 94 | Org Admin | S. Organization Admin ù Settings & Help | `POST` | `/api/v1/faqs/contact-support` | Contact support from FAQs |
+| 95 | Org Admin | S. Organization Admin ù Settings & Help | `GET` | `/api/v1/support/contact/info` | Get support contact information |
+| 96 | Org Admin | S. Organization Admin ù Settings & Help | `POST` | `/api/v1/support/contact` | Submit a support message |
+| 97 | Org Admin | S. Organization Admin ù Settings & Help | `GET` | `/api/v1/leaderboard` | Get leaderboard rankings |
+| 98 | Org Admin | S. Organization Admin ù Settings & Help | `GET` | `/api/v1/leaderboard/filter` | Filter leaderboard by performance metric |
+| 99 | Org Admin | S. Organization Admin ù Settings & Help | `GET` | `/api/v1/leaderboard/search` | Search leaderboard players by name (GET) |
+| 100 | Org Admin | S. Organization Admin ù Settings & Help | `POST` | `/api/v1/leaderboard/search` | Search leaderboard players by name (POST) |
+| 101 | Coach | T. Coach ù Registration & Auth | `POST` | `/api/v1/register` | Register a new coach |
+| 102 | Coach | T. Coach ù Registration & Auth | `POST` | `/api/v1/verify-email` | Verify email with OTP code |
+| 103 | Coach | T. Coach ù Registration & Auth | `POST` | `/api/v1/resend-verification-code` | Resend email verification code |
+| 104 | Coach | T. Coach ù Registration & Auth | `GET` | `/api/v1/coach/continue-verification` | Continue pending email verification |
+| 105 | Coach | T. Coach ù Registration & Auth | `POST` | `/api/v1/coach/cancel-verification` | Cancel pending email verification |
+| 106 | Coach | T. Coach ù Registration & Auth | `POST` | `/api/v1/coach/login` | Coach login |
+| 107 | Coach | T. Coach ù Registration & Auth | `POST` | `/api/v1/coach/forgot-password` | Coach forgot password |
+| 108 | Coach | T. Coach ù Registration & Auth | `POST` | `/api/v1/reset-password` | Reset authenticated user password |
+| 109 | Coach | T. Coach ù Registration & Auth | `GET` | `/api/v1/reset-password/validate` | Validate new password strength |
+| 110 | Coach | U. Coach ù Role Selection | `GET` | `/api/v1/role-selection/roles` | List selectable roles |
+python : Traceback (most recent call last):
+At C:\Users\Lenovo\AppData\Local\Temp\ps-script-be67a3d5-6e00-4340-beed-c6dd90681345.ps1:105 char:106
++ ...  $env:PYTHONPATH="."; python scripts/master_checklist.py 2>&1 | Out-F ...
++                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "D:\Amey\live-projects\hoops-engine\hoops-engine-jordan-api\hoopsengine-be-api\scripts\master_checklist.py", 
+line 323, in <module>
+| 111 | Coach | U. Coach ù Role Selection | `GET` | `/api/v1/role-selection` | Get current role selection |
+| 112 | Coach | U. Coach ù Role Selection | `POST` | `/api/v1/role-selection` | Submit selected role |
+| 113 | Coach | V. Coach ù Home Dashboard | `GET` | `/api/v1/coach/home` | Get coach home screen data |
+| 114 | Coach | V. Coach ù Home Dashboard | `GET` | `/api/v1/home/user-info` | Get home user info |
+| 115 | Coach | V. Coach ù Home Dashboard | `GET` | `/api/v1/home/activities` | Get home activities |
+| 116 | Coach | V. Coach ù Home Dashboard | `GET` | `/api/v1/home/notifications` | Get home notifications |
+| 117 | Coach | W. Coach ù Profile | `GET` | `/api/v1/profile` | Get current user profile |
+| 118 | Coach | W. Coach ù Profile | `PUT` | `/api/v1/profile` | Update current user profile |
+    print(f"| {i} | {role} | {section} | `{m}` | `{p}` | {s} |")
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 49: character maps to <undefined>
