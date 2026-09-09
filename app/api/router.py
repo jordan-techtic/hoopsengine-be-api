@@ -25,10 +25,12 @@ from app.api.routes import (
     org_admin_change_password,
     org_admin_coaches,
     org_admin_invite_coach,
+    org_admin_leaderboard,
     org_admin_players,
     org_admin_practice_plans,
     org_admin_reset_password,
     org_admin_subscription,
+    org_admin_support,
     org_admin_teams,
     org_analytics,
     org_billing,
@@ -103,12 +105,14 @@ api_router.include_router(org_billing.router)
 api_router.include_router(org_billing.billing_alias_router)
 api_router.include_router(org_admin_practice_plans.router)
 api_router.include_router(org_admin_teams.router)
+api_router.include_router(org_admin_leaderboard.router)
 api_router.include_router(teams.router)
 api_router.include_router(org_admin_coaches.router)
 api_router.include_router(org_admin_invite_coach.router)
 api_router.include_router(org_admin_players.router)
 api_router.include_router(org_admin_reset_password.router)
 api_router.include_router(org_admin_subscription.router)
+api_router.include_router(org_admin_support.router)
 api_router.include_router(org_custom_ui.router)
 api_router.include_router(org_custom_ui.ui_design_alias_router)
 api_router.include_router(player_auth.router)

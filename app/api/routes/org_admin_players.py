@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_org_admin
@@ -13,9 +13,14 @@ from app.models.user import User
 from app.schemas.errors import openapi_error, openapi_error_examples
 from app.schemas.org_admin_player import (
     OrgAdminPlayerDetailResponse,
+    OrgAdminPlayerListResponse,
     OrgAdminPlayerRemovalDetailResponse,
     OrgAdminPlayerRemovalRequest,
     OrgAdminPlayerRemovalResponse,
+    OrgAdminPlayerSearchRequest,
+    OrgAdminPlayerSearchResponse,
+    OrgAdminPlayerStatusUpdateRequest,
+    OrgAdminPlayerStatusUpdateResponse,
 )
 from app.schemas.player import PlayerUpdateRequest
 from app.schemas.player_removal import REMOVAL_CONFIRMATION_MESSAGE
@@ -153,6 +158,31 @@ EDIT_CONFLICT_ERROR_RESPONSE = {
     ),
 }
 
+LISTING_VALIDATION_ERROR_RESPONSES = {
+    400: openapi_error_examples(
+        "Missing player code or invalid optional phone metadata",
+        examples={
+            "empty_player_code": {
+                "code": "VALIDATION_ERROR",
+                "message": "Player code is required",
+                "details": [{"field": "player_code", "message": "Player code is required"}],
+            },
+            "invalid_phone": {
+                "code": "VALIDATION_ERROR",
+                "message": "Phone number must contain at least one digit",
+                "details": [
+                    {"field": "phone", "message": "Phone number must contain at least one digit"}
+                ],
+            },
+        },
+    ),
+    422: openapi_error(
+        "Request body failed schema validation",
+        code="VALIDATION_ERROR",
+        message="Request validation failed",
+    ),
+}
+
 REMOVAL_CONFLICT_ERROR_RESPONSES = {
     409: openapi_error_examples(
         "Submitted credentials do not match the player or email belongs to another player",
@@ -180,6 +210,95 @@ REMOVAL_CONFLICT_ERROR_RESPONSES = {
         },
     ),
 }
+
+
+@router.get(
+    "",
+    response_model=OrgAdminPlayerListResponse,
+    operation_id="listOrgAdminPlayers",
+    summary="List organization players",
+    description=(
+        "Return active players for the Organization Admin **Player Listing** screen "
+        "(HE-424).\n\n"
+        "Each row includes `name`, `player_code`, `code`, `status`, and `team`.\n\n"
+        "Optional query parameter `phone` is client metadata echoed in the response "
+        "and not persisted.\n\n"
+        "Only **active** roster players are included.\n\n"
+        "Returns **200** with an empty `players` array when no active players exist.\n\n"
+        "**Requires organization admin JWT**."
+    ),
+    responses={
+        **AUTH_ERROR_RESPONSES,
+        **LISTING_VALIDATION_ERROR_RESPONSES,
+        503: openapi_error(
+            "Players table unavailable",
+            code="CLIENT_TABLE_UNAVAILABLE",
+            message="Player operations are temporarily unavailable",
+        ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+    },
+)
+async def list_org_admin_players(
+    phone: str | None = Query(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+        examples=["+1-555-0100"],
+    ),
+    current_user: User = Depends(get_current_org_admin),
+    db: AsyncSession = Depends(get_db),
+) -> OrgAdminPlayerListResponse:
+    """List active players for the Player Listing screen."""
+    result = await org_admin_player_service.list_players(db, current_user, phone=phone)
+    return OrgAdminPlayerListResponse(**result)
+
+
+@router.post(
+    "/search",
+    response_model=OrgAdminPlayerSearchResponse,
+    operation_id="searchOrgAdminPlayersByCode",
+    summary="Search organization players by player code",
+    description=(
+        "Search active players by `player_code` for the Organization Admin "
+        "**Player Listing** search input (HE-424).\n\n"
+        "Required body field `player_code` filters players within the admin's "
+        "organization. Optional `name` and `phone` are client metadata and are "
+        "not used for filtering.\n\n"
+        "Returns **400** when `player_code` is empty.\n\n"
+        "Returns **200** with an empty `players` array when no matches are found.\n\n"
+        "**Requires organization admin JWT**."
+    ),
+    responses={
+        **AUTH_ERROR_RESPONSES,
+        **LISTING_VALIDATION_ERROR_RESPONSES,
+        503: openapi_error(
+            "Players table unavailable",
+            code="CLIENT_TABLE_UNAVAILABLE",
+            message="Player operations are temporarily unavailable",
+        ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+    },
+)
+async def search_org_admin_players(
+    body: OrgAdminPlayerSearchRequest,
+    current_user: User = Depends(get_current_org_admin),
+    db: AsyncSession = Depends(get_db),
+) -> OrgAdminPlayerSearchResponse:
+    """Search players by player code for the Player Listing screen."""
+    result = await org_admin_player_service.search_players_by_code(
+        db,
+        current_user,
+        player_code=body.player_code,
+        phone=body.phone,
+    )
+    return OrgAdminPlayerSearchResponse(**result)
 
 
 @router.get(
@@ -266,6 +385,51 @@ async def update_org_admin_player(
     """Update player details from the Edit Player form."""
     result = await org_admin_player_service.update_player(db, current_user, player_id, body)
     return OrgAdminPlayerDetailResponse(**result)
+
+
+@router.patch(
+    "/{player_id}/status",
+    response_model=OrgAdminPlayerStatusUpdateResponse,
+    operation_id="updateOrgAdminPlayerStatus",
+    summary="Update player roster status",
+    description=(
+        "Update a player's roster status (`active` or `inactive`) from the "
+        "Organization Admin **Player Listing** screen (HE-424).\n\n"
+        "Optional `phone` is client metadata echoed in the response and not persisted.\n\n"
+        "Returns **404** when the player is not found in the admin's organization.\n\n"
+        "**Requires organization admin JWT**."
+    ),
+    responses={
+        **AUTH_ERROR_RESPONSES,
+        **LISTING_VALIDATION_ERROR_RESPONSES,
+        **NOT_FOUND_ERROR_RESPONSE,
+        503: openapi_error(
+            "Players table unavailable",
+            code="CLIENT_TABLE_UNAVAILABLE",
+            message="Player operations are temporarily unavailable",
+        ),
+        500: openapi_error(
+            "Unexpected server error",
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+        ),
+    },
+)
+async def update_org_admin_player_status(
+    body: OrgAdminPlayerStatusUpdateRequest,
+    player_id: UUID = PLAYER_ID_PATH,
+    current_user: User = Depends(get_current_org_admin),
+    db: AsyncSession = Depends(get_db),
+) -> OrgAdminPlayerStatusUpdateResponse:
+    """Update a player's active/inactive roster status."""
+    result = await org_admin_player_service.update_player_status(
+        db,
+        current_user,
+        player_id,
+        status=body.status,
+        phone=body.phone,
+    )
+    return OrgAdminPlayerStatusUpdateResponse(**result)
 
 
 @router.get(

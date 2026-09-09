@@ -13,12 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppException
 from app.models.user import User
 from app.schemas.org_admin_team import (
+    TEAM_REMOVAL_CONFIRMATION_MESSAGE,
     OrgAdminTeamCoachInput,
     OrgAdminTeamCreateRequest,
     OrgAdminTeamUpdateRequest,
 )
 from app.services import client_db
 from app.services.org_admin_profile import require_admin_organization
+from app.services.organization import validate_phone_number
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +119,29 @@ def _validate_team_code(team_code: str | None) -> str:
             details=[{"field": "team_code", "message": "Team code is required"}],
         )
     return cleaned
+
+
+def _validate_removal_phone(phone: str) -> str:
+    """Validate Remove Team confirmation phone and map errors to the Figma `phone` field."""
+    cleaned = (phone or "").strip()
+    if not cleaned:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Phone is required",
+            status_code=400,
+            details=[{"field": "phone", "message": "Phone is required"}],
+        )
+    try:
+        return validate_phone_number(cleaned)
+    except AppException as exc:
+        if exc.code != "VALIDATION_ERROR":
+            raise
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Enter a valid phone number",
+            status_code=400,
+            details=[{"field": "phone", "message": "Enter a valid phone number"}],
+        ) from exc
 
 
 def _normalize_team_description(description: str | None) -> str | None:
@@ -528,13 +553,15 @@ async def get_org_team(db: AsyncSession, user: User, team_id: UUID) -> dict[str,
         )
 
     coaches = await _fetch_team_coaches(db, team_id=team_id, org_id=organization.id)
-    return _team_to_response(
+    payload = _team_to_response(
         row,
         coaches,
         organization_name=organization.name,
         message="Team loaded successfully",
         ui_description=row.get("description") or DEFAULT_TEAM_DESCRIPTION,
     )
+    payload["confirmation_message"] = TEAM_REMOVAL_CONFIRMATION_MESSAGE
+    return payload
 
 
 async def update_org_team(
@@ -776,3 +803,44 @@ async def delete_org_team(db: AsyncSession, user: User, team_id: UUID) -> None:
     )
     await db.commit()
     logger.info("Org admin %s deleted team %s", user.id, team_id)
+
+
+async def remove_org_team_with_confirmation(
+    db: AsyncSession,
+    user: User,
+    team_id: UUID,
+    *,
+    phone: str,
+) -> dict[str, Any]:
+    """Remove a team after validating confirmation phone metadata."""
+    validated_phone = _validate_removal_phone(phone)
+    organization = await require_admin_organization(db, user)
+    await _ensure_teams_table(db)
+
+    row = await _fetch_team_row(db, team_id=team_id, org_id=organization.id)
+    if row is None:
+        raise AppException(
+            code="TEAM_NOT_FOUND",
+            message="Team not found",
+            status_code=404,
+            details=[{"field": "team_id", "message": "Team not found"}],
+        )
+
+    team_name = str(row["name"])
+    await delete_org_team(db, user, team_id)
+
+    logger.info("Org admin %s removed team %s with confirmation", user.id, team_id)
+    return {
+        "success": True,
+        "message": "Team removed successfully",
+        "status": "removed",
+        "description": "The team was removed from the organization",
+        "title": "Remove Team",
+        "link": None,
+        "error": None,
+        "id": team_id,
+        "team_id": team_id,
+        "name": team_name,
+        "phone": validated_phone,
+        "organization": organization.name,
+    }

@@ -1,4 +1,4 @@
-"""Integration tests for organization admin team CRUD API (HE-380, HE-372)."""
+"""Integration tests for organization admin team CRUD API (HE-380, HE-372, HE-367)."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User
+from app.schemas.org_admin_team import TEAM_REMOVAL_CONFIRMATION_MESSAGE
 from tests.conftest import (
     ORG_ADMIN_TEAMS_BASE,
     REGULAR_USER_ID,
@@ -24,6 +25,11 @@ from tests.conftest import (
 
 ORG_ADMIN_ID = UUID("00000000-0000-4000-8000-000000000071")
 SEEDED_COACH_ID = UUID("00000000-0000-4000-8000-000000000072")
+MISSING_TEAM_ID = UUID("00000000-0000-4000-8000-000000999998")
+TEAM_WITH_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000073")
+PLAYER_ON_TEAM_ID = UUID("00000000-0000-4000-8000-000000000074")
+
+VALID_REMOVAL_PAYLOAD = {"phone": "+1-555-0100"}
 
 VALID_CREATE_PAYLOAD = {
     "team_name": "Varsity Boys",
@@ -192,6 +198,7 @@ def test_get_org_team_200(
     assert body["name"] == "Varsity Boys"
     assert body["code"] == "VB-2026"
     assert body["description"]
+    assert body["confirmation_message"] == TEAM_REMOVAL_CONFIRMATION_MESSAGE
 
 
 def test_update_org_team_200(
@@ -225,7 +232,7 @@ def test_update_org_team_200(
     assert body["message"] == "Team updated successfully"
 
 
-def test_delete_org_team_204(
+def test_remove_org_team_200_with_confirmation_message(
     client: TestClient,
     org_admin_headers: dict[str, str],
     seeded_org_coach: UUID,
@@ -245,8 +252,16 @@ def test_delete_org_team_204(
     response = client.delete(
         f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
         headers=org_admin_headers,
+        json=VALID_REMOVAL_PAYLOAD,
     )
-    assert response.status_code == 204
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["error"] is None
+    assert body["message"] == "Team removed successfully"
+    assert body["status"] == "removed"
+    assert body["team_id"] == team_id
+    assert body["phone"] == "+1-555-0100"
 
     missing = client.get(
         f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
@@ -422,3 +437,145 @@ def test_edit_team_403_coach_put(
         json={"full_name": "Varsity Squad", "description": "Updated"},
     )
     assert response.status_code == 403
+
+
+# --- HE-367: Remove Team (/api/v1/admin/teams/{team_id}) ---
+
+
+def test_get_org_team_for_removal_200_includes_confirmation_message(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seeded_org_coach: UUID,
+) -> None:
+    create = client.post(
+        ORG_ADMIN_TEAMS_BASE,
+        headers=org_admin_headers,
+        json={**VALID_CREATE_PAYLOAD, "team_code": "VB-REMOVAL"},
+    )
+    assert create.status_code == 201
+    team_id = create.json()["id"]
+
+    response = client.get(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["confirmation_message"] == TEAM_REMOVAL_CONFIRMATION_MESSAGE
+    assert body["organization"] == "Seeded Hoops Club"
+    assert body["name"] == "Varsity Boys"
+
+
+def test_remove_org_team_400_missing_phone(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seeded_org_coach: UUID,
+) -> None:
+    create = client.post(
+        ORG_ADMIN_TEAMS_BASE,
+        headers=org_admin_headers,
+        json={**VALID_CREATE_PAYLOAD, "team_code": "VB-NOPHONE", "coaches": []},
+    )
+    team_id = create.json()["id"]
+
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+        json={"phone": "   "},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert response.json()["error"]["details"][0]["field"] == "phone"
+
+
+def test_remove_org_team_400_invalid_phone(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seeded_org_coach: UUID,
+) -> None:
+    create = client.post(
+        ORG_ADMIN_TEAMS_BASE,
+        headers=org_admin_headers,
+        json={**VALID_CREATE_PAYLOAD, "team_code": "VB-BADPHONE", "coaches": []},
+    )
+    team_id = create.json()["id"]
+
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+        json={"phone": "not-a-phone"},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert response.json()["error"]["details"][0]["field"] == "phone"
+
+
+def test_remove_org_team_404_not_found(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+) -> None:
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{MISSING_TEAM_ID}",
+        headers=org_admin_headers,
+        json=VALID_REMOVAL_PAYLOAD,
+    )
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "TEAM_NOT_FOUND"
+
+
+def test_remove_org_team_403_coach_forbidden(
+    client: TestClient,
+    coach_headers: dict[str, str],
+) -> None:
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{MISSING_TEAM_ID}",
+        headers=coach_headers,
+        json=VALID_REMOVAL_PAYLOAD,
+    )
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+@pytest.fixture
+def team_with_assigned_player(ensure_teams_table: None) -> UUID:
+    """Seed a team with one assigned player for TEAM_HAS_PLAYERS guard tests."""
+    with sync_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                INSERT INTO teams (id, org_id, name)
+                VALUES (:id, :org_id, 'Blocked Delete Team')
+                ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+                """
+            ),
+            {"id": TEAM_WITH_PLAYER_ID, "org_id": SEEDED_ORG_ID},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO players (id, org_id, first_name, last_name, team_id, active)
+                VALUES (:id, :org_id, 'Blocked', 'Player', :team_id, true)
+                ON CONFLICT (id) DO UPDATE SET team_id = EXCLUDED.team_id, active = true
+                """
+            ),
+            {
+                "id": PLAYER_ON_TEAM_ID,
+                "org_id": SEEDED_ORG_ID,
+                "team_id": TEAM_WITH_PLAYER_ID,
+            },
+        )
+    return TEAM_WITH_PLAYER_ID
+
+
+def test_remove_org_team_409_team_has_players(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    team_with_assigned_player: UUID,
+) -> None:
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_with_assigned_player}",
+        headers=org_admin_headers,
+        json=VALID_REMOVAL_PAYLOAD,
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "TEAM_HAS_PLAYERS"
