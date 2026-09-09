@@ -7,8 +7,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.schemas.player import PlayerListItem
-
 ORG_ADMIN_PLAYER_STATS_EXAMPLE = {
     "games_played": 12,
     "goals": 24,

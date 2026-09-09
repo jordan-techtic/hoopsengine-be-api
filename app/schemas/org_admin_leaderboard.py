@@ -6,7 +6,14 @@ from datetime import date
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from app.schemas.leaderboard import LeaderboardPlayerItem
 from app.schemas.profile import CoachProfileData, ProfileImageResponse
