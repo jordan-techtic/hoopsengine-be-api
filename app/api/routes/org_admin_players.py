@@ -158,7 +158,23 @@ EDIT_CONFLICT_ERROR_RESPONSE = {
     ),
 }
 
-LISTING_VALIDATION_ERROR_RESPONSES = {
+PHONE_METADATA_VALIDATION_ERROR_RESPONSES = {
+    400: openapi_error_examples(
+        "Invalid optional phone metadata",
+        examples={
+            "invalid_phone": {
+                "code": "VALIDATION_ERROR",
+                "message": "Phone number must contain at least one digit",
+                "details": [
+                    {"field": "phone", "message": "Phone number must contain at least one digit"}
+                ],
+            },
+        },
+    ),
+}
+
+SEARCH_VALIDATION_ERROR_RESPONSES = {
+    **PHONE_METADATA_VALIDATION_ERROR_RESPONSES,
     400: openapi_error_examples(
         "Missing player code or invalid optional phone metadata",
         examples={
@@ -229,7 +245,7 @@ REMOVAL_CONFLICT_ERROR_RESPONSES = {
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
-        **LISTING_VALIDATION_ERROR_RESPONSES,
+        **PHONE_METADATA_VALIDATION_ERROR_RESPONSES,
         503: openapi_error(
             "Players table unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
@@ -273,7 +289,7 @@ async def list_org_admin_players(
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
-        **LISTING_VALIDATION_ERROR_RESPONSES,
+        **PHONE_METADATA_VALIDATION_ERROR_RESPONSES,
         503: openapi_error(
             "Players table unavailable",
             code="CLIENT_TABLE_UNAVAILABLE",
@@ -401,7 +417,7 @@ async def update_org_admin_player(
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
-        **LISTING_VALIDATION_ERROR_RESPONSES,
+        **PHONE_METADATA_VALIDATION_ERROR_RESPONSES,
         **NOT_FOUND_ERROR_RESPONSE,
         503: openapi_error(
             "Players table unavailable",

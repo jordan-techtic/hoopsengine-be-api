@@ -286,7 +286,7 @@ async def update_org_team(
         "Requires confirmation body field `phone` (Figma status bar metadata).\n\n"
         "Returns **200** with `message` **Team removed successfully** on success. "
         "Coach assignments are cleared automatically.\n\n"
-        "Returns **400** when `phone` is missing or invalid.\n\n"
+        "Returns **422** when the confirmation body is missing. Returns **400** when `phone` is empty or invalid.\n\n"
         "Returns **404** when the team does not exist. Returns **409** when players are "
         "still assigned to the team.\n\n"
         "**Requires organization admin JWT**."

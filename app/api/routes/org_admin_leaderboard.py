@@ -30,7 +30,26 @@ AUTH_ERROR_RESPONSES = {
     ),
 }
 
-VALIDATION_ERROR_RESPONSES = {
+PHONE_VALIDATION_ERROR_RESPONSES = {
+    400: openapi_error_examples(
+        "Invalid optional phone metadata",
+        examples={
+            "invalid_phone": {
+                "code": "VALIDATION_ERROR",
+                "message": "Phone number must contain at least one digit",
+                "details": [
+                    {
+                        "field": "phone",
+                        "message": "Phone number must contain at least one digit",
+                    }
+                ],
+            },
+        },
+    ),
+}
+
+SEARCH_VALIDATION_ERROR_RESPONSES = {
+    **PHONE_VALIDATION_ERROR_RESPONSES,
     400: openapi_error_examples(
         "Empty search query or invalid optional phone metadata",
         examples={
@@ -54,9 +73,23 @@ VALIDATION_ERROR_RESPONSES = {
                     }
                 ],
             },
+        },
+    ),
+}
+
+FILTER_VALIDATION_ERROR_RESPONSES = {
+    **PHONE_VALIDATION_ERROR_RESPONSES,
+    422: openapi_error_examples(
+        "Request body failed schema validation",
+        examples={
+            "schema_validation": {
+                "code": "VALIDATION_ERROR",
+                "message": "Request validation failed",
+                "details": [],
+            },
             "invalid_date_range": {
                 "code": "VALIDATION_ERROR",
-                "message": "Date range start must be on or before end",
+                "message": "Request validation failed",
                 "details": [
                     {
                         "field": "filters.date_range",
@@ -65,11 +98,6 @@ VALIDATION_ERROR_RESPONSES = {
                 ],
             },
         },
-    ),
-    422: openapi_error(
-        "Request body failed schema validation",
-        code="VALIDATION_ERROR",
-        message="Request validation failed",
     ),
 }
 
@@ -89,7 +117,7 @@ VALIDATION_ERROR_RESPONSES = {
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
-        **VALIDATION_ERROR_RESPONSES,
+        **PHONE_VALIDATION_ERROR_RESPONSES,
         500: openapi_error(
             "Unexpected server error",
             code="INTERNAL_SERVER_ERROR",
@@ -129,7 +157,7 @@ async def get_org_admin_leaderboard(
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
-        **VALIDATION_ERROR_RESPONSES,
+        **SEARCH_VALIDATION_ERROR_RESPONSES,
         500: openapi_error(
             "Unexpected server error",
             code="INTERNAL_SERVER_ERROR",
@@ -172,7 +200,7 @@ async def search_org_admin_leaderboard(
     operation_id="filterOrgAdminLeaderboard",
     summary="Filter organization admin leaderboard rankings",
     description=(
-        "Apply ranking filter pills and an optional date range to leaderboard results.\n\n"
+        "Apply ranking filter pills (top/bottom performers) and an optional date range to leaderboard results. Metric-specific filter pills (shooting %, attempts, makes) are display-only in the current API — ranking always uses shooting percentage.\n\n"
         "Supported `filters.ranking` values:\n\n"
         "- `top` — highest performers first\n"
         "- `bottom` — lowest performers first\n\n"
@@ -183,7 +211,7 @@ async def search_org_admin_leaderboard(
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
-        **VALIDATION_ERROR_RESPONSES,
+        **FILTER_VALIDATION_ERROR_RESPONSES,
         500: openapi_error(
             "Unexpected server error",
             code="INTERNAL_SERVER_ERROR",

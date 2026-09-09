@@ -71,6 +71,7 @@ class OrgAdminSupportContactRequest(BaseModel):
     )
     message_description: str = Field(
         description="Support message body (max 500 characters)",
+        max_length=500,
         examples=["Explain your problem or inquiry in detail here."],
     )
 
