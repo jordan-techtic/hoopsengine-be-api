@@ -1,400 +1,499 @@
-"""Cross-ticket org-admin module acceptance and gap tests (HE-400, HE-406, HE-408).
+"""Runnable integration tests for HE-367, HE-404, HE-424, and HE-413 acceptance criteria.
 
-Covers acceptance criteria not mapped elsewhere: duplicate profile email (HE-406),
-upgrade error messaging (HE-408), removal confirmation (HE-400), auth 401 guards,
-and unicode edge cases. Reuses existing PostgreSQL fixtures from tests/conftest.py.
+Uses PostgreSQL test infrastructure from tests/conftest.py. All third-party integrations
+are avoided; support contact persists to the local staging table only.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
-from app.schemas.player_removal import REMOVAL_CONFIRMATION_MESSAGE
+from app.core.security import hash_password
+from app.models.enums import UserRole
+from app.models.user import User
+from app.schemas.org_admin_team import TEAM_REMOVAL_CONFIRMATION_MESSAGE
 from tests.conftest import (
-    ORG_ADMIN_PLAYERS_BASE,
-    ORG_ADMIN_PRACTICE_PLANS_BASE,
-    ORG_ADMIN_REMOVE_PLAYERS_BASE,
-    ORG_ADMIN_RESET_PASSWORD_BASE,
-    ORG_ADMIN_SUBSCRIPTION_BASE,
+    ORG_ADMIN_EDIT_PLAYERS_BASE,
+    ORG_ADMIN_LEADERBOARD_BASE,
+    ORG_ADMIN_SUPPORT_CONTACT_BASE,
     ORG_ADMIN_TEAMS_BASE,
-    ORG_CHANGE_PASSWORD_BASE,
-    ORGANIZATION_PROFILE_BASE,
-    PRACTICE_PLANS_BASE,
-    REGULAR_EMAIL,
+    REGULAR_USER_ID,
     SEEDED_ORG_ID,
-    TEST_NEW_SECURE_PASSWORD,
-    TEST_VALID_PASSWORD,
     auth_headers,
     create_access_token,
     sync_engine,
 )
-from tests.fixtures.org_admin_module_users import seed_org_admin_user
 
-ORG_MODULE_ADMIN_ID = UUID("00000000-0000-4000-8000-0000000000a1")
-REMOVAL_PLAYER_ID = UUID("00000000-0000-4000-8000-000000000092")
+pytest_plugins = ["tests.fixtures.org_admin_acceptance_fixtures"]
 
-VALID_PROFILE_PAYLOAD = {
-    "organization_name": "Courtside Elite Academy",
-    "address": "1234 Basketball Ave",
-    "email": "org.module@test.com",
-    "phone_number": "+1 (555) 382-9102",
-    "first_name": "Module",
-    "last_name": "Admin",
+ORG_ADMIN_ID = UUID("00000000-0000-4000-8000-000000000090")
+MISSING_TEAM_ID = UUID("00000000-0000-4000-8000-000000999998")
+PLAYER_DETAIL_ID = UUID("00000000-0000-4000-8000-000000000036")
+SEARCH_URL = f"{ORG_ADMIN_LEADERBOARD_BASE}/search"
+FILTERS_URL = f"{ORG_ADMIN_LEADERBOARD_BASE}/filters"
+CONFIRMATION_URL = f"{ORG_ADMIN_SUPPORT_CONTACT_BASE}/confirmation"
+
+VALID_TEAM_CREATE = {
+    "team_name": "Acceptance Varsity",
+    "team_code": "AV-2026",
+    "team_description": "Acceptance test roster",
+    "age_group": "16-18",
+    "coaches": [],
+    "full_name": "Acceptance Varsity",
     "phone": "+1-555-0100",
 }
-
-VALID_REMOVAL_PAYLOAD = {
-    "full_name": "Sarah Jenkins",
-    "email": "sarah.jenkins@school.edu",
-    "phone": "(555) 123-4567",
+VALID_REMOVAL_PAYLOAD = {"phone": "+1-555-0100"}
+VALID_SUPPORT_PAYLOAD = {
+    "email": "acceptance.support@example.com",
+    "phone": "+15558392001",
+    "inquiry_subject": "Technical Issue",
+    "message_description": "Acceptance test support inquiry body.",
 }
 
 
 @pytest.fixture
-def org_admin_module_headers(seeded_users: dict) -> dict[str, str]:
-    """Org admin bearer token for cross-ticket acceptance tests."""
-    return seed_org_admin_user(
-        user_id=ORG_MODULE_ADMIN_ID,
-        email="orgadmin.module@test.com",
-        username="orgadminmodule",
-    )
+def org_admin_headers(seeded_users: dict) -> dict[str, str]:
+    """Organization admin JWT for acceptance tests."""
+    with Session(sync_engine) as session:
+        if session.get(User, ORG_ADMIN_ID) is None:
+            session.add(
+                User(
+                    id=ORG_ADMIN_ID,
+                    email="orgadmin.acceptance@test.com",
+                    username="orgadminacceptance",
+                    encrypted_password=hash_password("OrgAdmin123!"),
+                    role=UserRole.ORG_ADMIN.value,
+                    first_name="Acceptance",
+                    last_name="Admin",
+                    is_super_admin=False,
+                    is_active=True,
+                    org_id=SEEDED_ORG_ID,
+                    email_confirmed_at=datetime.now(timezone.utc),
+                )
+            )
+            session.commit()
+    return auth_headers(create_access_token(ORG_ADMIN_ID))
+
+
+@pytest.fixture
+def coach_headers(seeded_users: dict) -> dict[str, str]:
+    return auth_headers(create_access_token(REGULAR_USER_ID))
 
 
 @pytest.fixture(autouse=True)
-def _practice_plan_tables(ensure_practice_plans_table: None) -> None:
-    """Ensure client practice plan tables exist."""
+def _clean_support_requests() -> None:
+    with sync_engine.begin() as connection:
+        connection.execute(text("DELETE FROM support_requests_staging"))
 
 
-# --- HE-406 Account settings / profile ---
+def _create_team(client: TestClient, headers: dict[str, str], *, code: str) -> str:
+    response = client.post(
+        ORG_ADMIN_TEAMS_BASE,
+        headers=headers,
+        json={**VALID_TEAM_CREATE, "team_code": code},
+    )
+    assert response.status_code == 201
+    return response.json()["id"]
 
 
-def test_he406_get_organization_profile_200(
+# --- HE-367: Remove Team ---
+
+
+def test_he367_ac_remove_team_200_confirmation_message(
     client: TestClient,
-    org_admin_module_headers: dict[str, str],
+    org_admin_headers: dict[str, str],
+    ensure_teams_table: None,
 ) -> None:
-    response = client.get(ORGANIZATION_PROFILE_BASE, headers=org_admin_module_headers)
-    assert response.status_code == 200
-    body = response.json()
-    assert body["success"] is True
-    assert body["error"] is None
-    assert body["id"] == str(SEEDED_ORG_ID)
-    assert body["organization_name"]
-    assert body["full_name"]
-    assert body["role"] == "org_admin"
-    assert body["profile"]["email"]
-
-
-def test_he406_update_organization_profile_200(
-    client: TestClient,
-    org_admin_module_headers: dict[str, str],
-) -> None:
-    response = client.put(
-        ORGANIZATION_PROFILE_BASE,
-        json=VALID_PROFILE_PAYLOAD,
-        headers=org_admin_module_headers,
+    team_id = _create_team(client, org_admin_headers, code="HE367-OK")
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+        json=VALID_REMOVAL_PAYLOAD,
     )
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
-    assert body["status"] == "saved"
-    assert body["organization_name"] == VALID_PROFILE_PAYLOAD["organization_name"]
-    assert body["email"] == VALID_PROFILE_PAYLOAD["email"]
+    assert body["message"] == "Team removed successfully"
+    assert body["status"] == "removed"
+    assert body["team_id"] == team_id
 
 
-def test_he406_update_profile_duplicate_email_409(
+def test_he367_ac_remove_team_404_not_found(
     client: TestClient,
-    org_admin_module_headers: dict[str, str],
-    seeded_users: dict,
+    org_admin_headers: dict[str, str],
+    ensure_teams_table: None,
 ) -> None:
-    payload = dict(VALID_PROFILE_PAYLOAD)
-    payload["email"] = REGULAR_EMAIL
-    response = client.put(
-        ORGANIZATION_PROFILE_BASE,
-        json=payload,
-        headers=org_admin_module_headers,
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{MISSING_TEAM_ID}",
+        headers=org_admin_headers,
+        json=VALID_REMOVAL_PAYLOAD,
     )
-    assert response.status_code == 409
-    body = response.json()
-    assert body["error"]["code"] == "EMAIL_ALREADY_IN_USE"
-    assert body["error"]["details"][0]["field"] == "email"
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "TEAM_NOT_FOUND"
 
 
-def test_he406_update_profile_invalid_data_400(
+def test_he367_ac_remove_team_403_non_admin(
     client: TestClient,
-    org_admin_module_headers: dict[str, str],
+    coach_headers: dict[str, str],
+    ensure_teams_table: None,
 ) -> None:
-    payload = dict(VALID_PROFILE_PAYLOAD)
-    payload["organization_name"] = ""
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{MISSING_TEAM_ID}",
+        headers=coach_headers,
+        json=VALID_REMOVAL_PAYLOAD,
+    )
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_he367_ac_remove_team_400_missing_phone(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    ensure_teams_table: None,
+) -> None:
+    team_id = _create_team(client, org_admin_headers, code="HE367-NOPHONE")
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+        json={"phone": "   "},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert response.json()["error"]["details"][0]["field"] == "phone"
+
+
+def test_he367_ac_get_team_200_with_confirmation_message(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    ensure_teams_table: None,
+) -> None:
+    team_id = _create_team(client, org_admin_headers, code="HE367-GET")
+    response = client.get(f"{ORG_ADMIN_TEAMS_BASE}/{team_id}", headers=org_admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == team_id
+    assert body["name"] == "Acceptance Varsity"
+    assert body["confirmation_message"] == TEAM_REMOVAL_CONFIRMATION_MESSAGE
+    assert body["organization"] == "Seeded Hoops Club"
+
+
+def test_he367_edge_remove_team_401_missing_token(
+    client: TestClient,
+    ensure_teams_table: None,
+) -> None:
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{MISSING_TEAM_ID}",
+        json=VALID_REMOVAL_PAYLOAD,
+    )
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "MISSING_TOKEN"
+
+
+def test_he367_edge_remove_team_422_missing_body(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    ensure_teams_table: None,
+) -> None:
+    team_id = _create_team(client, org_admin_headers, code="HE367-NOBODY")
+    response = client.delete(
+        f"{ORG_ADMIN_TEAMS_BASE}/{team_id}",
+        headers=org_admin_headers,
+    )
+    assert response.status_code == 422
+
+
+# --- HE-404: Leaderboard ---
+
+
+def test_he404_ac_leaderboard_200_org_admin(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_leaderboard_data: dict,
+) -> None:
+    response = client.get(ORG_ADMIN_LEADERBOARD_BASE, headers=org_admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["organization"] == "Seeded Hoops Club"
+    assert len(body["items"]) >= 1
+    assert "shooting_percent" in body["items"][0]
+
+
+def test_he404_ac_leaderboard_search_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_leaderboard_data: dict,
+) -> None:
+    response = client.get(
+        SEARCH_URL,
+        headers=org_admin_headers,
+        params={"search_query": "Jane", "full_name": "Jane Doe"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert len(body["items"]) >= 1
+    assert body["items"][0]["full_name"] == "Jane Doe"
+
+
+def test_he404_ac_leaderboard_filters_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_leaderboard_data: dict,
+) -> None:
+    response = client.post(
+        FILTERS_URL,
+        headers=org_admin_headers,
+        json={
+            "filters": {
+                "ranking": "top",
+                "date_range": {"start": "2020-01-01", "end": "2030-12-31"},
+            },
+            "phone": "+1-555-0100",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["message"] == "Leaderboard filtered successfully"
+    assert len(body["items"]) >= 1
+
+
+def test_he404_ac_leaderboard_403_non_admin(
+    client: TestClient,
+    coach_headers: dict[str, str],
+    seed_leaderboard_data: dict,
+) -> None:
+    response = client.get(ORG_ADMIN_LEADERBOARD_BASE, headers=coach_headers)
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_he404_ac_leaderboard_search_400_empty_query(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_leaderboard_data: dict,
+) -> None:
+    response = client.get(SEARCH_URL, headers=org_admin_headers, params={"search_query": "  "})
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_he404_edge_leaderboard_401_missing_token(
+    client: TestClient,
+    seed_leaderboard_data: dict,
+) -> None:
+    response = client.get(ORG_ADMIN_LEADERBOARD_BASE)
+    assert response.status_code == 401
+
+
+def test_he404_edge_leaderboard_search_invalid_phone_400(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_leaderboard_data: dict,
+) -> None:
+    response = client.get(
+        SEARCH_URL,
+        headers=org_admin_headers,
+        params={"search_query": "Jane", "phone": "not-a-phone"},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["details"][0]["field"] == "phone"
+
+
+# --- HE-424: Player Listing ---
+
+
+def test_he424_ac_list_players_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.get(ORG_ADMIN_EDIT_PLAYERS_BASE, headers=org_admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["organization"] == "Seeded Hoops Club"
+    assert len(body["players"]) >= 1
+    assert all(player["status"] == "active" for player in body["players"])
+
+
+def test_he424_ac_search_players_by_code_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.post(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/search",
+        headers=org_admin_headers,
+        json={"player_code": "PC-AVA001", "phone": "+1-555-0100"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["player_code"] == "PC-AVA001"
+    assert len(body["players"]) == 1
+    assert body["players"][0]["name"] == "Ava Morales"
+    assert body["players"][0]["code"] == "PC-AVA001"
+
+
+def test_he424_ac_update_player_200_persists(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
     response = client.put(
-        ORGANIZATION_PROFILE_BASE,
-        json=payload,
-        headers=org_admin_module_headers,
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}",
+        headers=org_admin_headers,
+        json={"full_name": "Updated Ava Morales", "email": "updated.ava@school.edu"},
+    )
+    assert response.status_code == 200
+    assert response.json()["full_name"] == "Updated Ava Morales"
+
+    verify = client.get(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}",
+        headers=org_admin_headers,
+    )
+    assert verify.status_code == 200
+    assert verify.json()["full_name"] == "Updated Ava Morales"
+    assert verify.json()["email"] == "updated.ava@school.edu"
+
+
+def test_he424_ac_players_403_non_admin(
+    client: TestClient,
+    coach_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.get(ORG_ADMIN_EDIT_PLAYERS_BASE, headers=coach_headers)
+    assert response.status_code == 403
+
+
+def test_he424_ac_players_400_missing_fields(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.post(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/search",
+        headers=org_admin_headers,
+        json={"player_code": ""},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["details"][0]["field"] == "player_code"
+
+
+def test_he424_edge_players_401_missing_token(
+    client: TestClient,
+    seed_org_admin_players: None,
+) -> None:
+    response = client.get(ORG_ADMIN_EDIT_PLAYERS_BASE)
+    assert response.status_code == 401
+
+
+def test_he424_edge_update_player_status_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.patch(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}/status",
+        headers=org_admin_headers,
+        json={"status": "inactive", "phone": "+1-555-0100"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "inactive"
+
+
+# --- HE-413: Contact Support ---
+
+
+def test_he413_ac_support_contact_201(
+    client: TestClient,
+) -> None:
+    response = client.post(ORG_ADMIN_SUPPORT_CONTACT_BASE, json=VALID_SUPPORT_PAYLOAD)
+    assert response.status_code == 201
+    body = response.json()
+    assert body["success"] is True
+    assert body["message"] == "Your support request has been submitted successfully"
+    assert body["id"] == body["request_id"]
+    assert "id" in body
+
+
+def test_he413_ac_support_contact_400_missing_email(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        ORG_ADMIN_SUPPORT_CONTACT_BASE,
+        json={**VALID_SUPPORT_PAYLOAD, "email": ""},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["details"][0]["field"] == "email"
+
+
+def test_he413_ac_support_contact_400_invalid_email(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        ORG_ADMIN_SUPPORT_CONTACT_BASE,
+        json={**VALID_SUPPORT_PAYLOAD, "email": "bad-email"},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["details"][0]["field"] == "email"
+
+
+def test_he413_ac_support_contact_400_message_too_long(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        ORG_ADMIN_SUPPORT_CONTACT_BASE,
+        json={**VALID_SUPPORT_PAYLOAD, "message_description": "x" * 501},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["details"][0]["field"] == "message_description"
+
+
+def test_he413_ac_support_contact_400_missing_required_fields(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        ORG_ADMIN_SUPPORT_CONTACT_BASE,
+        json={
+            "email": "",
+            "phone": "",
+            "inquiry_subject": "",
+            "message_description": "",
+        },
     )
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
-def test_he406_change_password_missing_token_401(client: TestClient) -> None:
-    response = client.post(
-        ORG_CHANGE_PASSWORD_BASE,
-        json={
-            "current_password": TEST_VALID_PASSWORD,
-            "new_password": TEST_NEW_SECURE_PASSWORD,
-            "confirm_password": TEST_NEW_SECURE_PASSWORD,
-        },
-    )
+def test_he413_edge_confirmation_401_without_auth(
+    client: TestClient,
+) -> None:
+    created = client.post(ORG_ADMIN_SUPPORT_CONTACT_BASE, json=VALID_SUPPORT_PAYLOAD)
+    request_id = created.json()["id"]
+    response = client.get(CONFIRMATION_URL, params={"request_id": request_id})
     assert response.status_code == 401
-    assert response.json()["error"]["code"] == "MISSING_TOKEN"
 
 
-# --- HE-408 Subscription management ---
-
-
-def test_he408_get_subscription_includes_notification(
+def test_he413_edge_confirmation_200_with_org_admin(
     client: TestClient,
-    org_admin_module_headers: dict[str, str],
+    org_admin_headers: dict[str, str],
 ) -> None:
-    from tests.api.test_dashboard import (
-        _persist_plans_then_subscriptions,
-        _truncate_subscription_tables,
-    )
-    from tests.api.test_org_admin_subscription import (
-        _org_admin_subscription,
-        _org_basic_plan,
-    )
-
-    _truncate_subscription_tables()
-    basic = _org_basic_plan()
-    subscription = _org_admin_subscription(plan_id=basic.id)
-    subscription.subscriber_user_id = ORG_MODULE_ADMIN_ID
-    subscription.subscriber_email = "orgadmin.module@test.com"
-    _persist_plans_then_subscriptions([basic], [subscription])
-
-    response = client.get(ORG_ADMIN_SUBSCRIPTION_BASE, headers=org_admin_module_headers)
-    assert response.status_code == 200
-    body = response.json()
-    assert body["notification"]
-    assert body["subscription_plan"] == "Basic Plan"
-
-
-def test_he408_upgrade_invalid_plan_error_message(
-    client: TestClient,
-    org_admin_module_headers: dict[str, str],
-) -> None:
-    from tests.api.test_dashboard import (
-        _persist_plans_then_subscriptions,
-        _truncate_subscription_tables,
-    )
-    from tests.api.test_org_admin_subscription import (
-        _org_admin_subscription,
-        _org_basic_plan,
-    )
-
-    _truncate_subscription_tables()
-    basic = _org_basic_plan()
-    subscription = _org_admin_subscription(plan_id=basic.id)
-    subscription.subscriber_user_id = ORG_MODULE_ADMIN_ID
-    _persist_plans_then_subscriptions([basic], [subscription])
-
-    response = client.post(
-        f"{ORG_ADMIN_SUBSCRIPTION_BASE}/upgrade",
-        headers=org_admin_module_headers,
-        json={"plan_id": "00000000-0000-4000-8000-000000000099"},
-    )
-    assert response.status_code == 400
-    body = response.json()
-    assert body["success"] is False
-    assert body["error"]["code"] == "VALIDATION_ERROR"
-    assert body["error"]["message"]
-
-
-def test_he408_subscription_missing_token_401(client: TestClient) -> None:
-    assert client.get(ORG_ADMIN_SUBSCRIPTION_BASE).status_code == 401
-
-
-# --- HE-400 Remove player ---
-
-
-@pytest.fixture
-def seed_removal_player(org_admin_module_headers: dict[str, str]) -> None:
-    from sqlalchemy import text
-
-    with sync_engine.begin() as connection:
-        for column, ddl in (
-            ("email", "ALTER TABLE players ADD COLUMN email text"),
-            ("phone", "ALTER TABLE players ADD COLUMN phone text"),
-            ("team_id", "ALTER TABLE players ADD COLUMN team_id uuid"),
-            ("active", "ALTER TABLE players ADD COLUMN active boolean DEFAULT true"),
-        ):
-            exists = connection.execute(
-                text(
-                    """
-                    SELECT EXISTS (
-                        SELECT 1 FROM information_schema.columns
-                        WHERE table_schema = 'public'
-                          AND table_name = 'players'
-                          AND column_name = :column
-                    )
-                    """
-                ),
-                {"column": column},
-            ).scalar()
-            if not exists:
-                connection.execute(text(ddl))
-        connection.execute(
-            text(
-                """
-                INSERT INTO players (
-                    id, org_id, first_name, last_name, email, phone, active
-                ) VALUES (
-                    :id, :org_id, 'Sarah', 'Jenkins',
-                    'sarah.jenkins@school.edu', '(555) 123-4567', true
-                )
-                ON CONFLICT (id) DO UPDATE SET
-                    org_id = EXCLUDED.org_id,
-                    first_name = EXCLUDED.first_name,
-                    last_name = EXCLUDED.last_name,
-                    email = EXCLUDED.email,
-                    phone = EXCLUDED.phone,
-                    active = EXCLUDED.active
-                """
-            ),
-            {"id": REMOVAL_PLAYER_ID, "org_id": SEEDED_ORG_ID},
-        )
-
-
-def test_he400_removal_confirmation_message_in_detail(
-    client: TestClient,
-    org_admin_module_headers: dict[str, str],
-    seed_removal_player: None,
-) -> None:
+    created = client.post(ORG_ADMIN_SUPPORT_CONTACT_BASE, json=VALID_SUPPORT_PAYLOAD)
+    request_id = created.json()["id"]
     response = client.get(
-        f"{ORG_ADMIN_REMOVE_PLAYERS_BASE}/{REMOVAL_PLAYER_ID}/removal",
-        headers=org_admin_module_headers,
+        CONFIRMATION_URL,
+        headers=org_admin_headers,
+        params={"request_id": request_id},
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["confirmation_message"] == REMOVAL_CONFIRMATION_MESSAGE
-    assert body["full_name"] == "Sarah Jenkins"
-
-
-def test_he400_remove_player_missing_token_401(
-    client: TestClient,
-    seed_removal_player: None,
-) -> None:
-    response = client.request(
-        "DELETE",
-        f"{ORG_ADMIN_REMOVE_PLAYERS_BASE}/{REMOVAL_PLAYER_ID}",
-        json=VALID_REMOVAL_PAYLOAD,
-    )
-    assert response.status_code == 401
-
-
-# --- Auth 401 guards for other org-admin modules ---
-
-
-def test_he402_practice_plans_missing_token_401(client: TestClient) -> None:
-    assert client.get(ORG_ADMIN_PRACTICE_PLANS_BASE).status_code == 401
-
-
-def test_he380_teams_missing_token_401(client: TestClient) -> None:
-    response = client.post(
-        ORG_ADMIN_TEAMS_BASE,
-        json={
-            "team_name": "Unauthorized Team",
-            "team_code": "UNAUTH01",
-        },
-    )
-    assert response.status_code == 401
-    assert response.json()["error"]["code"] == "MISSING_TOKEN"
-
-
-def test_he383_assignments_list_missing_token_401(client: TestClient) -> None:
-    response = client.post(
-        f"{PRACTICE_PLANS_BASE}/assign",
-        json={
-            "coach_id": "00000000-0000-4000-8000-000000000072",
-            "plan_id": "00000000-0000-4000-8000-000000000083",
-            "start_date": "2026-09-01",
-        },
-    )
-    assert response.status_code == 401
-    assert response.json()["error"]["code"] == "MISSING_TOKEN"
-
-
-def test_he426_players_missing_token_401(client: TestClient) -> None:
-    assert client.get(ORG_ADMIN_PLAYERS_BASE).status_code == 401
-
-
-def test_he398_reset_password_missing_token_401(client: TestClient) -> None:
-    response = client.post(
-        ORG_ADMIN_RESET_PASSWORD_BASE,
-        json={
-            "new_password": TEST_NEW_SECURE_PASSWORD,
-            "confirm_password": TEST_NEW_SECURE_PASSWORD,
-        },
-    )
-    assert response.status_code == 401
-
-
-def test_he406_profile_missing_token_401(client: TestClient) -> None:
-    assert client.get(ORGANIZATION_PROFILE_BASE).status_code == 401
-
-
-# --- Edge cases ---
-
-
-def test_he380_create_team_unicode_name_edge_case(
-    client: TestClient,
-    org_admin_module_headers: dict[str, str],
-    ensure_teams_table: None,
-) -> None:
-    response = client.post(
-        ORG_ADMIN_TEAMS_BASE,
-        headers=org_admin_module_headers,
-        json={
-            "team_name": "Varsity — Elite",
-            "team_code": "VAR-UNI01",
-            "team_description": "Unicode dash team name",
-            "age_group": "U18",
-            "full_name": "Module Admin",
-            "phone": "+1-555-0100",
-        },
-    )
-    assert response.status_code == 201
-    body = response.json()
-    assert body["success"] is True
-    assert "—" in body["team_name"]
-
-
-def test_he402_create_plan_empty_drill_description_edge(
-    client: TestClient,
-    org_admin_module_headers: dict[str, str],
-) -> None:
-    response = client.post(
-        ORG_ADMIN_PRACTICE_PLANS_BASE,
-        headers=org_admin_module_headers,
-        json={
-            "name": f"Edge Plan {ORG_MODULE_ADMIN_ID.hex[:8]}",
-            "description": "Plan with optional empty drill description",
-            "drills": [{"drill_name": "Warm Up", "drill_description": ""}],
-            "phone": "+1-555-0100",
-        },
-    )
-    assert response.status_code == 201
-    assert response.json()["drills"][0]["drill_name"] == "Warm Up"
-
-
-def test_he426_players_forbidden_viewer_403(
-    client: TestClient,
-    seeded_users: dict,
-) -> None:
-    from tests.conftest import VIEWER_ID
-
-    viewer_headers = auth_headers(create_access_token(VIEWER_ID))
-    response = client.get(ORG_ADMIN_PLAYERS_BASE, headers=viewer_headers)
-    assert response.status_code == 403
-    assert response.json()["error"]["code"] == "FORBIDDEN"
+    assert body["email"] == VALID_SUPPORT_PAYLOAD["email"]
+    assert body["inquiry_subject"] == "Technical Issue"

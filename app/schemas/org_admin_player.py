@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from app.schemas.player import PlayerListItem
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 ORG_ADMIN_PLAYER_STATS_EXAMPLE = {
     "games_played": 12,
@@ -45,15 +44,54 @@ ORG_ADMIN_PLAYER_LIST_EXAMPLE = {
     "title": "Player Management",
     "link": None,
     "error": None,
+    "organization": "Seeded Hoops Club",
+    "phone": "+1-555-0100",
     "players": [
         {
             "id": "11111111-2222-3333-4444-555555555555",
-            "name": "Jane Doe",
-            "code": "PC-JANEDOE1",
-            "player_code": "PC-JANEDOE1",
+            "name": "Ava Morales",
+            "code": "PC-AVA001",
+            "player_code": "PC-AVA001",
+            "status": "active",
+            "team": "Varsity Squad",
             "team_name": "Varsity Squad",
         }
     ],
+}
+
+ORG_ADMIN_PLAYER_SEARCH_REQUEST_EXAMPLE = {
+    "player_code": "PC-AVA001",
+    "name": "Ava Morales",
+    "phone": "+1-555-0100",
+}
+
+ORG_ADMIN_PLAYER_SEARCH_RESPONSE_EXAMPLE = {
+    **ORG_ADMIN_PLAYER_LIST_EXAMPLE,
+    "message": "Player search completed successfully",
+    "description": "Players matching player code 'PC-AVA001'",
+    "player_code": "PC-AVA001",
+}
+
+ORG_ADMIN_PLAYER_STATUS_REQUEST_EXAMPLE = {
+    "status": "inactive",
+    "phone": "+1-555-0100",
+}
+
+ORG_ADMIN_PLAYER_STATUS_RESPONSE_EXAMPLE = {
+    "success": True,
+    "message": "Player status updated successfully",
+    "status": "inactive",
+    "description": "Player roster status was updated",
+    "title": "Player Management",
+    "link": None,
+    "error": None,
+    "organization": "Seeded Hoops Club",
+    "id": "11111111-2222-3333-4444-555555555555",
+    "name": "Ava Morales",
+    "code": "PC-AVA001",
+    "player_code": "PC-AVA001",
+    "team": "Varsity Squad",
+    "phone": "+1-555-0100",
 }
 
 
@@ -101,8 +139,23 @@ class OrgAdminPlayerDetailResponse(BaseModel):
     stats: OrgAdminPlayerStats = Field(description="Aggregated player statistics")
 
 
+class OrgAdminPlayerListItem(BaseModel):
+    """Summary row for the Organization Admin Player Listing screen (HE-424)."""
+
+    id: UUID = Field(description="Player UUID")
+    name: str = Field(description="Player full display name")
+    code: str | None = Field(default=None, description="Player code alias for mobile cards")
+    player_code: str | None = Field(default=None, description="Unique player code")
+    status: Literal["active", "inactive"] = Field(description="Roster status badge value")
+    team: str | None = Field(default=None, description="Associated team display name")
+    team_name: str | None = Field(
+        default=None,
+        description="Same as team — retained for backward compatibility",
+    )
+
+
 class OrgAdminPlayerListResponse(BaseModel):
-    """Response for GET /players when called by an organization admin."""
+    """Response for GET /admin/players (Player Listing screen)."""
 
     model_config = ConfigDict(json_schema_extra={"example": ORG_ADMIN_PLAYER_LIST_EXAMPLE})
 
@@ -113,7 +166,100 @@ class OrgAdminPlayerListResponse(BaseModel):
     title: str = Field(default="Player Management")
     link: str | None = None
     error: None = None
-    players: list[PlayerListItem] = Field(default_factory=list)
+    organization: str = Field(description="Organization display name")
+    phone: str | None = Field(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+    )
+    players: list[OrgAdminPlayerListItem] = Field(default_factory=list)
+
+
+class OrgAdminPlayerSearchRequest(BaseModel):
+    """Payload for POST /admin/players/search."""
+
+    model_config = ConfigDict(json_schema_extra={"example": ORG_ADMIN_PLAYER_SEARCH_REQUEST_EXAMPLE})
+
+    player_code: str = Field(
+        description="Player code to search for (required)",
+        examples=["PC-AVA001"],
+    )
+    name: str | None = Field(
+        default=None,
+        description="Optional Figma name container metadata (not used for filtering)",
+        examples=["Ava Morales"],
+    )
+    phone: str | None = Field(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+        examples=["+1-555-0100"],
+    )
+
+    @field_validator("player_code")
+    @classmethod
+    def strip_player_code(cls, value: str) -> str:
+        """Normalize player code search input."""
+        return value.strip()
+
+
+class OrgAdminPlayerSearchResponse(BaseModel):
+    """Response for POST /admin/players/search."""
+
+    model_config = ConfigDict(json_schema_extra={"example": ORG_ADMIN_PLAYER_SEARCH_RESPONSE_EXAMPLE})
+
+    success: bool = Field(default=True)
+    message: str
+    status: str = Field(default="ready")
+    description: str | None = None
+    title: str = Field(default="Player Management")
+    link: str | None = None
+    error: None = None
+    organization: str = Field(description="Organization display name")
+    player_code: str = Field(description="Normalized player code used for the search")
+    phone: str | None = Field(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+    )
+    players: list[OrgAdminPlayerListItem] = Field(default_factory=list)
+
+
+class OrgAdminPlayerStatusUpdateRequest(BaseModel):
+    """Payload for PATCH /admin/players/{player_id}/status."""
+
+    model_config = ConfigDict(json_schema_extra={"example": ORG_ADMIN_PLAYER_STATUS_REQUEST_EXAMPLE})
+
+    status: Literal["active", "inactive"] = Field(
+        description="Updated roster status for the player",
+        examples=["active"],
+    )
+    phone: str | None = Field(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+        examples=["+1-555-0100"],
+    )
+
+
+class OrgAdminPlayerStatusUpdateResponse(BaseModel):
+    """Successful player status update response."""
+
+    model_config = ConfigDict(json_schema_extra={"example": ORG_ADMIN_PLAYER_STATUS_RESPONSE_EXAMPLE})
+
+    success: bool = Field(default=True)
+    message: str
+    status: Literal["active", "inactive"] = Field(description="Updated player roster status")
+    description: str | None = None
+    title: str = Field(default="Player Management")
+    link: str | None = None
+    error: None = None
+    organization: str = Field(description="Organization display name")
+    id: UUID = Field(description="Player UUID")
+    name: str = Field(description="Player full display name")
+    code: str | None = Field(default=None, description="Player code alias")
+    player_code: str | None = Field(default=None, description="Unique player code")
+    team: str | None = Field(default=None, description="Associated team display name")
+    phone: str | None = Field(
+        default=None,
+        description="Optional client metadata from the status bar (not persisted)",
+    )
 
 
 ORG_ADMIN_PLAYER_REMOVAL_DETAIL_EXAMPLE = {

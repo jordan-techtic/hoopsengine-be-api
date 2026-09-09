@@ -17,6 +17,10 @@ from pydantic import (
 
 from app.schemas.mobile_envelope import MobileWriteOnlyPasswordMixin
 
+TEAM_REMOVAL_CONFIRMATION_MESSAGE = (
+    "Are you sure you want to delete this team? This action is permanent."
+)
+
 ORG_ADMIN_TEAM_CREATE_EXAMPLE = {
     "team_name": "Varsity Boys",
     "team_code": "VB-2026",
@@ -55,6 +59,26 @@ ORG_ADMIN_TEAM_RESPONSE_EXAMPLE = {
             "name": "Coach Dave Miller",
         }
     ],
+    "confirmation_message": TEAM_REMOVAL_CONFIRMATION_MESSAGE,
+}
+
+ORG_ADMIN_TEAM_REMOVAL_REQUEST_EXAMPLE = {
+    "phone": "+1-555-0100",
+}
+
+ORG_ADMIN_TEAM_REMOVAL_RESPONSE_EXAMPLE = {
+    "success": True,
+    "message": "Team removed successfully",
+    "status": "removed",
+    "description": "The team was removed from the organization",
+    "title": "Remove Team",
+    "link": None,
+    "error": None,
+    "id": "11111111-2222-3333-4444-555555555555",
+    "team_id": "11111111-2222-3333-4444-555555555555",
+    "name": "Varsity Squad",
+    "phone": "+1-555-0100",
+    "organization": "Courtside Elite Academy",
 }
 
 ORG_ADMIN_TEAM_EDIT_UPDATE_EXAMPLE = {
@@ -259,3 +283,53 @@ class OrgAdminTeamResponse(MobileWriteOnlyPasswordMixin):
     age_group: str | None = None
     coaches: list[OrgAdminTeamCoachItem] = Field(default_factory=list)
     created_at: datetime | None = None
+    confirmation_message: str | None = Field(
+        default=None,
+        description="Exact confirmation modal copy shown before team removal",
+    )
+
+
+class OrgAdminTeamRemovalRequest(BaseModel):
+    """Payload for DELETE /admin/teams/{team_id} (Remove Team confirmation)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": ORG_ADMIN_TEAM_REMOVAL_REQUEST_EXAMPLE}
+    )
+
+    phone: str = Field(
+        description=(
+            "Figma Phone metadata from the Remove Team screen status bar; "
+            "required for confirmation"
+        ),
+        examples=["+1-555-0100"],
+    )
+
+    @field_validator("phone")
+    @classmethod
+    def strip_phone(cls, value: str) -> str:
+        """Normalize phone text from the Remove Team form."""
+        return value.strip()
+
+
+class OrgAdminTeamRemovalResponse(MobileWriteOnlyPasswordMixin):
+    """Successful team removal response for the Remove Team screen."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": ORG_ADMIN_TEAM_REMOVAL_RESPONSE_EXAMPLE}
+    )
+
+    success: bool = Field(default=True)
+    message: str
+    status: str = Field(default="removed")
+    description: str | None = Field(
+        default="The team was removed from the organization",
+        description="Outcome description for the mobile client",
+    )
+    title: str = Field(default="Remove Team")
+    link: str | None = None
+    error: None = None
+    id: UUID = Field(description="Removed team UUID")
+    team_id: UUID = Field(description="Same as id — bound for mobile navigation")
+    name: str = Field(description="Removed team display name")
+    phone: str = Field(description="Confirmed phone metadata from the request")
+    organization: str = Field(description="Organization display name")

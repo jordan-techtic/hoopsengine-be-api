@@ -1,4 +1,4 @@
-"""Integration tests for organization admin player management API (HE-426, HE-378)."""
+"""Integration tests for organization admin player management API (HE-426, HE-378, HE-424)."""
 
 from __future__ import annotations
 
@@ -251,10 +251,15 @@ def test_list_org_players_active_only_200(
     assert body["success"] is True
     assert body["title"] == "Player Management"
     assert body["error"] is None
+    assert body["organization"] == "Seeded Hoops Club"
     player_ids = {player["id"] for player in body["players"]}
     assert str(PLAYER_DETAIL_ID) in player_ids
     assert str(SEEDED_PLAYER_JANE_ID) in player_ids or str(SEEDED_PLAYER_BOB_ID) in player_ids
     assert str(INACTIVE_PLAYER_ID) not in player_ids
+    ava = next(player for player in body["players"] if player["id"] == str(PLAYER_DETAIL_ID))
+    assert ava["status"] == "active"
+    assert ava["player_code"] == "PC-AVA001"
+    assert ava["team"] == "Varsity Squad"
 
 
 def test_org_players_forbidden_viewer_403(
@@ -422,3 +427,103 @@ def test_admin_edit_player_forbidden_viewer_403(
         headers=viewer_headers,
     )
     assert response.status_code == 403
+
+
+# --- HE-424: Admin Player Listing (/api/v1/admin/players) ---
+
+
+def test_admin_list_players_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.get(ORG_ADMIN_EDIT_PLAYERS_BASE, headers=org_admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["organization"] == "Seeded Hoops Club"
+    assert len(body["players"]) >= 1
+    assert all(player["status"] == "active" for player in body["players"])
+
+
+def test_admin_search_players_by_code_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.post(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/search",
+        headers=org_admin_headers,
+        json={"player_code": "PC-AVA001", "phone": "+1-555-0100"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["player_code"] == "PC-AVA001"
+    assert body["phone"] == "+1-555-0100"
+    assert len(body["players"]) == 1
+    assert body["players"][0]["name"] == "Ava Morales"
+    assert body["players"][0]["code"] == "PC-AVA001"
+
+
+def test_admin_search_players_400_empty_player_code(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.post(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/search",
+        headers=org_admin_headers,
+        json={"player_code": "   "},
+    )
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["details"][0]["field"] == "player_code"
+
+
+def test_admin_list_players_403_coach_forbidden(
+    client: TestClient,
+    coach_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.get(ORG_ADMIN_EDIT_PLAYERS_BASE, headers=coach_headers)
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_admin_update_player_400_missing_fields(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.put(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}",
+        headers=org_admin_headers,
+        json={"full_name": ""},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_admin_update_player_status_200(
+    client: TestClient,
+    org_admin_headers: dict[str, str],
+    seed_org_admin_players: None,
+) -> None:
+    response = client.patch(
+        f"{ORG_ADMIN_EDIT_PLAYERS_BASE}/{PLAYER_DETAIL_ID}/status",
+        headers=org_admin_headers,
+        json={"status": "inactive", "phone": "+1-555-0100"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["message"] == "Player status updated successfully"
+    assert body["status"] == "inactive"
+    assert body["organization"] == "Seeded Hoops Club"
+    assert body["id"] == str(PLAYER_DETAIL_ID)
+
+    listed = client.get(ORG_ADMIN_EDIT_PLAYERS_BASE, headers=org_admin_headers)
+    player_ids = {player["id"] for player in listed.json()["players"]}
+    assert str(PLAYER_DETAIL_ID) not in player_ids

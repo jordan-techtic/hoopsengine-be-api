@@ -377,11 +377,12 @@ OPENAPI_TAGS = [
     {
         "name": "org-admin-teams",
         "description": (
-            "Authenticated organization admin team CRUD under /admin/teams. "
-            "Retrieve and update team details for the Edit Team screen (GET/PUT "
-            "/admin/teams/{team_id}) with Figma fields full_name, description, and "
-            "coach assignments. Supports org-scoped duplicate team name and team code "
-            "validation."
+            "Authenticated organization admin team management under /admin/teams. "
+            "Create teams (POST), retrieve details for Edit Team and Remove Team screens "
+            "(GET /admin/teams/{team_id}), update teams (PUT), and remove teams after "
+            "phone confirmation (DELETE /admin/teams/{team_id}, HE-367). Supports "
+            "org-scoped duplicate team name/code validation and confirmation_message "
+            "for the Remove Team modal."
         ),
     },
     {
@@ -412,10 +413,27 @@ OPENAPI_TAGS = [
         "name": "org-admin-players",
         "description": (
             "Authenticated organization admin player management under /admin/players. "
-            "Retrieve and update player details for the Edit Player screen (GET/PUT "
-            "/admin/players/{player_id}). Retrieve removal confirmation details at "
-            "/admin/players/{player_id}/removal and remove players via DELETE "
-            "/admin/players/{player_id} after validating full_name, email, and phone."
+            "List active players (GET, HE-424), search by player_code (POST /search), "
+            "update roster status (PATCH /{player_id}/status), retrieve and update player "
+            "details (GET/PUT /{player_id}, HE-378), and remove players after confirming "
+            "full_name, email, and phone (GET /{player_id}/removal, DELETE /{player_id})."
+        ),
+    },
+    {
+        "name": "org-admin-leaderboard",
+        "description": (
+            "Authenticated organization admin player leaderboard under /admin/leaderboard "
+            "(HE-404). List ranked statistics (GET), search players by name (GET /search), "
+            "and apply top/bottom ranking plus optional date-range filters (POST /filters)."
+        ),
+    },
+    {
+        "name": "org-admin-support",
+        "description": (
+            "Organization admin Contact Support under /admin/support/contact (HE-413). "
+            "Public POST to submit inquiries (email, phone, inquiry_subject, message_description). "
+            "GET /confirmation returns default copy without auth or stored inquiry details when "
+            "request_id is provided (requires org-admin JWT)."
         ),
     },
     {

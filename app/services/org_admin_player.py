@@ -3,18 +3,23 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+import re
+from typing import Any, Literal
 from uuid import UUID
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppException
 from app.models.user import User
 from app.schemas.player import PlayerUpdateRequest
+from app.services import client_db
 from app.services import player as player_service
 from app.services.org_admin_profile import require_admin_organization
 
 logger = logging.getLogger(__name__)
+
+PLAYERS_TABLE = "players"
 
 _STAT_KEYS = ("games_played", "goals", "assists", "yellow_cards")
 _COACH_ONLY_DETAIL_KEYS = (
@@ -64,14 +69,190 @@ async def get_player_detail(
     return _to_org_admin_detail_payload(base)
 
 
-async def list_players(db: AsyncSession, user: User) -> dict[str, Any]:
+def _validate_optional_phone(phone: str | None) -> None:
+    """Validate optional Figma status-bar phone metadata when provided."""
+    if phone is None or not phone.strip():
+        return
+    cleaned = phone.strip()
+    if len(cleaned) > 30:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Phone number is invalid",
+            status_code=400,
+            details=[{"field": "phone", "message": "Phone number is invalid"}],
+        )
+    if not re.sub(r"\D", "", cleaned):
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Phone number must contain at least one digit",
+            status_code=400,
+            details=[{"field": "phone", "message": "Phone number must contain at least one digit"}],
+        )
+
+
+def _validate_player_code(player_code: str) -> str:
+    """Return normalized player code or raise 400 when empty."""
+    cleaned = (player_code or "").strip()
+    if not cleaned:
+        raise AppException(
+            code="VALIDATION_ERROR",
+            message="Player code is required",
+            status_code=400,
+            details=[{"field": "player_code", "message": "Player code is required"}],
+        )
+    return cleaned
+
+
+def _player_status_from_row(row: dict[str, Any]) -> Literal["active", "inactive"]:
+    """Map a database row to the roster status badge value."""
+    active_value = row.get("active")
+    if active_value is None:
+        return "active"
+    return "active" if bool(active_value) else "inactive"
+
+
+def _build_org_admin_list_item(row: dict[str, Any]) -> dict[str, Any]:
+    """Shape a player summary row for the org-admin Player Listing screen."""
+    first_name = str(row.get("first_name") or "").strip()
+    last_name = str(row.get("last_name") or "").strip()
+    name = f"{first_name} {last_name}".strip() or "Unknown Player"
+    player_code = row.get("player_code")
+    code_value = str(player_code) if player_code is not None else None
+    team_name = row.get("team_name")
+    roster_status = _player_status_from_row(row)
+    return {
+        "id": UUID(str(row["id"])),
+        "name": name,
+        "code": code_value,
+        "player_code": code_value,
+        "status": roster_status,
+        "team": team_name,
+        "team_name": team_name,
+    }
+
+
+async def _fetch_org_admin_player_rows(
+    db: AsyncSession,
+    org_id: UUID,
+    *,
+    active_only: bool = True,
+    player_code: str | None = None,
+    player_id: UUID | None = None,
+) -> list[dict[str, Any]]:
+    """Load players for an organization with optional active and player-code filters."""
+    await client_db.require_table(db, PLAYERS_TABLE)
+
+    active_column = await player_service._column_exists(db, PLAYERS_TABLE, "active")
+    player_code_column = await player_service._column_exists(db, PLAYERS_TABLE, "player_code")
+    team_join = await player_service._teams_table_exists(db)
+
+    filters = ["p.org_id = :org_id"]
+    params: dict[str, Any] = {"org_id": org_id}
+
+    if active_only and active_column:
+        filters.append("p.active = true")
+
+    if player_code:
+        if not player_code_column:
+            return []
+        filters.append("p.player_code ILIKE :player_code_pattern")
+        params["player_code_pattern"] = f"%{player_code.strip()}%"
+
+    if player_id is not None:
+        filters.append("p.id = :player_id")
+        params["player_id"] = player_id
+
+    player_code_select = "p.player_code" if player_code_column else "NULL AS player_code"
+    active_select = "p.active" if active_column else "true AS active"
+    team_select = "t.name AS team_name" if team_join else "NULL AS team_name"
+    team_join_sql = "LEFT JOIN teams t ON t.id = p.team_id" if team_join else ""
+    where_sql = " AND ".join(filters)
+
+    result = await db.execute(
+        text(
+            f"""
+            SELECT
+                p.id,
+                p.first_name,
+                p.last_name,
+                {player_code_select},
+                {active_select},
+                {team_select}
+            FROM players p
+            {team_join_sql}
+            WHERE {where_sql}
+            ORDER BY p.last_name ASC, p.first_name ASC
+            LIMIT 50
+            """
+        ),
+        params,
+    )
+    return [dict(row) for row in result.mappings().all()]
+
+
+async def list_players(
+    db: AsyncSession,
+    user: User,
+    *,
+    phone: str | None = None,
+) -> dict[str, Any]:
     """Return active players for the authenticated org admin's organization."""
-    await require_admin_organization(db, user)
-    base = await player_service.list_players(db, user)
-    base["title"] = "Player Management"
-    base["description"] = "Active players in your organization"
-    logger.info("Org admin %s listed %s players", user.id, len(base.get("players", [])))
-    return base
+    _validate_optional_phone(phone)
+    organization = await require_admin_organization(db, user)
+    rows = await _fetch_org_admin_player_rows(db, organization.id, active_only=True)
+    players = [_build_org_admin_list_item(row) for row in rows]
+    logger.info("Org admin %s listed %s players", user.id, len(players))
+    return {
+        "success": True,
+        "message": "Players loaded successfully",
+        "status": "ready",
+        "description": "Active players in your organization",
+        "title": "Player Management",
+        "link": None,
+        "error": None,
+        "organization": organization.name,
+        "phone": phone,
+        "players": players,
+    }
+
+
+async def search_players_by_code(
+    db: AsyncSession,
+    user: User,
+    *,
+    player_code: str,
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Search active players by player code within the org admin's organization."""
+    _validate_optional_phone(phone)
+    normalized_code = _validate_player_code(player_code)
+    organization = await require_admin_organization(db, user)
+    rows = await _fetch_org_admin_player_rows(
+        db,
+        organization.id,
+        active_only=True,
+        player_code=normalized_code,
+    )
+    players = [_build_org_admin_list_item(row) for row in rows]
+    logger.info(
+        "Org admin %s searched player code '%s' and found %s matches",
+        user.id,
+        normalized_code,
+        len(players),
+    )
+    return {
+        "success": True,
+        "message": "Player search completed successfully",
+        "status": "ready",
+        "description": f"Players matching player code '{normalized_code}'",
+        "title": "Player Management",
+        "link": None,
+        "error": None,
+        "organization": organization.name,
+        "player_code": normalized_code,
+        "phone": phone,
+        "players": players,
+    }
 
 
 async def update_player(
@@ -85,6 +266,71 @@ async def update_player(
     base = await player_service.update_player(db, user, player_id, payload)
     logger.info("Org admin %s updated player %s", user.id, player_id)
     return _to_org_admin_detail_payload(base)
+
+
+async def update_player_status(
+    db: AsyncSession,
+    user: User,
+    player_id: UUID,
+    *,
+    status: Literal["active", "inactive"],
+    phone: str | None = None,
+) -> dict[str, Any]:
+    """Update a player's roster status within the org admin's organization."""
+    _validate_optional_phone(phone)
+    organization = await require_admin_organization(db, user)
+    rows = await _fetch_org_admin_player_rows(
+        db,
+        organization.id,
+        active_only=False,
+        player_id=player_id,
+    )
+    if not rows:
+        raise AppException(
+            code="PLAYER_NOT_FOUND",
+            message="Player not found",
+            status_code=404,
+            details=[{"field": "player_id", "message": "Player not found"}],
+        )
+    row = rows[0]
+
+    active_column = await player_service._column_exists(db, PLAYERS_TABLE, "active")
+    if active_column:
+        await db.execute(
+            text(
+                """
+                UPDATE players
+                SET active = :active
+                WHERE id = :player_id
+                  AND org_id = :org_id
+                """
+            ),
+            {
+                "active": status == "active",
+                "player_id": player_id,
+                "org_id": organization.id,
+            },
+        )
+        await db.commit()
+
+    list_item = _build_org_admin_list_item({**row, "active": status == "active"})
+    logger.info("Org admin %s updated player %s status to %s", user.id, player_id, status)
+    return {
+        "success": True,
+        "message": "Player status updated successfully",
+        "status": status,
+        "description": "Player roster status was updated",
+        "title": "Player Management",
+        "link": None,
+        "error": None,
+        "organization": organization.name,
+        "id": player_id,
+        "name": list_item["name"],
+        "code": list_item["code"],
+        "player_code": list_item["player_code"],
+        "team": list_item["team"],
+        "phone": phone,
+    }
 
 
 async def get_player_removal_detail(

@@ -1,6 +1,8 @@
 """Quick schema verification after bootstrap + alembic."""
 import asyncio
+
 from sqlalchemy import text
+
 from app.core.database import engine
 
 

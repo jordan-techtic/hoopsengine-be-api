@@ -40,6 +40,14 @@ import app.models  # noqa: F401 — register models on Base.metadata
 from app.core.database import Base
 
 target_metadata = Base.metadata
+_ORM_TABLE_NAMES = frozenset(target_metadata.tables.keys())
+
+
+def include_name(name, type_, parent_names):
+    """Limit reflection/autogenerate to ORM-managed tables only."""
+    if type_ == "table":
+        return name in _ORM_TABLE_NAMES
+    return True
 
 
 def include_object(object, name, type_, reflected, compare_to):
@@ -58,6 +66,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         include_object=include_object,
+        include_name=include_name,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -75,6 +84,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             include_object=include_object,
+            include_name=include_name,
         )
         with context.begin_transaction():
             context.run_migrations()

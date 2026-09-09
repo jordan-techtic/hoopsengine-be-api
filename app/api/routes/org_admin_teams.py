@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Response, status
+from fastapi import APIRouter, Depends, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_org_admin
@@ -12,7 +12,10 @@ from app.core.database import get_db
 from app.models.user import User
 from app.schemas.errors import openapi_error, openapi_error_examples
 from app.schemas.org_admin_team import (
+    TEAM_REMOVAL_CONFIRMATION_MESSAGE,
     OrgAdminTeamCreateRequest,
+    OrgAdminTeamRemovalRequest,
+    OrgAdminTeamRemovalResponse,
     OrgAdminTeamResponse,
     OrgAdminTeamUpdateRequest,
 )
@@ -120,6 +123,29 @@ NOT_FOUND_ERROR_RESPONSES = {
     ),
 }
 
+REMOVAL_VALIDATION_ERROR_RESPONSES = {
+    400: openapi_error_examples(
+        "Missing or invalid Remove Team confirmation fields",
+        examples={
+            "empty_phone": {
+                "code": "VALIDATION_ERROR",
+                "message": "Phone is required",
+                "details": [{"field": "phone", "message": "Phone is required"}],
+            },
+            "invalid_phone": {
+                "code": "VALIDATION_ERROR",
+                "message": "Enter a valid phone number",
+                "details": [{"field": "phone", "message": "Enter a valid phone number"}],
+            },
+        },
+    ),
+    422: openapi_error(
+        "Request body failed schema validation",
+        code="VALIDATION_ERROR",
+        message="Request validation failed",
+    ),
+}
+
 
 @router.post(
     "",
@@ -167,12 +193,15 @@ async def create_org_team(
     "/{team_id}",
     response_model=OrgAdminTeamResponse,
     operation_id="getOrgAdminTeamForEdit",
-    summary="Retrieve team details for editing",
+    summary="Retrieve team details for editing or removal",
     description=(
-        "Return team details for the Organization Admin **Edit Team** screen (HE-372).\n\n"
+        "Return team details for the Organization Admin **Edit Team** screen (HE-372) "
+        "and **Remove Team** screen (HE-367).\n\n"
         "Includes Figma fields `full_name` (as `name` and `full_name`), `description`, "
-        "assigned `coaches` (each with `id` and `coach_id`), `organization`, and legacy "
-        "`team_name`, `team_code`, and `team_description` fields.\n\n"
+        "assigned `coaches` (each with `id` and `coach_id`), `organization`, legacy "
+        "`team_name`, `team_code`, and `team_description` fields, and "
+        "`confirmation_message` for the Remove Team modal:\n\n"
+        f'"{TEAM_REMOVAL_CONFIRMATION_MESSAGE}"\n\n'
         "Returns **404** when the team does not exist in the organization.\n\n"
         "**Requires organization admin JWT**."
     ),
@@ -248,18 +277,23 @@ async def update_org_team(
 
 @router.delete(
     "/{team_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    operation_id="deleteOrgAdminTeam",
-    summary="Delete an organization team",
+    response_model=OrgAdminTeamRemovalResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="removeOrgAdminTeam",
+    summary="Remove an organization team",
     description=(
-        "Delete a team from the authenticated organization admin's organization.\n\n"
-        "Returns **204 No Content** on success. Coach assignments are cleared automatically.\n\n"
+        "Remove a team from the Organization Admin **Remove Team** screen (HE-367).\n\n"
+        "Requires confirmation body field `phone` (Figma status bar metadata).\n\n"
+        "Returns **200** with `message` **Team removed successfully** on success. "
+        "Coach assignments are cleared automatically.\n\n"
+        "Returns **422** when the confirmation body is missing. Returns **400** when `phone` is empty or invalid.\n\n"
         "Returns **404** when the team does not exist. Returns **409** when players are "
         "still assigned to the team.\n\n"
         "**Requires organization admin JWT**."
     ),
     responses={
         **AUTH_ERROR_RESPONSES,
+        **REMOVAL_VALIDATION_ERROR_RESPONSES,
         **NOT_FOUND_ERROR_RESPONSES,
         **CONFLICT_ERROR_RESPONSES,
         500: openapi_error(
@@ -274,11 +308,17 @@ async def update_org_team(
         ),
     },
 )
-async def delete_org_team(
+async def remove_org_team(
+    body: OrgAdminTeamRemovalRequest,
     team_id: UUID = TEAM_ID_PATH,
     current_user: User = Depends(get_current_org_admin),
     db: AsyncSession = Depends(get_db),
-) -> Response:
-    """Delete a team from the Organization Admin module."""
-    await org_admin_team_service.delete_org_team(db, current_user, team_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+) -> OrgAdminTeamRemovalResponse:
+    """Remove a team after confirmation from the Organization Admin module."""
+    payload = await org_admin_team_service.remove_org_team_with_confirmation(
+        db,
+        current_user,
+        team_id,
+        phone=body.phone,
+    )
+    return OrgAdminTeamRemovalResponse(**payload)

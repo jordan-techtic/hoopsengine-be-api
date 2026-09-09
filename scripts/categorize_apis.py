@@ -1,5 +1,4 @@
 """Categorize all 207 APIs by role and output flow-wise testing checklist."""
-import re
 from app.main import app
 
 # Role assignment rules (first match wins)
