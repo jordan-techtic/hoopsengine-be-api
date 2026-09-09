@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.models.support_request import SupportRequest
+from app.models.user import User
 from app.schemas.org_admin_support import OrgAdminSupportContactRequest
 from app.schemas.support_contact import SupportContactCreateRequest
 from app.services import support_contact as support_contact_service
@@ -75,6 +76,7 @@ async def submit_contact_inquiry(
 async def get_contact_confirmation(
     db: AsyncSession,
     *,
+    user: User | None = None,
     request_id: UUID | None = None,
     phone: str | None = None,
 ) -> dict[str, object]:
@@ -104,6 +106,13 @@ async def get_contact_confirmation(
             "profile": directory["profile"],
             "avatar": directory["avatar"],
         }
+
+    if user is None:
+        raise AppException(
+            code="FORBIDDEN",
+            message="You do not have permission to access this resource",
+            status_code=403,
+        )
 
     result = await db.execute(
         select(SupportRequest).where(SupportRequest.id == request_id).limit(1)
